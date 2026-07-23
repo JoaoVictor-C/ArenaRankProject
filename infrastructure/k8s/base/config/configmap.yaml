@@ -1,0 +1,49 @@
+# Non-secret runtime configuration shared by the api and worker pods. These map
+# 1:1 to arena.core.config.Settings fields (env-var names are the upper-cased
+# field names; pydantic-settings is case-insensitive). Secrets (DB/Redis DSNs,
+# Riot key) live in the Secret, NOT here.
+#
+# A ConfigMap cannot be read across namespaces, so we declare one copy in `api`
+# and one in `processing`. They share the same data; keep the two in sync.
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: arenarank-config
+  namespace: api
+  labels:
+    app.kubernetes.io/part-of: arenarank
+    app.kubernetes.io/component: config
+data:
+  ENVIRONMENT: "production"
+  SERVICE_NAME: "arenarank-api"
+  LOG_LEVEL: "INFO"
+  # CORS: the deployed frontend origin(s). Comma-separated; Settings splits it.
+  CORS_ORIGINS: "https://arenarank.gg,https://www.arenarank.gg"
+  # OpenTelemetry → OTel collector (observability namespace), OTLP/gRPC :4317.
+  OTEL_TRACES_ENABLED: "true"
+  OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector.observability.svc.cluster.local:4317"
+  # Queue names mirror arena.workers.queues constants (kept in sync for the KEDA
+  # scaler trigger metadata).
+  ARENA_PRIORITY_QUEUE: "arena:priority"
+  ARENA_STANDARD_QUEUE: "arena:standard"
+  ARENA_DLQ_KEY: "arena:dlq"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: arenarank-config
+  namespace: processing
+  labels:
+    app.kubernetes.io/part-of: arenarank
+    app.kubernetes.io/component: config
+data:
+  ENVIRONMENT: "production"
+  SERVICE_NAME: "arenarank-worker"
+  LOG_LEVEL: "INFO"
+  CORS_ORIGINS: "https://arenarank.gg,https://www.arenarank.gg"
+  OTEL_TRACES_ENABLED: "true"
+  OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector.observability.svc.cluster.local:4317"
+  ARENA_PRIORITY_QUEUE: "arena:priority"
+  ARENA_STANDARD_QUEUE: "arena:standard"
+  ARENA_DLQ_KEY: "arena:dlq"

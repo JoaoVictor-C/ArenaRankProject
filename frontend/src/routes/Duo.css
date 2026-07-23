@@ -1,0 +1,101 @@
+/* Ache seu Duo — matchmaking social */
+@keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:0.35;} }
+@keyframes wd { 0%,100%{opacity:.25;transform:translateY(0);} 50%{opacity:1;transform:translateY(-2px);} }
+
+.duo-top { display:flex; align-items:flex-end; justify-content:space-between; gap:24px; margin-bottom:22px; flex-wrap:wrap; }
+.duo-title h1 { margin:0; font:800 27px/1.08 "Plus Jakarta Sans"; letter-spacing:-0.01em; }
+.duo-title .sub { margin-top:11px; color:var(--text-dim); font:500 14px/1.55 "Plus Jakarta Sans"; max-width:580px; }
+.duo-online { display:inline-flex; align-items:center; gap:9px; font:700 12px/1 "Plus Jakarta Sans"; color:var(--text-dim); padding:11px 15px; border:1px solid var(--line); border-radius:var(--r-md); background:var(--surface-2); }
+.duo-online .pulse-dot { width:8px; height:8px; border-radius:50%; background:var(--green); box-shadow:0 0 9px var(--green); animation:pulse 1.7s ease-in-out infinite; }
+.duo-online b { color:#fff; font-weight:800; }
+
+.duo-layout { display:grid; grid-template-columns:minmax(0,1fr) 320px; gap:24px; align-items:start; }
+.duo-main { display:flex; flex-direction:column; gap:22px; min-width:0; }
+.duo-sidebar { display:flex; flex-direction:column; gap:0; position:sticky; top:20px; }
+
+.duo-card { background:var(--surface); border:1px solid var(--line); border-radius:var(--r-lg); }
+.duo-card.glow { box-shadow:var(--shadow); }
+
+/* Hero */
+.duo-hero { position:relative; overflow:hidden; padding:24px 26px; display:grid; grid-template-columns:minmax(0,1fr) 248px; gap:30px; align-items:center; }
+.duo-hero::before { content:""; position:absolute; inset:0; background:radial-gradient(130% 150% at 0% -10%, rgba(47,155,214,0.13), transparent 52%); pointer-events:none; }
+.duo-hero > * { position:relative; z-index:1; }
+.dh-you { display:flex; align-items:center; gap:14px; margin-bottom:16px; }
+.dh-id .nm { font:800 19px/1.1 "Plus Jakarta Sans"; display:flex; align-items:baseline; gap:8px; }
+.dh-id .nm .tag { color:var(--text-faint); font:600 13px/1 "Plus Jakarta Sans"; }
+.dh-id .row { margin-top:8px; display:flex; align-items:center; gap:7px; flex-wrap:wrap; }
+.dh-cr { font:800 13px/1 "Plus Jakarta Sans"; color:var(--gold-bright); }
+.dh-cr .u { font-weight:300; color:var(--text-faint); font-size:10px; margin-left:3px; letter-spacing:0.04em; }
+.dh-copy { color:var(--text-dim); font:500 14px/1.6 "Plus Jakarta Sans"; max-width:520px; margin:0 0 18px; }
+.dh-actions { display:flex; gap:12px; flex-wrap:wrap; }
+.dh-right { display:flex; flex-direction:column; gap:11px; border-left:1px solid var(--line-soft); padding-left:26px; }
+.dh-stats { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.dh-stat { background:var(--surface-2); border:1px solid var(--line); border-radius:var(--r-md); padding:12px 13px; }
+.dh-stat b { display:block; font:800 22px/1 "Plus Jakarta Sans"; color:#fff; font-variant-numeric:tabular-nums; }
+.dh-stat span { display:block; margin-top:6px; font:600 10px/1.2 "Plus Jakarta Sans"; letter-spacing:0.04em; text-transform:uppercase; color:var(--text-faint); }
+
+/* Room / slots */
+.mr-head { display:flex; align-items:center; gap:12px; padding:18px 22px; border-bottom:1px solid var(--line-soft); }
+.mr-ttl { font:800 12px/1 "Plus Jakarta Sans"; letter-spacing:0.12em; text-transform:uppercase; color:var(--text-dim); }
+.mr-state { display:inline-flex; align-items:center; gap:7px; font:700 11px/1 "Plus Jakarta Sans"; color:var(--primary-bright); }
+.mr-state .pulse-dot { width:7px; height:7px; border-radius:50%; background:var(--primary-bright); box-shadow:0 0 8px var(--primary-bright); animation:pulse 1.6s ease-in-out infinite; }
+.mr-head .spacer { flex:1; }
+.mr-body { padding:20px 22px 22px; }
+.mr-meta { display:flex; flex-wrap:wrap; gap:7px; margin-top:16px; }
+.mr-msg { margin:0; font:500 13px/1.5 "Plus Jakarta Sans"; color:var(--text-dim); padding:11px 14px; background:var(--surface-2); border:1px solid var(--line-soft); border-radius:var(--r-md); }
+
+.slots { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; }
+.slot { position:relative; display:flex; flex-direction:column; align-items:center; text-align:center; gap:9px; padding:16px 12px; border-radius:var(--r-md); border:1px solid var(--line); background:var(--surface-2); min-height:128px; justify-content:center; }
+.slot.you { border-color:var(--primary); background:var(--primary-dim); }
+.slot.host-slot { border-color:rgba(217,178,95,0.4); }
+.slot.empty { border-style:dashed; background:rgba(255,255,255,0.012); }
+.slot .sl-nm { font:800 13px/1.1 "Plus Jakarta Sans"; color:#fff; max-width:100%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.slot .sl-cr { font:800 11px/1 "Plus Jakarta Sans"; color:var(--gold-bright); }
+.slot .sl-tag { position:absolute; top:9px; left:9px; font:800 8px/1 "Plus Jakarta Sans"; letter-spacing:0.05em; padding:4px 6px; border-radius:5px; text-transform:uppercase; }
+.slot .sl-tag.host { background:var(--gold-dim); color:var(--gold-bright); }
+.slot .ph { width:50px; height:50px; border-radius:9px; border:1.5px dashed var(--line); display:grid; place-items:center; color:var(--text-faint); }
+.slot .ph .mi { font-size:22px; }
+.slot .wlabel { font:600 11px/1.2 "Plus Jakarta Sans"; color:var(--text-faint); }
+.wdots { display:inline-flex; gap:3px; align-items:center; }
+.wdots i { width:4px; height:4px; border-radius:50%; background:var(--text-faint); animation:wd 1.2s ease-in-out infinite; }
+.wdots i:nth-child(2){ animation-delay:.18s; }
+.wdots i:nth-child(3){ animation-delay:.36s; }
+
+/* Section head */
+.duo-section-head { display:flex; align-items:flex-end; justify-content:space-between; gap:16px; margin-bottom:14px; flex-wrap:wrap; }
+.duo-section-head h2 { margin:0; font:800 19px/1 "Plus Jakarta Sans"; letter-spacing:0.01em; }
+.duo-section-head .cnt { font:600 12px/1 "Plus Jakarta Sans"; color:var(--text-faint); margin-left:9px; }
+
+/* Room grid */
+.duo-rooms { display:grid; grid-template-columns:repeat(2,1fr); gap:16px; }
+.room-card { position:relative; display:flex; flex-direction:column; gap:13px; padding:18px; border:1px solid var(--line); border-radius:var(--r-lg); background:var(--surface); transition:border-color .16s ease, transform .16s ease, box-shadow .16s ease; }
+.room-card::before { content:""; position:absolute; left:0; top:16px; bottom:16px; width:3px; border-radius:0 3px 3px 0; background:var(--type-c, var(--line)); }
+.room-card[data-type="open"] { --type-c:var(--green); }
+.room-card[data-type="approval"] { --type-c:var(--gold); }
+.room-card:hover { border-color:var(--border-strong); transform:translateY(-2px); box-shadow:0 14px 30px rgba(0,0,0,0.4); }
+.rc-head { display:flex; align-items:center; gap:12px; }
+.rc-host { min-width:0; flex:1; }
+.rc-host .nm { font:700 15px/1.1 "Plus Jakarta Sans"; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.rc-host .meta { margin-top:5px; font:600 11px/1 "Plus Jakarta Sans"; color:var(--text-faint); display:flex; align-items:center; gap:6px; }
+.rc-host .meta .cr { color:var(--gold-bright); font-weight:800; }
+.rc-type { flex:none; }
+.badge.room-open { background:var(--green-dim); color:var(--green); }
+.badge.room-appr { background:var(--gold-dim); color:var(--gold-bright); }
+.rc-slots { display:flex; align-items:center; gap:7px; }
+.mini-slot { width:32px; height:32px; border-radius:8px; flex:none; box-shadow:0 2px 6px rgba(0,0,0,0.35); }
+.mini-slot.empty { box-shadow:none; border:1.5px dashed var(--line); display:grid; place-items:center; color:var(--text-faint); background:var(--surface-2); }
+.mini-slot.empty .mi { font-size:16px; }
+.rc-count { margin-left:3px; font:700 13px/1 "Plus Jakarta Sans"; color:var(--text-dim); }
+
+/* Sidebar */
+.duo-filters-group { margin-bottom:0; }
+.duo-activity { display:flex; flex-direction:column; gap:12px; }
+.act-item { display:flex; align-items:center; gap:9px; font:500 12px/1.4 "Plus Jakarta Sans"; color:var(--text-dim); }
+.act-item .mi { font-size:16px; flex:none; }
+
+@media (max-width: 1060px) {
+  .duo-layout { grid-template-columns: 1fr; }
+  .duo-sidebar { position:static; }
+  .duo-hero { grid-template-columns:1fr; }
+  .dh-right { border-left:none; padding-left:0; border-top:1px solid var(--line-soft); padding-top:16px; }
+}

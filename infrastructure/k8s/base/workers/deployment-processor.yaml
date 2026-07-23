@@ -1,0 +1,164 @@
+# Match-processor worker pools (proposal §6.3, §13.2). Two pools consume the two
+# arq priority lanes from arena.workers.queues:
+#   PriorityWorker → arena:priority   (Top-1000 involved, sub-5-min SLA)
+#   StandardWorker → arena:standard   (everyone else)
+#
+# Both run the same image with a different arq WorkerSettings class as the
+# command. Replica count is driven by KEDA (see scaledobject-processor.yaml),
+# NOT by these `replicas:` — KEDA owns the deployment's scale subresource. The
+# `replicas` here is only the initial value before KEDA reconciles.
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: processor-priority
+  namespace: processing
+  labels:
+    app.kubernetes.io/name: processor-priority
+    app.kubernetes.io/part-of: arenarank
+    app.kubernetes.io/component: worker
+    arenarank.io/lane: priority
+spec:
+  replicas: 2
+  revisionHistoryLimit: 5
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: processor-priority
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: processor-priority
+        app.kubernetes.io/part-of: arenarank
+        app.kubernetes.io/component: worker
+        arenarank.io/lane: priority
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9100"
+        prometheus.io/path: "/metrics"
+    spec:
+      serviceAccountName: worker
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: worker
+          image: ARENARANK_IMAGE
+          imagePullPolicy: IfNotPresent
+          command: ["arq", "arena.workers.main.PriorityWorker"]
+          envFrom:
+            - configMapRef:
+                name: arenarank-config
+            - secretRef:
+                name: arenarank-secrets
+          env:
+            - name: SERVICE_NAME
+              value: "arenarank-processor-priority"
+          resources:
+            requests:
+              cpu: "200m"
+              memory: "256Mi"
+            limits:
+              cpu: "1"
+              memory: "512Mi"
+          # arq has no HTTP server; liveness via a lightweight redis ping exec.
+          livenessProbe:
+            exec:
+              command: ["python", "-c", "import os,redis; redis.from_url(os.environ['REDIS_URL']).ping()"]
+            initialDelaySeconds: 15
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}
+      # Drain in-flight jobs on rollout/scale-down. arq finishes the current job
+      # on SIGTERM; give it room (job_timeout is 60s in worker settings).
+      terminationGracePeriodSeconds: 90
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: processor-standard
+  namespace: processing
+  labels:
+    app.kubernetes.io/name: processor-standard
+    app.kubernetes.io/part-of: arenarank
+    app.kubernetes.io/component: worker
+    arenarank.io/lane: standard
+spec:
+  replicas: 2
+  revisionHistoryLimit: 5
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: processor-standard
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: processor-standard
+        app.kubernetes.io/part-of: arenarank
+        app.kubernetes.io/component: worker
+        arenarank.io/lane: standard
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9100"
+        prometheus.io/path: "/metrics"
+    spec:
+      serviceAccountName: worker
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: worker
+          image: ARENARANK_IMAGE
+          imagePullPolicy: IfNotPresent
+          command: ["arq", "arena.workers.main.StandardWorker"]
+          envFrom:
+            - configMapRef:
+                name: arenarank-config
+            - secretRef:
+                name: arenarank-secrets
+          env:
+            - name: SERVICE_NAME
+              value: "arenarank-processor-standard"
+          resources:
+            requests:
+              cpu: "200m"
+              memory: "256Mi"
+            limits:
+              cpu: "1"
+              memory: "512Mi"
+          livenessProbe:
+            exec:
+              command: ["python", "-c", "import os,redis; redis.from_url(os.environ['REDIS_URL']).ping()"]
+            initialDelaySeconds: 15
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}
+      terminationGracePeriodSeconds: 90

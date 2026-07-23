@@ -1,0 +1,65 @@
+/* Prévia /campeonatos2 — banner + seletor de torneios provisionados */
+.c2-wrap {
+  position: relative;
+  z-index: 2;
+}
+.c2-banner {
+  max-width: var(--maxw);
+  margin: 0 auto;
+  padding: 20px 24px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.c2-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  align-self: flex-start;
+  font: 700 11px/1 "Plus Jakarta Sans", sans-serif;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--amber);
+  background: var(--amber-dim);
+  border: 1px solid var(--amber);
+  padding: 6px 10px;
+  border-radius: var(--r-sm);
+}
+.c2-eyebrow .mi {
+  font-size: 14px;
+}
+.c2-hint {
+  font: 500 12px/1.5 "Plus Jakarta Sans", sans-serif;
+  color: var(--text-faint);
+}
+.c2-hint a {
+  color: var(--primary);
+  text-decoration: none;
+}
+.c2-hint a:hover {
+  color: var(--primary-bright);
+}
+.c2-selector {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+}
+.c2-chip {
+  font: 600 12px/1 "Plus Jakarta Sans", sans-serif;
+  padding: 8px 13px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  color: var(--text-dim);
+  text-decoration: none;
+}
+.c2-chip:hover {
+  color: #fff;
+  border-color: var(--border-strong);
+}
+.c2-chip[data-active="true"] {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+}

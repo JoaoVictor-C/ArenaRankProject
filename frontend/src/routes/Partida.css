@@ -1,0 +1,314 @@
+/* ============================================================
+   Partida.css — estilos da página de detalhe de partida
+   Nomes de classe mantidos 1:1 com o design para o motor de animação.
+   ============================================================ */
+
+/* ---------- Cabeçalho da partida ---------- */
+.mh {
+  display: grid;
+  grid-template-columns: 1.3fr 1fr 1fr;
+  gap: 0;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.3);
+  margin-bottom: 14px;
+}
+.mh > div {
+  padding: 24px 26px;
+}
+.mh .col {
+  border-right: 1px solid var(--line);
+}
+.mh .k {
+  font: 600 10px/1 "Plus Jakarta Sans", sans-serif;
+  letter-spacing: 0.1em;
+  color: var(--text-faint);
+  text-transform: uppercase;
+  margin-bottom: 12px;
+}
+.mh .mode-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font: 800 14px/1 "Plus Jakarta Sans", sans-serif;
+  letter-spacing: 0.04em;
+  padding: 9px 14px;
+  border-radius: 7px;
+  background: rgba(47, 155, 214, 0.16);
+  color: #7fd0ff;
+  border: 1px solid rgba(47, 155, 214, 0.4);
+}
+.mh .mid {
+  font: 600 13px/1.5 "Plus Jakarta Sans", sans-serif;
+  color: var(--text-dim);
+  margin-top: 14px;
+}
+.mh .mid b {
+  color: #fff;
+}
+.mh .when b {
+  font: 800 20px/1 "Plus Jakarta Sans", sans-serif;
+  color: #fff;
+  display: block;
+  margin-bottom: 6px;
+}
+.mh .when .abs {
+  font: 500 12px/1.4 "Plus Jakarta Sans", sans-serif;
+  color: var(--text-faint);
+}
+.mh .integ {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.mh .integ .ok {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font: 700 13px/1 "Plus Jakarta Sans", sans-serif;
+  color: var(--green);
+}
+
+/* ---------- Classificação ---------- */
+.standings {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.team-row {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.26);
+}
+.team-row.you {
+  border-color: rgba(241, 197, 74, 0.5);
+  background: linear-gradient(90deg, rgba(241, 197, 74, 0.08), rgba(0, 0, 0, 0.26) 60%);
+}
+.team-main {
+  display: grid;
+  grid-template-columns: 70px 1fr 150px 44px;
+  gap: 18px;
+  align-items: center;
+  padding: 14px 18px;
+  cursor: pointer;
+}
+.team-main:hover {
+  background: rgba(255, 255, 255, 0.02);
+}
+.team-place {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+.team-place .place {
+  width: 46px;
+  height: 40px;
+  font-size: 19px;
+  border-radius: 7px;
+}
+.team-place .pl {
+  font: 600 9px/1 "Plus Jakarta Sans", sans-serif;
+  color: var(--text-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.team-players {
+  display: flex;
+  gap: 28px;
+  flex-wrap: wrap;
+}
+.tp {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+}
+.tp .nm {
+  font: 700 14px/1.1 "Plus Jakarta Sans", sans-serif;
+}
+.tp .tag {
+  font: 500 11px/1 "Plus Jakarta Sans", sans-serif;
+  color: var(--text-faint);
+  margin-top: 4px;
+}
+.tp .d {
+  font: 800 13px/1 "Plus Jakarta Sans", sans-serif;
+  margin-top: 4px;
+}
+.team-cr {
+  text-align: right;
+}
+.team-cr .sum {
+  font: 800 20px/1 "Plus Jakarta Sans", sans-serif;
+}
+.team-cr .cap {
+  font: 600 9px/1 "Plus Jakarta Sans", sans-serif;
+  color: var(--text-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-top: 6px;
+}
+.team-caret {
+  display: flex;
+  justify-content: center;
+  color: var(--text-faint);
+  font-size: 18px;
+  transition: transform 0.2s;
+  user-select: none;
+}
+.team-row[data-open="true"] .team-caret {
+  transform: rotate(180deg);
+}
+.team-detail {
+  display: none;
+  padding: 0 18px 18px;
+}
+.team-row[data-open="true"] .team-detail {
+  display: block;
+}
+
+/* ---------- Cards de jogador (breakdown de modificadores) ---------- */
+.pp-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+.pp-card {
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  padding: 14px 16px;
+}
+.pp-card .pp-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--line);
+}
+.pp-card .pp-head .nm {
+  font: 700 14px/1 "Plus Jakarta Sans", sans-serif;
+}
+.pp-card .pp-head .cr-range {
+  margin-left: auto;
+  text-align: right;
+}
+.pp-card .pp-head .cr-range .delta {
+  font: 800 16px/1 "Plus Jakarta Sans", sans-serif;
+}
+.pp-card .pp-head .cr-range .range-txt {
+  font: 600 10px/1 "Plus Jakarta Sans", sans-serif;
+  color: var(--text-faint);
+  margin-top: 5px;
+}
+.pp-mod {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+.pp-mod:last-child {
+  border-bottom: none;
+}
+.pp-mod .l {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font: 500 12px/1.3 "Plus Jakarta Sans", sans-serif;
+  color: var(--text-dim);
+}
+.pp-mod .l .ic {
+  width: 18px;
+  text-align: center;
+  color: var(--text-faint);
+}
+.pp-mod .v {
+  font: 800 13px/1 "Plus Jakarta Sans", sans-serif;
+  white-space: nowrap;
+}
+
+/* ---------- Flags de integridade do jogador ---------- */
+.pp-integrity {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+/* ---------- Grid inferior (integridade + processamento) ---------- */
+.grid2 {
+  display: grid;
+  grid-template-columns: 1.6fr 1fr;
+  gap: 22px;
+  align-items: start;
+  margin-top: 26px;
+}
+.integ-panel .flag {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 11px 13px;
+  margin-bottom: 8px;
+  border-radius: 7px;
+}
+.integ-note {
+  font: 500 12px/1.6 "Plus Jakarta Sans", sans-serif;
+  color: var(--text-faint);
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+.proc {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.proc-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  font: 500 12px/1.4 "Plus Jakarta Sans", sans-serif;
+}
+.proc-row .k {
+  color: var(--text-faint);
+}
+.proc-row .v {
+  color: #fff;
+  font-weight: 700;
+}
+.proc-row .v.mono {
+  font-family: ui-monospace, Menlo, monospace;
+  font-size: 11px;
+}
+
+/* ---------- Responsivo ---------- */
+@media (max-width: 1000px) {
+  .mh,
+  .grid2,
+  .pp-grid {
+    grid-template-columns: 1fr;
+  }
+  .mh .col {
+    border-right: none;
+    border-bottom: 1px solid var(--line);
+  }
+  .team-main {
+    grid-template-columns: 60px 1fr 110px 36px;
+    gap: 12px;
+  }
+}
+
+@media (max-width: 640px) {
+  .team-main {
+    grid-template-columns: 56px 1fr 44px;
+  }
+  .team-cr {
+    display: none;
+  }
+}

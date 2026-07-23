@@ -1,0 +1,186 @@
+# arenarank — NOTEBOOK stack (metade de ESCRITA do split, T2.2 do
+# workaround_readpath.md / docs/arquitetura-read-path.md).
+#
+# Este arquivo é a doc operacional do notebook (Celeron N4020, 8GB RAM,
+# Ubuntu Server, ~/arenarank). Papel: fonte da verdade + ingestão. O EC2
+# (docker-compose.prod.yml) fica só com a metade de LEITURA (caddy + api +
+# redis de leitura + pg-replica) e assina a publicação lógica deste Postgres.
+#
+#   postgres      PRIMÁRIO (postgres:18) com wal_level=logical — publica as
+#                 tabelas do read path (scripts/replication/create_publication.sql)
+#   redis         escrita: filas arq, locks por jogador, token-bucket Riot,
+#                 cache de payloads de match
+#   worker-sweep  descoberta rotativa de partidas (substitui o IngestionWorker)
+#   worker-bulk   drena as pending lists e roda process_match
+#   scheduler     manutenção cron (temporadas, snapshots, refresh)
+#   api           OPCIONAL/LAN: console admin (telemetria de workers) e
+#                 diagnóstico local — NÃO é o caminho público de leitura
+#
+# Segredos vêm do `.env` irmão (nunca commitado): POSTGRES_PASSWORD,
+# DATABASE_URL, RIOT_API_KEY, ADMIN_API_KEY, RIOT_MATCH_CACHE_TTL_SECONDS
+# (o notebook usa TTL de 7d no cache de match — Redis local tem 512mb,
+# diferente do bulk do EC2 antigo que usava 600s com 128mb).
+#
+# Subir:    docker compose -f docker-compose.notebook.yml up -d --build
+# Migrar:   docker compose -f docker-compose.notebook.yml run --rm api alembic upgrade head
+#           (alembic SEMPRE aponta para este primário — DDL não replica; ver
+#           docs/runbook-replicacao.md: réplica primeiro, primário depois)
+# Publicação (T2.5): docker compose -f docker-compose.notebook.yml exec postgres \
+#           psql -U arena -d arena -f /replication/create_publication.sql
+
+name: arenarank-prod
+
+services:
+  postgres:
+    image: postgres:18
+    # Replicação lógica (T2.4/T2.5): wal_level=logical + folga de senders/slots.
+    # ATENÇÃO: um slot com o assinante (EC2) fora do ar retém WAL — monitorar
+    # pg_replication_slots + disco (runbook).
+    command:
+      [
+        "postgres",
+        "-c", "wal_level=logical",
+        "-c", "max_wal_senders=5",
+        "-c", "max_replication_slots=5",
+        "-c", "shared_buffers=512MB",
+        "-c", "effective_cache_size=2GB",
+        "-c", "max_connections=60",
+      ]
+    environment:
+      POSTGRES_USER: arena
+      POSTGRES_DB: arena
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?defina no .env}
+    volumes:
+      # postgres:18 mudou o data path: monta /var/lib/postgresql (NÃO .../data).
+      - pgdata:/var/lib/postgresql
+      - ./backend/scripts/replication:/replication:ro
+    ports:
+      # Só loopback — o tailnet chega via proxy do próprio tailscaled
+      # (T2.1/T2.5): `sudo tailscale serve --bg --tcp 5432 tcp://127.0.0.1:5432`.
+      # Mais robusto que bind do IP tailnet aqui (docker pode subir antes do
+      # tailscaled num reboot e o bind falharia). Nunca publicar 5432 em
+      # interface pública/roteador.
+      - "127.0.0.1:5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U arena -d arena"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  redis:
+    image: redis:7
+    # 512mb + volatile-lru: mistura cache descartável (riot:match:*, com TTL)
+    # com filas/locks (sem TTL). volatile-lru só evicta keys COM TTL — o cache
+    # cede sob pressão, as filas ficam intactas. NUNCA noeviction aqui.
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory", "512mb", "--maxmemory-policy", "volatile-lru"]
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  # API local (LAN) — telemetria/admin console + diagnóstico. O caminho público
+  # de leitura é o EC2; este serviço pode ficar parado sem afetar o site.
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command:
+      ["uvicorn", "arena.api.app:app", "--host", "0.0.0.0", "--port", "8000",
+       "--proxy-headers", "--forwarded-allow-ips", "*"]
+    env_file: [.env]
+    environment:
+      SERVICE_NAME: arenarank-api-notebook
+      REDIS_URL: redis://redis:6379/0
+      DATABASE_URL: postgresql+asyncpg://arena:${POSTGRES_PASSWORD:?defina no .env}@postgres:5432/arena
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Sweep rotativo: cursor paginado sobre jogadores rastreados, empurra match
+  # ids para a pending list. Substitui o IngestionWorker (poll_riot puxava TODOS
+  # os jogadores por tick e estourava timeout com a ladder grande).
+  # O HEALTHCHECK da imagem curla :8000/healthz (papel api); workers rodam arq,
+  # não uvicorn — desabilitar ou ficam eternamente "unhealthy".
+  worker-sweep:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command: ["arq", "arena.workers.main.SweepWorker"]
+    env_file: [.env]
+    environment:
+      SERVICE_NAME: arenarank-worker-sweep
+      REDIS_URL: redis://redis:6379/0
+      DATABASE_URL: postgresql+asyncpg://arena:${POSTGRES_PASSWORD:?defina no .env}@postgres:5432/arena
+      SWEEP_INTERVAL_MINUTES: "1"
+      # Balanceado com o bulk (BULK_BATCH_SIZE=40): produtor ≈ consumidor, a
+      # pending list não cresce sem limite.
+      SWEEP_BATCH_SIZE: "40"
+      SWEEP_MATCHES_PER_PLAYER: "10"
+    healthcheck:
+      disable: true
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Bulk: drena as pending lists (priority primeiro) e roda process_match com
+  # concorrência limitada.
+  worker-bulk:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command: ["arq", "arena.workers.main.BulkProcessorWorker"]
+    env_file: [.env]
+    environment:
+      SERVICE_NAME: arenarank-worker-bulk
+      REDIS_URL: redis://redis:6379/0
+      DATABASE_URL: postgresql+asyncpg://arena:${POSTGRES_PASSWORD:?defina no .env}@postgres:5432/arena
+      BULK_PROCESSOR_INTERVAL_MINUTES: "1"
+      BULK_BATCH_SIZE: "40"
+      BULK_CONCURRENCY: "4"
+      # TTL do cache de payloads (riot:match:*) vem do .env — 7d no notebook
+      # (RIOT_MATCH_CACHE_TTL_SECONDS=604800) para reaproveitar payloads em
+      # backfills sem re-fetch; o Redis local (512mb, volatile-lru) comporta.
+    healthcheck:
+      disable: true
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  scheduler:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command: ["arq", "arena.workers.main.SchedulerWorker"]
+    env_file: [.env]
+    environment:
+      SERVICE_NAME: arenarank-scheduler
+      REDIS_URL: redis://redis:6379/0
+      DATABASE_URL: postgresql+asyncpg://arena:${POSTGRES_PASSWORD:?defina no .env}@postgres:5432/arena
+    healthcheck:
+      disable: true
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  redisdata:

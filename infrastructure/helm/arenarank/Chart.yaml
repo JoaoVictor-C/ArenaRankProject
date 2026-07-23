@@ -1,0 +1,22 @@
+apiVersion: v2
+name: arenarank
+description: >-
+  arenarank FastAPI backend — API (Deployment+Service+HPA) and arq worker pools
+  (Deployment + KEDA ScaledObject on Redis queue depth). Namespaces api /
+  processing / data / observability. Implements the gamified-rating proposal.
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+keywords:
+  - arenarank
+  - fastapi
+  - arq
+  - keda
+home: https://arenarank.gg
+maintainers:
+  - name: arenarank
+    email: clesioalopes@gmail.com
+# KEDA is a required runtime dependency for worker autoscaling but is installed
+# cluster-wide out-of-band (not a subchart) so its CRDs are managed separately.
+annotations:
+  arenarank.io/requires: "keda>=2.14, metrics-server, aws-load-balancer-controller"

@@ -1,0 +1,71 @@
+# Staging overlay — 25% prod scale (proposal §10.2). Lowers replica floors and
+# KEDA ceilings, points CORS/host at the staging domain, uses the staging ECR tag.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../base
+
+images:
+  - name: ARENARANK_IMAGE
+    newName: 000000000000.dkr.ecr.us-east-1.amazonaws.com/arenarank-backend
+    newTag: staging
+
+patches:
+  # API: drop to 2 replicas, max 6 on staging.
+  - target:
+      kind: Deployment
+      name: api
+      namespace: api
+    patch: |
+      - op: replace
+        path: /spec/replicas
+        value: 2
+  - target:
+      kind: HorizontalPodAutoscaler
+      name: api
+      namespace: api
+    patch: |
+      - op: replace
+        path: /spec/minReplicas
+        value: 2
+      - op: replace
+        path: /spec/maxReplicas
+        value: 6
+  # Processors: lower KEDA ceiling to 6 on staging.
+  - target:
+      kind: ScaledObject
+      name: processor-priority
+      namespace: processing
+    patch: |
+      - op: replace
+        path: /spec/maxReplicaCount
+        value: 6
+  - target:
+      kind: ScaledObject
+      name: processor-standard
+      namespace: processing
+    patch: |
+      - op: replace
+        path: /spec/maxReplicaCount
+        value: 6
+  # Staging CORS + host.
+  - target:
+      kind: ConfigMap
+      name: arenarank-config
+      namespace: api
+    patch: |
+      - op: replace
+        path: /data/ENVIRONMENT
+        value: staging
+      - op: replace
+        path: /data/CORS_ORIGINS
+        value: https://staging.arenarank.gg
+  - target:
+      kind: Ingress
+      name: api
+      namespace: api
+    patch: |
+      - op: replace
+        path: /spec/rules/0/host
+        value: api.staging.arenarank.gg

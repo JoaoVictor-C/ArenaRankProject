@@ -1,0 +1,24 @@
+{
+  "name": "@crs/database",
+  "version": "0.1.0",
+  "type": "module",
+  "private": true,
+  "main": "src/client.ts",
+  "types": "src/client.ts",
+  "scripts": {
+    "prisma:generate": "prisma generate",
+    "prisma:validate": "prisma validate",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.18.0"
+  },
+  "devDependencies": {
+    "prisma": "^5.18.0",
+    "typescript": "^5.5.0",
+    "tsx": "^4.16.0",
+    "vitest": "^2.0.0",
+    "@types/node": "^20.14.0"
+  }
+}

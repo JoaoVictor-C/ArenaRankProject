@@ -1,0 +1,36 @@
+# Public ingress for the API via the AWS Load Balancer Controller (ALB). TLS
+# terminates at the ALB (ACM cert), HTTP→HTTPS redirect, health check hits
+# /healthz. The frontend (React/Vite static build) is served from S3+CloudFront
+# separately; this ingress is the JSON API only (proposal §2 base path).
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: api
+  namespace: api
+  labels:
+    app.kubernetes.io/name: api
+    app.kubernetes.io/part-of: arenarank
+  annotations:
+    kubernetes.io/ingress.class: alb
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80},{"HTTPS":443}]'
+    alb.ingress.kubernetes.io/ssl-redirect: "443"
+    alb.ingress.kubernetes.io/healthcheck-path: /healthz
+    alb.ingress.kubernetes.io/healthcheck-protocol: HTTP
+    alb.ingress.kubernetes.io/success-codes: "200"
+    alb.ingress.kubernetes.io/load-balancer-attributes: idle_timeout.timeout_seconds=60
+    # ACM certificate ARN — set per environment overlay.
+    # alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:us-east-1:<acct>:certificate/<id>
+spec:
+  rules:
+    - host: api.arenarank.gg
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: api
+                port:
+                  number: 80

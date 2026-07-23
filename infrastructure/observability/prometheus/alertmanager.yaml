@@ -1,0 +1,47 @@
+# Alertmanager routing — critical → PagerDuty (24/7), warning/info → Slack.
+# Secrets are injected as FILES (api_url_file / routing_key_file) mounted from a
+# Kubernetes Secret — Alertmanager does NOT expand ${ENV} inside config values,
+# so the *_file form is both valid and the correct secret-injection pattern.
+# Mount the Secret at /etc/alertmanager/secrets/.
+global:
+  resolve_timeout: 5m
+
+route:
+  receiver: slack-default
+  group_by: ["alertname", "team", "severity"]
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 4h
+  routes:
+    - matchers:
+        - severity = "critical"
+      receiver: pagerduty-critical
+      continue: true
+    - matchers:
+        - severity =~ "warning|info"
+      receiver: slack-default
+
+inhibit_rules:
+  # A critical for a service silences its warnings (avoid double-paging).
+  - source_matchers: [severity = "critical"]
+    target_matchers: [severity = "warning"]
+    equal: ["alertname", "team"]
+
+receivers:
+  - name: slack-default
+    slack_configs:
+      - api_url_file: /etc/alertmanager/secrets/slack_webhook_url # mounted from Secret
+        channel: "#arenarank-alerts"
+        send_resolved: true
+        title: '{{ .CommonAnnotations.summary }}'
+        text: >-
+          {{ range .Alerts }}*{{ .Labels.severity | toUpper }}* {{ .Annotations.description }}
+          {{ if .Annotations.runbook_url }}<{{ .Annotations.runbook_url }}|runbook>{{ end }}
+          {{ end }}
+
+  - name: pagerduty-critical
+    pagerduty_configs:
+      - routing_key_file: /etc/alertmanager/secrets/pagerduty_routing_key # mounted from Secret
+        send_resolved: true
+        description: '{{ .CommonAnnotations.summary }}'
+        severity: critical

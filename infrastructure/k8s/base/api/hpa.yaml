@@ -1,0 +1,65 @@
+# API horizontal autoscaler — CPU target 60%, min 3 (HA floor), max 20
+# (proposal §10.4). Behavior tuned to scale up fast on traffic spikes and down
+# slowly to avoid flapping during the read-heavy leaderboard/profile bursts.
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: api
+  namespace: api
+  labels:
+    app.kubernetes.io/name: api
+    app.kubernetes.io/part-of: arenarank
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: api
+  minReplicas: 3
+  maxReplicas: 20
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 60
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 75
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 30
+      policies:
+        - type: Percent
+          value: 100
+          periodSeconds: 30
+        - type: Pods
+          value: 4
+          periodSeconds: 30
+      selectPolicy: Max
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+        - type: Percent
+          value: 25
+          periodSeconds: 60
+      selectPolicy: Max
+---
+# PodDisruptionBudget — never let voluntary disruptions (node drains, rollouts)
+# drop the API below 2 healthy pods.
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: api
+  namespace: api
+  labels:
+    app.kubernetes.io/name: api
+    app.kubernetes.io/part-of: arenarank
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: api

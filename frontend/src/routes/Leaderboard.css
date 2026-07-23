@@ -1,0 +1,1200 @@
+/* ============================================================
+   ArenaRank — Leaderboard.css
+   Estilos page-specific (não duplica o que está em anim.css).
+   ============================================================ */
+
+/* ---------- layout topo ---------- */
+.lb-top {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 18px;
+  flex-wrap: wrap;
+}
+.lb-title h1 {
+  margin: 0;
+  font: 800 26px/1.1 "Plus Jakarta Sans", sans-serif;
+  letter-spacing: -0.01em;
+  text-transform: none;
+}
+.lb-title .sub {
+  margin-top: 10px;
+  color: var(--text-dim);
+  font: 500 14px/1.4 "Plus Jakarta Sans", sans-serif;
+}
+
+/* ---------- season status card ---------- */
+.season-status {
+  position: relative;
+  overflow: hidden;
+  min-width: 322px;
+  max-width: 360px;
+  padding: 15px 18px 16px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: linear-gradient(180deg, rgba(47, 155, 214, 0.06), rgba(47, 155, 214, 0) 62%), var(--panel-2);
+}
+.season-status::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--primary) 30%, var(--primary) 70%, transparent);
+}
+.ss-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 11px;
+}
+.ss-live {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font: 700 10px/1 "Plus Jakarta Sans", sans-serif;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--green);
+}
+.ss-live .pulse {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--green);
+  box-shadow: 0 0 8px var(--green);
+  animation: pulse 1.6s ease-in-out infinite;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+.ss-remain {
+  font: 600 11px/1 "Plus Jakarta Sans", sans-serif;
+  color: var(--text-dim);
+}
+.ss-remain b {
+  color: var(--gold-bright);
+  font-weight: 800;
+}
+.ss-name {
+  font: 800 17px/1.1 "Plus Jakarta Sans", sans-serif;
+  color: #fff;
+  margin-bottom: 15px;
+}
+.ss-name span {
+  color: var(--primary-bright);
+  font-weight: 700;
+}
+.ss-dates {
+  display: grid;
+  grid-template-columns: auto minmax(48px, 1fr) auto;
+  align-items: center;
+  gap: 13px;
+}
+.ss-date {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.ss-date.right {
+  align-items: flex-end;
+}
+.ss-date .k {
+  font: 700 8px/1 "Plus Jakarta Sans", sans-serif;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+.ss-date .v {
+  font: 700 12px/1 "Plus Jakarta Sans", sans-serif;
+  color: var(--text);
+  white-space: nowrap;
+}
+.ss-track {
+  position: relative;
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+.ss-track i {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--primary), var(--primary-bright));
+  box-shadow: 0 0 10px rgba(47, 155, 214, 0.5);
+}
+
+/* legacy pill selector (kept for archive seasons) */
+.season-select {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.season-pill {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 10px 16px;
+  border-radius: 9px;
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  cursor: pointer;
+  min-width: 132px;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.season-pill[data-active="true"] {
+  border-color: var(--primary);
+  background: rgba(47, 155, 214, 0.12);
+}
+.season-pill .sn {
+  font: 700 13px/1 "Plus Jakarta Sans", sans-serif;
+}
+.season-pill .ss {
+  font: 700 9px/1 "Plus Jakarta Sans", sans-serif;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.season-pill .ss.active {
+  color: var(--green);
+}
+.season-pill .ss.lock {
+  color: var(--amber);
+}
+.season-pill .ss.ended {
+  color: var(--text-faint);
+}
+
+/* ---------- soft lock banner ---------- */
+.softlock {
+  display: none;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 20px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 195, 0, 0.4);
+  background: rgba(255, 195, 0, 0.08);
+  margin-bottom: 20px;
+  font: 600 13px/1.4 "Plus Jakarta Sans", sans-serif;
+  color: var(--amber);
+}
+.lb-page[data-lock="on"] .softlock {
+  display: flex;
+}
+.softlock .ic {
+  font-size: 18px;
+}
+
+/* ---------- layout principal ---------- */
+/* 2 colunas: conteúdo + rail direito (fiel ao Leaderboard.html do design). */
+.lb-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: 24px;
+  align-items: start;
+}
+
+/* ---------- pódio ---------- */
+/* Nota: .pod/.pod-fx/.pod-rank/.punit já vêm de anim.css — não duplicamos aqui. */
+.podium {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+  margin-bottom: 16px;
+  align-items: stretch;
+}
+.pod {
+  /* posição em anim.css. O shape + clip FALTAVAM aqui: sem overflow:hidden o
+     .pod-fx (blur 18px) vazava pra fora → "glow externo" indevido. Clipa o wash
+     DENTRO do card, como no design (border-radius 12px + isolation:isolate). */
+  border-radius: 12px;
+  overflow: hidden;
+  isolation: isolate;
+  padding: 16px;
+  background: var(--surface-2);
+  display: flex;
+  flex-direction: column;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.55);
+}
+.pod-top {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 13px;
+}
+.pod-top .pavatar {
+  width: 50px;
+  height: 50px;
+  flex: none;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.45);
+}
+.pod-id {
+  flex: 1;
+  min-width: 0;
+}
+.pod-id .nm {
+  font: 800 16px/1.15 "Plus Jakarta Sans", sans-serif;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.pod-id .phandle {
+  font: 600 12px/1 "Plus Jakarta Sans", sans-serif;
+  color: rgba(255, 255, 255, 0.74);
+  margin-top: 6px;
+}
+/* tags em linha única no card do pódio */
+.pod > .tagrow {
+  display: flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: 6px;
+  margin-bottom: 14px;
+  min-height: 22px;
+}
+.pod > .tagrow .ptag {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+.pod > .tagrow .ptag.more {
+  flex: none;
+}
+/* bloco CR / PDL */
+.pod-cr-block {
+  text-align: center;
+  padding: 4px 0 12px;
+  margin-bottom: 10px;
+}
+.pod-cr-block .v {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  font: 800 32px/1 "Plus Jakarta Sans", sans-serif;
+  color: #fff;
+}
+.pod-cr-block .wl {
+  font: 600 12px/1 "Plus Jakarta Sans", sans-serif;
+  color: rgba(255, 255, 255, 0.82);
+  margin-top: 9px;
+}
+/* PDL badge: gradiente ouro + sheen SVG */
+.punit {
+  position: relative;
+  overflow: hidden;
+  display: inline-flex;
+  align-items: center;
+  font: 800 10px/1 "Plus Jakarta Sans", sans-serif;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #fff;
+  padding: 6px 9px;
+  border-radius: 6px;
+  text-shadow: none;
+  background: linear-gradient(135deg, var(--gold-bright), var(--gold));
+}
+.punit .sheen {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 3;
+}
+.punit .sheen polygon {
+  fill: #fff;
+  fill-opacity: 0.5;
+}
+@media (prefers-reduced-motion: no-preference) {
+  html:not(.ar-anim-off) .punit .sheen {
+    animation: ar-pdl-sheen 4.2s ease-in-out infinite;
+  }
+}
+@keyframes ar-pdl-sheen {
+  0%,
+  14% {
+    transform: translateX(155%);
+  }
+  50%,
+  100% {
+    transform: translateX(-155%);
+  }
+}
+/* mains do campeão no pódio */
+.pod-champs {
+  display: flex;
+  gap: 7px;
+  justify-content: center;
+  margin-bottom: 14px;
+  margin-top: auto;
+}
+.pod-champs .ch-icon {
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+  /* borda normalizada: hairline neutro consistente em todos os campeões.
+     background-clip padding-box impede o gradiente --c1/--c2 de vazar sob a
+     borda semitransparente (o que antes tingia a borda de azul/roxo). */
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background-clip: padding-box;
+}
+/* hover do campeão → card de stats do jogador com o campeão */
+.champ-hover {
+  position: relative;
+  display: inline-flex;
+  cursor: default;
+}
+.champ-hover .ch-icon {
+  transition: transform 0.12s ease;
+}
+.champ-hover:hover .ch-icon {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+}
+.champ-pop {
+  position: absolute;
+  bottom: calc(100% + 9px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 70;
+  width: 176px;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  padding: 11px 12px;
+  background: var(--surface-2, #191c24);
+  border: 1px solid var(--border, #2a2f3a);
+  border-radius: 10px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.55);
+}
+/* seta do balão */
+.champ-pop::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 6px solid transparent;
+  border-top-color: var(--border, #2a2f3a);
+}
+.cp-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border, #2a2f3a);
+}
+.cp-name {
+  font: 800 14px/1.1 "Plus Jakarta Sans", sans-serif;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cp-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.cp-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+}
+.cp-k {
+  font: 500 12px/1.2 "Plus Jakarta Sans", sans-serif;
+  color: var(--text-dim);
+}
+.cp-v {
+  font: 800 13px/1.2 "Plus Jakarta Sans", sans-serif;
+  color: #fff;
+  font-variant-numeric: tabular-nums;
+}
+/* winrate em ouro (rating), destaque do universo do jogo */
+.cp-row:nth-child(2) .cp-v {
+  color: var(--gold-bright, #d9b25f);
+}
+/* rodapé do card: delta 7d + winrate */
+.pod-foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+}
+.pf-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: flex-start;
+}
+.pf-item.right {
+  align-items: flex-end;
+}
+.pf-item .cap {
+  font: 700 9px/1 "Plus Jakarta Sans", sans-serif;
+  letter-spacing: 0.07em;
+  color: rgba(255, 255, 255, 0.78);
+  text-transform: uppercase;
+}
+.pod-delta {
+  display: inline-flex;
+  font: 800 13px/1 "Plus Jakarta Sans", sans-serif;
+  padding: 6px 10px;
+  border-radius: 6px;
+  text-shadow: none;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+}
+.pod-delta.up {
+  background: var(--green);
+  color: #08220f;
+}
+.pod-delta.down {
+  background: var(--red);
+  color: #fff;
+}
+/* badge de winrate no pódio */
+.pod-wr {
+  display: inline-flex;
+  font: 800 14px/1 "Plus Jakarta Sans", sans-serif;
+  padding: 6px 11px;
+  border-radius: 6px;
+  text-shadow: none;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+}
+.pod-wr.gold {
+  background: var(--gold);
+  color: #2a2008;
+}
+.pod-wr.blue {
+  background: var(--primary);
+  color: #fff;
+}
+.pod-wr.green {
+  background: var(--green);
+  color: #08220f;
+}
+.pod-wr.low {
+  background: #7b6cf0;
+  color: #fff;
+}
+/* indicador "em partida" */
+.pod-ingame {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font: 700 9px/1 "Plus Jakarta Sans", sans-serif;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--green);
+  text-shadow: none;
+  margin-left: auto;
+  padding: 3px 7px;
+  border-radius: 5px;
+  background: rgba(0, 200, 100, 0.12);
+  border: 1px solid rgba(0, 200, 100, 0.3);
+}
+.pod-ingame .pulse {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--green);
+  box-shadow: 0 0 6px var(--green);
+  animation: pulse 1.6s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .pod-ingame .pulse {
+    animation: none;
+  }
+}
+.pod .ptag {
+  text-shadow: none;
+}
+
+/* ---------- filtros ---------- */
+.lb-filters {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+.lb-filters .grp {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.lb-filters .grp > .lbl {
+  font: 700 11px/1 "Plus Jakarta Sans", sans-serif;
+  letter-spacing: 0.06em;
+  color: var(--text-faint);
+  text-transform: uppercase;
+}
+.lb-search {
+  margin-left: auto;
+  position: relative;
+}
+.lb-search input {
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  padding: 11px 15px;
+  color: #fff;
+  font: 500 13px/1 "Plus Jakarta Sans", sans-serif;
+  outline: none;
+  min-width: 240px;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.lb-search input:focus-visible {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-dim);
+}
+
+/* ---------- dropdown da busca global ("Pular para jogador") ---------- */
+.lb-search-pop {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  z-index: 40;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  box-shadow: var(--shadow);
+  padding: 4px;
+  max-height: 360px;
+  overflow-y: auto;
+}
+.lb-search-empty {
+  padding: 14px 12px;
+  color: var(--text-faint);
+  font: 500 12.5px/1.3 "Plus Jakarta Sans", sans-serif;
+  text-align: center;
+}
+.lb-search-item {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  width: 100%;
+  padding: 8px 10px;
+  border: 0;
+  background: transparent;
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  text-align: left;
+  color: var(--text);
+  transition: background 0.12s ease;
+}
+.lb-search-item:hover,
+.lb-search-item.is-active {
+  background: var(--surface-3);
+}
+.lb-search-item .pavatar {
+  flex: none;
+}
+.lb-search-id {
+  min-width: 0;
+  flex: 1;
+}
+.lb-search-id .nm {
+  font: 700 13px/1.25 "Plus Jakarta Sans", sans-serif;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.lb-search-id .nm .phandle {
+  color: var(--text-faint);
+  font-weight: 600;
+}
+.lb-search-id .meta {
+  margin-top: 2px;
+  font: 600 11px/1 "Plus Jakarta Sans", sans-serif;
+  color: var(--text-dim);
+}
+.lb-search-cr {
+  flex: none;
+  font: 800 13px/1 "Plus Jakarta Sans", sans-serif;
+  color: var(--gold);
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+}
+.lb-search-cr .unit {
+  font: 700 9px/1 "Plus Jakarta Sans", sans-serif;
+  letter-spacing: 0.04em;
+  color: var(--text-faint);
+}
+
+/* ---------- tabela dpm.lol-style ---------- */
+.lb-table {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+.lb-table .head,
+.lb-table .row {
+  display: grid;
+  grid-template-columns: 44px minmax(200px, 1.8fr) minmax(120px, 1fr) minmax(178px, 1.15fr) minmax(74px, 0.62fr);
+  gap: 16px;
+  align-items: center;
+}
+.lb-table .head {
+  background: transparent;
+  border-bottom: 1px solid var(--line);
+  padding: 2px 18px 10px;
+}
+.lb-table .head > div {
+  text-align: center;
+  font: 700 11px/1 "Plus Jakarta Sans", sans-serif;
+  letter-spacing: 0.06em;
+  color: var(--text-faint);
+  text-transform: uppercase;
+}
+.lb-table .head > div:nth-child(2) {
+  text-align: left;
+}
+.lb-table .row {
+  border: none;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 0;
+  background: transparent;
+  padding: 13px 18px;
+  transition: background 0.12s ease;
+}
+.lb-table .row:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+.lb-table .row:last-child {
+  border-bottom: none;
+}
+.lb-table .row.lb-row-you {
+  background: var(--primary-dim);
+  border-left: 3px solid var(--primary);
+}
+.lb-table .row.lb-row-you:hover {
+  background: rgba(47, 155, 214, 0.18);
+}
+/* ── "On fire": linha em winstreak de 3+ vitórias em 1º (placement==1) ────────
+   Fundo quente animado (sweep diagonal âmbar→vermelho) + pulse de glow interno
+   + barra esquerda em brasa. Aplica-se SÓ às linhas da tabela (.lb-table .row),
+   nunca aos cards do pódio (.pod). O chip 🔥 mostra a contagem da streak. */
+.lb-table .row.on-fire {
+  background: linear-gradient(
+    100deg,
+    rgba(255, 92, 26, 0.16) 0%,
+    rgba(255, 158, 44, 0.1) 38%,
+    rgba(255, 92, 26, 0.16) 76%,
+    rgba(255, 158, 44, 0.1) 100%
+  );
+  background-size: 220% 100%;
+  border-left: 3px solid #ff7a1a;
+  box-shadow: inset 0 0 24px rgba(255, 110, 30, 0.12);
+  animation: lb-fire-sweep 3.2s linear infinite,
+    lb-fire-pulse 1.9s ease-in-out infinite;
+}
+.lb-table .row.on-fire:hover {
+  background: linear-gradient(
+    100deg,
+    rgba(255, 92, 26, 0.24) 0%,
+    rgba(255, 158, 44, 0.16) 38%,
+    rgba(255, 92, 26, 0.24) 76%,
+    rgba(255, 158, 44, 0.16) 100%
+  );
+  background-size: 220% 100%;
+}
+.lb-table .row.on-fire.lb-row-you {
+  border-left-color: #ff7a1a;
+}
+@keyframes lb-fire-sweep {
+  0% {
+    background-position: 0% 0;
+  }
+  100% {
+    background-position: 220% 0;
+  }
+}
+@keyframes lb-fire-pulse {
+  0%,
+  100% {
+    box-shadow: inset 0 0 18px rgba(255, 110, 30, 0.1);
+  }
+  50% {
+    box-shadow: inset 0 0 30px rgba(255, 110, 30, 0.22);
+  }
+}
+@keyframes lb-chip-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 8px rgba(255, 110, 30, 0.2);
+  }
+  50% {
+    box-shadow: 0 0 14px rgba(255, 138, 51, 0.45);
+  }
+}
+/* chip 🔥 com a contagem da streak, inline ao lado do nome */
+.fire-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  font: 800 11px/1 "Plus Jakarta Sans", sans-serif;
+  font-variant-numeric: tabular-nums;
+  color: #ffd9a8;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 122, 26, 0.3),
+    rgba(255, 60, 20, 0.22)
+  );
+  border: 1px solid rgba(255, 138, 51, 0.45);
+  white-space: nowrap;
+  animation: lb-chip-pulse 1.9s ease-in-out infinite;
+}
+/* acessibilidade: sem animação para quem pediu menos movimento (mantém o calor) */
+@media (prefers-reduced-motion: reduce) {
+  .lb-table .row.on-fire,
+  .fire-chip {
+    animation: none;
+  }
+}
+/* rank número grande e light */
+.lb-rank {
+  font: 200 26px/1 "Plus Jakarta Sans", sans-serif;
+  text-align: center;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+}
+/* coluna jogador */
+.lb-player {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+.lb-player .info {
+  min-width: 0;
+}
+.lb-player .nm {
+  font: 700 15px/1.1 "Plus Jakarta Sans", sans-serif;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.lb-player .phandle {
+  font: 500 12px/1 "Plus Jakarta Sans", sans-serif;
+  color: var(--text-faint);
+}
+.lb-player .tagrow {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+/* coluna CR */
+.lb-cr-cell {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 9px;
+}
+.lb-cr {
+  font: 800 18px/1 "Plus Jakarta Sans", sans-serif;
+  color: var(--gold-bright);
+  font-variant-numeric: tabular-nums;
+}
+.lb-cr .unit {
+  font-weight: 200;
+  font-size: 10px;
+  color: var(--text-faint);
+  margin-left: 4px;
+  letter-spacing: 0.04em;
+}
+/* delta 7d na tabela */
+.lb-d7 {
+  font: 800 9px/1 "Plus Jakarta Sans", sans-serif;
+  padding: 3px 6px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+.lb-d7.up {
+  background: var(--green);
+  color: #08220f;
+}
+.lb-d7.down {
+  background: var(--red);
+  color: #fff;
+}
+.lb-d7.flat {
+  background: var(--surface-3);
+  color: var(--text-faint);
+}
+/* container V – D + winrate badge */
+.lb-record {
+  display: inline-flex;
+  align-items: stretch;
+  border-radius: 8px;
+  justify-self: center;
+}
+.lb-record .rec {
+  width: 124px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 8px 0 0 8px;
+  padding: 7px 12px;
+  font: 700 13px/1 "Plus Jakarta Sans", sans-serif;
+  color: var(--text);
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-variant-numeric: tabular-nums;
+}
+.lb-record .rec em {
+  font-style: normal;
+  color: var(--text-faint);
+  font-weight: 600;
+  margin: 0 3px;
+}
+.lb-wr {
+  font: 800 12px/1 "Plus Jakarta Sans", sans-serif;
+  padding: 0 11px;
+  border-radius: 0 6px 6px 0;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  flex: none;
+}
+.lb-wr.gold {
+  background: var(--gold);
+  color: #2a2008;
+}
+.lb-wr.blue {
+  background: var(--primary);
+  color: #fff;
+}
+.lb-wr.green {
+  background: var(--green);
+  color: #08220f;
+}
+.lb-wr.low {
+  background: #7b6cf0;
+  color: #fff;
+}
+/* coluna Top 4 */
+.lb-top4 {
+  text-align: center;
+  font: 700 13px/1 "Plus Jakarta Sans", sans-serif;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+}
+/* separador "posições X–Y" */
+.lb-gap-row {
+  padding: 7px 18px;
+  background: rgba(255, 255, 255, 0.02);
+  display: grid;
+  grid-template-columns: 44px minmax(200px, 1.8fr) minmax(120px, 1fr) minmax(178px, 1.15fr) minmax(74px, 0.62fr);
+  gap: 16px;
+  align-items: center;
+}
+.lb-gap-row .gap-lbl {
+  font: 600 11px/1 "Plus Jakarta Sans", sans-serif;
+  letter-spacing: 0.1em;
+  color: var(--text-faint);
+}
+
+/* ---------- paginação ---------- */
+.pager {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 22px;
+}
+.pager button {
+  min-width: 38px;
+  height: 38px;
+  border-radius: 7px;
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  color: var(--text-dim);
+  cursor: pointer;
+  font: 700 14px/1 "Plus Jakarta Sans", sans-serif;
+  transition: background 0.12s ease, border-color 0.12s ease;
+}
+.pager button:hover {
+  background: var(--surface-3);
+}
+.pager button[data-active="true"] {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+}
+
+/* ---------- right rail (fiel ao Leaderboard.html do design) ---------- */
+.rail {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  position: sticky;
+  top: 18px;
+}
+.rail-card {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface-2);
+  padding: 18px;
+}
+.rail-card h3 {
+  margin: 0 0 4px;
+  font: 800 12px/1 "Plus Jakarta Sans", sans-serif;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.rail-card .note {
+  font: 500 11px/1.5 "Plus Jakarta Sans", sans-serif;
+  color: var(--text-faint);
+  margin: 0 0 14px;
+}
+
+/* recordes ao vivo (estatísticas rotativas) */
+#recStage {
+  position: relative;
+  min-height: 116px;
+}
+.rec-item {
+  animation: rec-in 0.42s ease;
+}
+.rec-item.out {
+  opacity: 0;
+  transform: translateY(-7px);
+  transition: opacity 0.38s ease, transform 0.38s ease;
+}
+@keyframes rec-in {
+  from {
+    opacity: 0;
+    transform: translateY(7px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rec-item,
+  .rec-item.out {
+    animation: none !important;
+    transition: none !important;
+    transform: none;
+    opacity: 1;
+  }
+}
+.rec-val {
+  font: 800 42px/1 "Plus Jakarta Sans", sans-serif;
+  letter-spacing: -0.02em;
+  color: var(--gold-bright);
+  font-variant-numeric: tabular-nums;
+}
+.rec-label {
+  font: 700 11px/1.35 "Plus Jakarta Sans", sans-serif;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  margin-top: 11px;
+}
+.rec-who {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-top: 13px;
+  font: 700 13px/1 "Plus Jakarta Sans", sans-serif;
+  color: var(--text);
+}
+.rec-who span {
+  color: var(--text-faint);
+  font: 500 11px/1 "Plus Jakarta Sans", sans-serif;
+}
+.rec-dots {
+  display: flex;
+  gap: 6px;
+  margin-top: 18px;
+}
+.rec-dots i {
+  height: 4px;
+  flex: 1;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+}
+.rec-dots i b {
+  display: block;
+  height: 100%;
+  width: 0;
+  border-radius: 999px;
+  background: var(--gold-bright);
+}
+
+/* sponsor */
+.sponsor {
+  text-align: center;
+}
+.sponsor .logo-slot {
+  height: 60px;
+  border-radius: 8px;
+  background: repeating-linear-gradient(
+    45deg,
+    rgba(255, 255, 255, 0.04) 0 10px,
+    rgba(255, 255, 255, 0.02) 10px 20px
+  );
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font: 800 13px/1 "Plus Jakarta Sans", sans-serif;
+  color: var(--text-faint);
+  letter-spacing: 0.1em;
+  margin-bottom: 10px;
+}
+
+/* live indicator (compartilhado com o card de temporada — ss-live/pulse) */
+.live {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font: 700 10px/1 "Plus Jakarta Sans", sans-serif;
+  color: var(--green);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.live .pulse {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--green);
+  box-shadow: 0 0 8px var(--green);
+  animation: pulse 1.6s ease-in-out infinite;
+}
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .live .pulse {
+    animation: none;
+  }
+}
+
+/* ---------- nota de rodapé da tabela ---------- */
+.lb-note {
+  font: 500 12px/1.5 "Plus Jakarta Sans", sans-serif;
+  color: var(--text-faint);
+  text-align: center;
+  margin-top: 14px;
+}
+
+/* ---------- tags inline (player tag chips) ---------- */
+.ptag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font: 700 9px/1 "Plus Jakarta Sans", sans-serif;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 3px 6px 3px 5px;
+  border-radius: 5px;
+  white-space: nowrap;
+}
+/* sobreposição por kind */
+.ptag-global.ptag {
+  background: var(--gold);
+  color: #2a2008;
+}
+.ptag-region.ptag {
+  background: #1f5f86;
+  color: #d3ebff;
+}
+.ptag-hot.ptag {
+  background: #a85b27;
+  color: #ffe1c4;
+}
+.ptag-rookie.ptag {
+  background: #4a3f9e;
+  color: #ddd5ff;
+}
+.ptag-veteran.ptag {
+  background: #2a2e38;
+  color: var(--text-dim);
+}
+.ptag-otp.ptag {
+  background: #1d6a6a;
+  color: #bff0f0;
+}
+.ptag-more {
+  background: #2a2e38;
+  color: var(--text-dim);
+  cursor: default;
+  display: inline-flex;
+  align-items: center;
+  font: 700 9px/1 "Plus Jakarta Sans", sans-serif;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 3px 6px;
+  border-radius: 5px;
+  white-space: nowrap;
+}
+
+/* ---------- badge provisional ---------- */
+.badge.provisional {
+  background: rgba(255, 193, 7, 0.15);
+  color: var(--amber);
+  border: 1px solid rgba(255, 193, 7, 0.3);
+  font: 700 9px/1 "Plus Jakarta Sans", sans-serif;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 2px 5px;
+  border-radius: 4px;
+}
+
+/* ---------- responsivo ---------- */
+@media (max-width: 1100px) {
+  .lb-layout {
+    grid-template-columns: 1fr;
+  }
+  .rail {
+    position: static;
+  }
+  .podium {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 700px) {
+  .lb-table .head,
+  .lb-table .row {
+    grid-template-columns: 36px 1fr minmax(90px, 1fr) minmax(140px, 1fr) minmax(54px, 0.5fr);
+    gap: 10px;
+  }
+  .lb-table .head,
+  .lb-table .row {
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+  .lb-search {
+    margin-left: 0;
+    width: 100%;
+  }
+  .lb-search input {
+    min-width: 0;
+    width: 100%;
+  }
+}

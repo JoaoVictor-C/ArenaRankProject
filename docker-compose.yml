@@ -1,0 +1,358 @@
+# arenarank — local development stack.
+#
+#   postgres   TimescaleDB (pg16)            : direct DB endpoint (5432)
+#   redis      cache / locks / arq / token   : 6379
+#   pgbouncer  TRANSACTION pool (web/API)    : 6432   (Trinity #9 dual-pool)
+#   pgbouncer-session  SESSION pool (workers) : 6433   (Trinity #9 dual-pool)
+#   migrate    one-shot: alembic upgrade head : runs once, then exits
+#   seed       one-shot: idempotent dev seed  : runs once, then exits
+#   api        FastAPI (uvicorn)             : 8000  -> connects via tx pool
+#   worker-sweep / worker-priority-sweep / worker-bulk-processor / scheduler
+#              arq cron pools (discovery + processing + maintenance)
+#   adminer    web DB viewer                 : 8080  -> direct postgres endpoint
+#   frontend   React + Vite dev server       : 5173  -> VITE_API_URL=:8000
+#
+# Trinity finding #9 (PgBouncer dual-pool): web requests use TRANSACTION mode
+# (short-lived, high-concurrency), workers use SESSION mode (they hold advisory
+# locks / prepared state across statements). We run two pgbouncer services so
+# each role gets the right pooling semantics. Alembic migrations target the
+# DIRECT postgres endpoint (5432) — DDL + TimescaleDB policy statements are not
+# transaction-pool safe.
+#
+# Bring up (does everything — migrate, seed, all services): docker compose up --build
+# Re-run migrate/seed manually only if you need to (both are idempotent):
+#   docker compose run --rm migrate
+#   docker compose run --rm seed
+
+name: arenarank
+
+services:
+  # ------------------------------------------------------------------ #
+  # PostgreSQL + TimescaleDB (pg16). The HA image ships the timescaledb
+  # extension; the initial migration guards `CREATE EXTENSION`.
+  # ------------------------------------------------------------------ #
+  postgres:
+    image: timescale/timescaledb-ha:pg16
+    environment:
+      POSTGRES_USER: arena
+      POSTGRES_PASSWORD: arena
+      POSTGRES_DB: arena
+    ports:
+      - "5432:5432"   # direct endpoint — use this for `alembic upgrade`.
+    volumes:
+      - pgdata:/home/postgres/pgdata/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U arena -d arena"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  # ------------------------------------------------------------------ #
+  # Redis — cache, per-player locks, arq queues, Riot token-bucket.
+  # ------------------------------------------------------------------ #
+  redis:
+    image: redis:7
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  # ------------------------------------------------------------------ #
+  # PgBouncer — TRANSACTION pool for the web/API tier (Trinity #9).
+  # Short transactions, max connection reuse. statement_cache_size=0 is set
+  # on the asyncpg side (arena/db/session.py) for tx-pool compatibility.
+  # ------------------------------------------------------------------ #
+  pgbouncer:
+    image: edoburu/pgbouncer:latest
+    environment:
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_USER: arena
+      DB_PASSWORD: arena
+      DB_NAME: arena
+      POOL_MODE: transaction
+      AUTH_TYPE: scram-sha-256
+      MAX_CLIENT_CONN: "1000"
+      DEFAULT_POOL_SIZE: "25"
+      LISTEN_PORT: "6432"
+    ports:
+      - "6432:6432"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ------------------------------------------------------------------ #
+  # PgBouncer — SESSION pool for the worker tier (Trinity #9). Workers hold
+  # session-scoped state (advisory locks, prepared statements) so they need
+  # session mode, NOT transaction mode.
+  # ------------------------------------------------------------------ #
+  pgbouncer-session:
+    image: edoburu/pgbouncer:latest
+    environment:
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_USER: arena
+      DB_PASSWORD: arena
+      DB_NAME: arena
+      POOL_MODE: session
+      AUTH_TYPE: scram-sha-256
+      MAX_CLIENT_CONN: "500"
+      DEFAULT_POOL_SIZE: "15"
+      LISTEN_PORT: "6433"
+    ports:
+      - "6433:6433"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ------------------------------------------------------------------ #
+  # Migrate — one-shot: alembic upgrade head against the DIRECT postgres
+  # port (DDL/Timescale policy statements are not tx-pool safe). Every
+  # other service waits for this to exit 0 before starting, so a plain
+  # `docker compose up --build` always boots against an up-to-date schema.
+  # ------------------------------------------------------------------ #
+  migrate:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command: ["alembic", "upgrade", "head"]
+    environment:
+      DATABASE_URL: postgresql+asyncpg://arena:arena@postgres:5432/arena
+    healthcheck:
+      disable: true
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  # ------------------------------------------------------------------ #
+  # Seed — one-shot: idempotent dev seed (ACTIVE season + champions
+  # const). Safe to re-run any time via `docker compose run --rm seed`.
+  # ------------------------------------------------------------------ #
+  seed:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command: ["python", "-m", "arena.db.seed"]
+    environment:
+      DATABASE_URL: postgresql+asyncpg://arena:arena@postgres:5432/arena
+    healthcheck:
+      disable: true
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    restart: "no"
+
+  # ------------------------------------------------------------------ #
+  # API — FastAPI (uvicorn). Default image CMD already runs uvicorn; we
+  # restate it for clarity. Connects through the TRANSACTION pool (6432).
+  # ------------------------------------------------------------------ #
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command:
+      ["uvicorn", "arena.api.app:app", "--host", "0.0.0.0", "--port", "8000"]
+    environment:
+      SERVICE_NAME: arenarank-api
+      ENVIRONMENT: development
+      # Web tier → PgBouncer transaction pool.
+      DATABASE_URL: postgresql+asyncpg://arena:arena@pgbouncer:6432/arena
+      REDIS_URL: redis://redis:6379/0
+      RIOT_API_KEY: ${RIOT_API_KEY}
+      # Browser runs on the host, so the Vite origin is localhost:5173.
+      CORS_ORIGINS: "http://localhost:5173,http://127.0.0.1:5173"
+      ADMIN_API_KEY: "8e6efe29ab1937c3e87ecd96c94cc737"
+      LOG_LEVEL: INFO
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      pgbouncer:
+        condition: service_started
+      seed:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+  # Note: there is no StandardWorker/PriorityWorker service here on purpose.
+  # Discovery in this stack is sweep + bulk-processor only (BulkProcessorWorker
+  # calls process_match in-process); the arena:standard/arena:priority arq
+  # queues have no producer, so a consumer for them would just idle. Matches
+  # docker-compose.prod.yml's design.
+
+  # ------------------------------------------------------------------ #
+  # Worker — SweepWorker: rotating sweep over ALL tracked players. Discovers
+  # new match ids and pushes them to arena:sweep:pending:standard. Independently
+  # start/stop (docker compose up/stop worker-sweep) or pause at runtime via the
+  # admin API (arena:worker:enabled:sweep flag).
+  # ------------------------------------------------------------------ #
+  worker-sweep:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command: ["arq", "arena.workers.main.SweepWorker"]
+    environment:
+      SERVICE_NAME: arenarank-worker-sweep
+      ENVIRONMENT: development
+      DATABASE_URL: postgresql+asyncpg://arena:arena@pgbouncer-session:6433/arena
+      REDIS_URL: redis://redis:6379/0
+      RIOT_API_KEY: ${RIOT_API_KEY}
+      LOG_LEVEL: INFO
+      SWEEP_INTERVAL_MINUTES: "5"
+      SWEEP_BATCH_SIZE: "100"
+      SWEEP_MATCHES_PER_PLAYER: "10"
+    healthcheck:
+      disable: true
+    depends_on:
+      redis:
+        condition: service_healthy
+      pgbouncer-session:
+        condition: service_started
+      seed:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+  # ------------------------------------------------------------------ #
+  # Worker — PrioritySweepWorker: sweeps Top-1000 + admin-selected players and
+  # pushes to arena:sweep:pending:priority (drained first by the bulk processor).
+  # ------------------------------------------------------------------ #
+  worker-priority-sweep:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command: ["arq", "arena.workers.main.PrioritySweepWorker"]
+    environment:
+      SERVICE_NAME: arenarank-worker-priority-sweep
+      ENVIRONMENT: development
+      DATABASE_URL: postgresql+asyncpg://arena:arena@pgbouncer-session:6433/arena
+      REDIS_URL: redis://redis:6379/0
+      RIOT_API_KEY: ${RIOT_API_KEY}
+      LOG_LEVEL: INFO
+      PRIORITY_SWEEP_INTERVAL_MINUTES: "5"
+      PRIORITY_SWEEP_BATCH_SIZE: "200"
+      SWEEP_MATCHES_PER_PLAYER: "10"
+    healthcheck:
+      disable: true
+    depends_on:
+      redis:
+        condition: service_healthy
+      pgbouncer-session:
+        condition: service_started
+      seed:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+  # ------------------------------------------------------------------ #
+  # Worker — BulkProcessorWorker: every few minutes drains the sweep pending
+  # lists (priority first) and runs process_match in bulk.
+  # ------------------------------------------------------------------ #
+  worker-bulk-processor:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command: ["arq", "arena.workers.main.BulkProcessorWorker"]
+    environment:
+      SERVICE_NAME: arenarank-worker-bulk-processor
+      ENVIRONMENT: development
+      DATABASE_URL: postgresql+asyncpg://arena:arena@pgbouncer-session:6433/arena
+      REDIS_URL: redis://redis:6379/0
+      RIOT_API_KEY: ${RIOT_API_KEY}
+      LOG_LEVEL: INFO
+      BULK_PROCESSOR_INTERVAL_MINUTES: "2"
+      BULK_BATCH_SIZE: "50"
+      BULK_CONCURRENCY: "10"
+    healthcheck:
+      disable: true
+    depends_on:
+      redis:
+        condition: service_healthy
+      pgbouncer-session:
+        condition: service_started
+      seed:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+  # ------------------------------------------------------------------ #
+  # Scheduler — cron-only pool: season transitions, leaderboard refresh
+  # (maintains TOP_PLAYERS_SET for priority routing), cache warm, cr-snapshot
+  # maintenance. Single replica. Run alongside the sweep workers.
+  # ------------------------------------------------------------------ #
+  scheduler:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command: ["arq", "arena.workers.main.SchedulerWorker"]
+    environment:
+      SERVICE_NAME: arenarank-scheduler
+      ENVIRONMENT: development
+      DATABASE_URL: postgresql+asyncpg://arena:arena@pgbouncer-session:6433/arena
+      REDIS_URL: redis://redis:6379/0
+      RIOT_API_KEY: ${RIOT_API_KEY}
+      LOG_LEVEL: INFO
+    healthcheck:
+      disable: true
+    depends_on:
+      redis:
+        condition: service_healthy
+      pgbouncer-session:
+        condition: service_started
+      seed:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+  # ------------------------------------------------------------------ #
+  # Adminer — lightweight web DB viewer for poking at Postgres in dev.
+  # Open http://localhost:8080 — System "PostgreSQL", Server "postgres",
+  # user / password / database all "arena". Connects to the DIRECT postgres
+  # endpoint (not PgBouncer) so schema inspection and DDL behave normally.
+  # Dev-only convenience; do not expose in production.
+  # ------------------------------------------------------------------ #
+  adminer:
+    image: adminer:latest
+    environment:
+      ADMINER_DEFAULT_SERVER: postgres
+      ADMINER_DESIGN: dracula
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ------------------------------------------------------------------ #
+  # Frontend — React + Vite dev server. The browser (on the host) calls the
+  # API directly at localhost:8000, so VITE_API_URL points there and the API
+  # CORS allowlist includes 5173. node_modules is kept inside the container.
+  # ------------------------------------------------------------------ #
+  frontend:
+    image: node:20-slim
+    working_dir: /app
+    command: ["sh", "-lc", "npm install && npm run dev -- --host 0.0.0.0"]
+    environment:
+      VITE_API_URL: "http://localhost:8000"
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - frontend_node_modules:/app/node_modules
+    depends_on:
+      - api
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  redisdata:
+  frontend_node_modules:

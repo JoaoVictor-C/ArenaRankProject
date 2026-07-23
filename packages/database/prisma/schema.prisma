@@ -1,0 +1,196 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum SeasonStatus {
+  ACTIVE
+  SOFT_LOCK
+  ENDED
+  OFF_SEASON
+}
+
+enum RatingMode {
+  DUOS
+  TRIOS
+}
+
+enum Severity {
+  INFO
+  WARN
+  CRITICAL
+}
+
+enum RegistrationSource {
+  auto
+  manual
+}
+
+model Player {
+  id                 String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  puuid              String             @unique @db.VarChar(78)
+  summonerName       String?            @db.VarChar(64)
+  tagLine            String?            @db.VarChar(8)
+  region             String?            @db.VarChar(8)
+  registeredAt       DateTime           @default(now()) @db.Timestamptz(6)
+  registrationSource RegistrationSource @default(auto)
+  moderationFlags    Json               @default("[]")
+  anonymizedAt       DateTime?          @db.Timestamptz(6) // D2.8 GDPR
+  playerSeasons      PlayerSeason[]
+  participants       MatchParticipant[]
+  championStats      ChampionStat[]
+  achievements       PlayerAchievement[]
+
+  @@map("players")
+}
+
+model Season {
+  id            String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name          String         @db.VarChar(64)
+  queueId       Int
+  startsAt      DateTime       @db.Timestamptz(6)
+  endsAt        DateTime       @db.Timestamptz(6)
+  status        SeasonStatus
+  config        Json // placementCount, resetFactor, cap params (mirrors RatingParams)
+  playerSeasons PlayerSeason[]
+  matches       Match[]
+  championStats ChampionStat[]
+  achievements  PlayerAchievement[]
+
+  @@index([status])
+  @@map("seasons")
+}
+
+model PlayerSeason {
+  id                        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  playerId                  String   @db.Uuid
+  seasonId                  String   @db.Uuid
+  cr                        Float    @default(1000)
+  mu                        Float    @default(1000)
+  sigma                     Float    @default(350)
+  matchesPlayed             Int      @default(0)
+  placementMatchesRemaining Int      @default(10)
+  isProvisional             Boolean  @default(true)
+  peakCr                    Float    @default(1000)
+  currentStreak             Int      @default(0)
+  updatedAt                 DateTime @updatedAt @db.Timestamptz(6)
+  player                    Player   @relation(fields: [playerId], references: [id])
+  season                    Season   @relation(fields: [seasonId], references: [id])
+
+  @@unique([playerId, seasonId])
+  @@index([seasonId, cr(sort: Desc)]) // leaderboard §8.2
+  @@map("player_seasons")
+}
+
+model Match {
+  id              String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  riotMatchId     String             @unique @db.VarChar(32)
+  queueId         Int
+  mode            RatingMode
+  seasonId        String             @db.Uuid
+  playedAt        DateTime           @db.Timestamptz(6)
+  processedAt     DateTime?          @db.Timestamptz(6)
+  processed       Boolean            @default(false)
+  integrityFlags  Json               @default("[]")
+  durationSeconds Int?
+  season          Season             @relation(fields: [seasonId], references: [id])
+  participants    MatchParticipant[]
+  integrityEvents IntegrityEvent[]
+
+  @@index([playedAt(sort: Desc)])
+  @@index([processed], map: "idx_matches_unprocessed") // partial (WHERE processed=false) added in raw SQL — ingestion scan
+  @@map("matches")
+}
+
+model MatchParticipant {
+  id         String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  matchId    String  @db.Uuid
+  playerId   String  @db.Uuid
+  championId Int
+  teamId     Int
+  placement  Int
+  eligible   Boolean
+  crBefore   Float
+  crAfter    Float
+  crDelta    Float
+  isPremade  Boolean @default(false)
+  partyId    String? @db.VarChar(36)
+  modifiers  Json // AppliedModifiers snapshot from rating-engine
+  match      Match   @relation(fields: [matchId], references: [id])
+  player     Player  @relation(fields: [playerId], references: [id])
+
+  @@unique([matchId, playerId])
+  @@index([playerId, matchId]) // profile history §8.2
+  @@map("match_participants")
+}
+
+model ChampionStat {
+  id                String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  playerId          String @db.Uuid
+  seasonId          String @db.Uuid
+  championId        Int
+  matchesPlayed     Int    @default(0)
+  wins              Int    @default(0)
+  topHalf           Int    @default(0)
+  totalPlacementSum Int    @default(0)
+  crDeltaSum        Float  @default(0)
+  last10Placements  Int[]  @default([])
+  player            Player @relation(fields: [playerId], references: [id])
+  season            Season @relation(fields: [seasonId], references: [id])
+
+  @@unique([playerId, seasonId, championId])
+  @@index([playerId, seasonId])
+  @@map("champion_stats")
+}
+
+model IntegrityEvent {
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  matchId    String    @db.Uuid
+  playerId   String?   @db.Uuid
+  flagType   String    @db.VarChar(32)
+  severity   Severity
+  metadata   Json?
+  createdAt  DateTime  @default(now()) @db.Timestamptz(6)
+  reviewed   Boolean   @default(false)
+  reviewerId String?   @db.Uuid
+  match      Match     @relation(fields: [matchId], references: [id])
+
+  @@index([playerId, createdAt(sort: Desc)])
+  @@index([reviewed]) // admin review queue
+  @@map("integrity_events")
+}
+
+model PlayerAchievement {
+  // D2.2 / §13.3
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  playerId        String   @db.Uuid
+  seasonId        String   @db.Uuid
+  achievementType String   @db.VarChar(32) // 'PLACEMENT_TIER' | 'SEASON_BADGE' ...
+  tier            String   @db.VarChar(16) // 'TOP_1'|'TOP_10'|'TOP_50'|'TOP_100'|'TOP_500'
+  rankValue       Int
+  awardedAt       DateTime @default(now()) @db.Timestamptz(6)
+  player          Player   @relation(fields: [playerId], references: [id])
+  season          Season   @relation(fields: [seasonId], references: [id])
+
+  @@unique([playerId, seasonId, achievementType])
+  @@index([playerId])
+  @@map("player_achievements")
+}
+
+model CrSnapshot {
+  // D2.1 Timescale hypertable
+  playerId      String   @db.Uuid
+  seasonId      String   @db.Uuid
+  snapshotAt    DateTime @db.Timestamptz(6)
+  cr            Float
+  mu            Float
+  sigma         Float
+  matchesPlayed Int
+
+  @@id([playerId, seasonId, snapshotAt])
+  @@map("cr_snapshots")
+}

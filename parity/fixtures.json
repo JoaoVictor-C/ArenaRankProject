@@ -1,0 +1,56 @@
+{
+  "_comment": "Shared parity fixtures for the TS oracle (@crs/rating-engine) vs the Python runtime (arena.rating). Params NEUTRALIZE every gamification modifier (flat placement weights, non-provisional players, zero streak, soft-cap unreachable, dispersion cap effectively off, Python PDL caps off by passing caps=None) so the two engines reduce to the SAME base Weng-Lin Plackett-Luce update + the conservative CR display CR=(mu-3*sigma)*scale+offset. That core MUST match; full-pipeline parity (different default params + the Python-only caps layer) is a separate reconciliation task.",
+  "tolerance": 1e-6,
+  "params": {
+    "mu0": 1000, "sigma0": 200, "beta": 100, "tau": 1.5, "kappa": 0.0001,
+    "scaleFactor": 1.0, "baseOffset": 250,
+    "placementWeights": { "8": [1, 1, 1, 1, 1, 1, 1, 1], "6": [1, 1, 1, 1, 1, 1] },
+    "placementAmp": 1.0, "placementMatchCount": 10,
+    "streakLossFloor": 0.5, "streakWinCeil": 1.35, "streakThreshold": 3,
+    "softCapThreshold": 5000, "softCapScale": 1000,
+    "maxDeltaMu": 1000000, "dispersionSigmaRef": 200,
+    "resetAnchor": 1000, "resetFactor": 0.5, "sigmaResetMult": 1.5, "sigmaResetCap": 200
+  },
+  "matches": [
+    {
+      "matchId": "PARITY_DUOS_HOMOGENEOUS",
+      "mode": "DUOS",
+      "teams": [
+        { "placement": 1, "players": [ { "id": "h1a", "mu": 1000, "sigma": 200 }, { "id": "h1b", "mu": 1000, "sigma": 200 } ] },
+        { "placement": 2, "players": [ { "id": "h2a", "mu": 1000, "sigma": 200 }, { "id": "h2b", "mu": 1000, "sigma": 200 } ] },
+        { "placement": 3, "players": [ { "id": "h3a", "mu": 1000, "sigma": 200 }, { "id": "h3b", "mu": 1000, "sigma": 200 } ] },
+        { "placement": 4, "players": [ { "id": "h4a", "mu": 1000, "sigma": 200 }, { "id": "h4b", "mu": 1000, "sigma": 200 } ] },
+        { "placement": 5, "players": [ { "id": "h5a", "mu": 1000, "sigma": 200 }, { "id": "h5b", "mu": 1000, "sigma": 200 } ] },
+        { "placement": 6, "players": [ { "id": "h6a", "mu": 1000, "sigma": 200 }, { "id": "h6b", "mu": 1000, "sigma": 200 } ] },
+        { "placement": 7, "players": [ { "id": "h7a", "mu": 1000, "sigma": 200 }, { "id": "h7b", "mu": 1000, "sigma": 200 } ] },
+        { "placement": 8, "players": [ { "id": "h8a", "mu": 1000, "sigma": 200 }, { "id": "h8b", "mu": 1000, "sigma": 200 } ] }
+      ]
+    },
+    {
+      "matchId": "PARITY_DUOS_HETEROGENEOUS",
+      "mode": "DUOS",
+      "teams": [
+        { "placement": 1, "players": [ { "id": "x1a", "mu": 1400, "sigma": 140 }, { "id": "x1b", "mu": 1350, "sigma": 150 } ] },
+        { "placement": 2, "players": [ { "id": "x2a", "mu": 1250, "sigma": 160 }, { "id": "x2b", "mu": 1200, "sigma": 170 } ] },
+        { "placement": 3, "players": [ { "id": "x3a", "mu": 1150, "sigma": 180 }, { "id": "x3b", "mu": 1100, "sigma": 190 } ] },
+        { "placement": 4, "players": [ { "id": "x4a", "mu": 1050, "sigma": 200 }, { "id": "x4b", "mu": 1000, "sigma": 200 } ] },
+        { "placement": 5, "players": [ { "id": "x5a", "mu": 1000, "sigma": 210 }, { "id": "x5b", "mu": 980, "sigma": 210 } ] },
+        { "placement": 6, "players": [ { "id": "x6a", "mu": 950, "sigma": 220 }, { "id": "x6b", "mu": 930, "sigma": 220 } ] },
+        { "placement": 7, "players": [ { "id": "x7a", "mu": 900, "sigma": 230 }, { "id": "x7b", "mu": 880, "sigma": 230 } ] },
+        { "placement": 8, "players": [ { "id": "x8a", "mu": 850, "sigma": 240 }, { "id": "x8b", "mu": 820, "sigma": 250 } ] }
+      ]
+    },
+    {
+      "matchId": "PARITY_TRIOS",
+      "mode": "TRIOS",
+      "teams": [
+        { "placement": 1, "players": [ { "id": "t1a", "mu": 1300, "sigma": 160 }, { "id": "t1b", "mu": 1280, "sigma": 160 }, { "id": "t1c", "mu": 1260, "sigma": 170 } ] },
+        { "placement": 2, "players": [ { "id": "t2a", "mu": 1200, "sigma": 170 }, { "id": "t2b", "mu": 1180, "sigma": 180 }, { "id": "t2c", "mu": 1160, "sigma": 180 } ] },
+        { "placement": 3, "players": [ { "id": "t3a", "mu": 1100, "sigma": 190 }, { "id": "t3b", "mu": 1080, "sigma": 190 }, { "id": "t3c", "mu": 1060, "sigma": 200 } ] },
+        { "placement": 4, "players": [ { "id": "t4a", "mu": 1000, "sigma": 200 }, { "id": "t4b", "mu": 980, "sigma": 200 }, { "id": "t4c", "mu": 960, "sigma": 210 } ] },
+        { "placement": 5, "players": [ { "id": "t5a", "mu": 920, "sigma": 210 }, { "id": "t5b", "mu": 900, "sigma": 220 }, { "id": "t5c", "mu": 880, "sigma": 220 } ] },
+        { "placement": 6, "players": [ { "id": "t6a", "mu": 850, "sigma": 230 }, { "id": "t6b", "mu": 830, "sigma": 240 }, { "id": "t6c", "mu": 810, "sigma": 250 } ] }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,77 @@
+# ============================================================================
+# arenarank — monorepo .gitignore (Python backend + JS frontend/packages + infra)
+# ============================================================================
+
+# --- Node / JS --------------------------------------------------------------
+node_modules/
+dist/
+build/
+.next/
+.turbo/
+.cache/
+*.tsbuildinfo
+.eslintcache
+.parcel-cache/
+
+# --- Python -----------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+.python-version
+*.egg-info/
+.eggs/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.tox/
+.nox/
+.ipynb_checkpoints/
+
+# --- Tests / coverage -------------------------------------------------------
+coverage/
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
+junit.xml
+
+# --- Secrets / env (NEVER commit real values; .example templates are kept) --
+.env
+.env.*
+**/.env
+**/.env.*
+!**/.env.example
+!**/.env.sample
+
+# --- Logs / runtime ---------------------------------------------------------
+*.log
+logs/
+backend/uvicorn.log
+pids/
+*.pid
+
+# --- Local artifacts / backups (code + pg_dump backups; not source) ---------
+backend/_rating_backups/
+*.sqlite
+*.sqlite3
+*.db
+*.dump
+*.sql.gz
+
+# --- Tooling / local agent state --------------------------------------------
+.claude/
+.trinity/
+
+# --- Editors / OS -----------------------------------------------------------
+.vscode/
+.idea/
+*.swp
+*~
+.DS_Store
+Thumbs.db
+
+# --- Superpowers SDD scratch/ledger ---
+.superpowers/

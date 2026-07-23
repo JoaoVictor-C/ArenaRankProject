@@ -1,0 +1,93 @@
+# Quality — the jobs ci.yml doesn't cover: the frontend, the TypeScript reference
+# packages, and a rating-engine parity gate (TS oracle vs the Python runtime).
+# ci.yml stays the backend's lint/type/build gate; this is everything else.
+name: quality
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: quality-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend-tests:
+    name: backend (pytest — fast unit/contract)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.11.23"
+          enable-cache: true
+      - name: Install (locked deps + dev)
+        run: uv sync --frozen --extra dev --python 3.12
+      - name: Run tests
+        # The DB-gated integration test auto-skips without DATABASE_URL; the
+        # worker-wiring contract test + pure normalization/rating/auth tests run
+        # here and guard the ingestion→rating seam from silently breaking again.
+        run: uv run pytest -q
+
+  frontend:
+    name: frontend (lint · typecheck · test · build)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm run test
+      - run: npm run build
+
+  packages:
+    name: packages (vitest)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - run: npm ci
+      - run: npm test --workspaces --if-present
+
+  parity:
+    name: rating-engine parity (TS oracle ↔ Python)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install JS workspace (tsx + @crs/rating-engine)
+        run: npm ci
+      - name: Install the Python rating runtime
+        # arena.rating only needs the engine deps (openskill); install the package
+        # so `import arena.rating` resolves.
+        run: pip install ./backend
+      - name: Compare engines on shared fixtures
+        run: node parity/compare.mjs

@@ -1,0 +1,8 @@
+# Copy to terraform.tfvars (gitignored) or pass via -var / TF_VAR_*.
+# Sensitive values (rds_master_password, redis_auth_token) should come from CI
+# secrets, NOT a committed file.
+region     = "us-east-1"
+account_id = "000000000000"
+
+# rds_master_password = "set-via-TF_VAR_rds_master_password"
+# redis_auth_token    = "set-via-TF_VAR_redis_auth_token"

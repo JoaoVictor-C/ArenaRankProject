@@ -1,0 +1,206 @@
+/* ============================================================
+   ArenaRank — Header 3 tiers (compartilhado em todo o site)
+   ============================================================ */
+:root { --entrar: #ec3a34; }
+
+.h3 { position: relative; z-index: 30; background: #0c0c0e; border-bottom: 1px solid var(--line, #262a33); }
+.h3-row { max-width: var(--maxw, 1240px); margin: 0 auto; padding: 0 24px; display: flex; align-items: center; }
+.h3-1 { height: 46px; gap: 24px; border-bottom: 1px solid rgba(255,255,255,0.045); }
+.h3-2 { height: 66px; gap: 16px; }
+.h3-3 { height: 52px; gap: 26px; border-top: 1px solid rgba(255,255,255,0.04); }
+
+.h3 .mi {
+  font-family: 'Material Symbols Outlined'; font-weight: normal; font-style: normal; line-height: 1;
+  letter-spacing: normal; text-transform: none; white-space: nowrap; word-wrap: normal; direction: ltr;
+  -webkit-font-smoothing: antialiased; vertical-align: middle; display: inline-block;
+  font-feature-settings: 'liga'; font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+}
+.h3 .mi.fill { font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+
+/* tier 1 — logo + game mode tabs */
+.gm-logo { display: flex; align-items: center; flex: none; text-decoration: none; }
+.gm-logo img { height: 38px; display: block; }
+.gm-tabs { display: flex; align-items: center; gap: 16px; }
+.gm-tab { display: flex; align-items: center; gap: 6px; padding: 6px 9px; border-radius: 6px; text-decoration: none; color: #d7dade; cursor: pointer; transition: background .15s ease, color .15s ease; }
+.gm-tab:hover { color: #fff; }
+.gm-tab.on { color: #fff; background: #13151b; }
+.gm-tab .gi { width: 18px; height: 18px; border-radius: 5px; background-size: cover; background-position: center; flex: none; filter: grayscale(1) brightness(1.12); }
+.gm-tab.on .gi { filter: none; }
+.gm-tab .gl { font: 800 10px/1 "Plus Jakarta Sans"; letter-spacing: 0.01em; display: inline-flex; align-items: flex-start; gap: 2px; }
+.gm-tab .gl sup { font: 800 6px/1 "Plus Jakarta Sans"; color: var(--text-dim, #9aa0aa); letter-spacing: 0.04em; }
+
+/* tier 2 — search + actions */
+.h3-search { position: relative; flex: 1; display: flex; align-items: center; gap: 12px; background: #141519; border: 1px solid #23252d; border-radius: 9px; height: 44px; padding: 0 8px 0 16px; }
+.h3-search:focus-within { border-color: var(--primary, #2f9bd6); }
+.h3-search .mi { color: #686d78; font-size: 19px; }
+.h3-search input { flex: 1; background: none; border: none; outline: none; color: #fff; font: 500 14px/1 "Plus Jakarta Sans"; min-width: 0; }
+.h3-search input::placeholder { color: #686d78; }
+.h3-search .go { width: 30px; height: 30px; border-radius: 50%; background: #25272f; color: #cfd3da; display: flex; align-items: center; justify-content: center; border: none; cursor: pointer; flex: none; }
+.h3-search .go:hover { background: var(--primary, #2f9bd6); color: #fff; }
+.h3-search .br { display: flex; align-items: center; gap: 4px; color: #d5a038; font: 800 12px/1 "Plus Jakarta Sans"; letter-spacing: 0.04em; padding: 5px 9px; border-radius: 7px; background: transparent; border: 1.5px solid #d5a038; white-space: nowrap; }
+
+/* ---- typeahead: dropdown de jogadores sob a busca do header ---- */
+.h3s-pop {
+  position: absolute;
+  top: calc(100% + 9px);
+  left: 0;
+  right: 0;
+  z-index: 40;
+  padding: 6px;
+  background: #16171c;
+  border: 1px solid #2a2d37;
+  border-radius: 12px;
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.6), 0 2px 8px rgba(0, 0, 0, 0.4);
+  overflow: hidden;
+  animation: h3s-in 0.14s ease;
+}
+@keyframes h3s-in {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.h3s-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 11px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  position: relative;
+  transition: background 0.12s ease;
+}
+.h3s-item::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 8px;
+  bottom: 8px;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: var(--primary, #2f9bd6);
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+.h3s-item.is-active {
+  background: linear-gradient(90deg, rgba(47, 155, 214, 0.15), rgba(47, 155, 214, 0.03));
+}
+.h3s-item.is-active::before { opacity: 1; }
+.h3s-id { flex: 1; min-width: 0; }
+.h3s-id .nm {
+  font: 800 14px/1.15 "Plus Jakarta Sans";
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.h3s-id .nm .tag { margin-left: 6px; font-weight: 600; color: #7d828d; }
+.h3s-id .meta { display: flex; align-items: center; gap: 8px; margin-top: 4px; }
+.h3s-id .meta .rk { font: 700 11px/1 "Plus Jakarta Sans"; color: #9aa0aa; font-variant-numeric: tabular-nums; }
+.h3s-id .meta .tr {
+  font: 800 10px/1 "Plus Jakarta Sans";
+  letter-spacing: 0.03em;
+  color: #d5a038;
+  padding: 3px 6px;
+  border-radius: 5px;
+  background: rgba(213, 160, 56, 0.12);
+}
+.h3s-cr {
+  flex: none;
+  font: 800 15px/1 "Plus Jakarta Sans";
+  color: var(--gold-bright, #ecc77a);
+  font-variant-numeric: tabular-nums;
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+}
+.h3s-cr .u { font: 700 9px/1 "Plus Jakarta Sans"; letter-spacing: 0.05em; color: #7d828d; }
+.h3s-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 20px 12px;
+  color: #7d828d;
+  font: 600 13px/1 "Plus Jakarta Sans";
+}
+.h3s-empty .mi { font-size: 19px; }
+.h3s-foot {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 4px;
+  padding: 8px 11px 4px;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  font: 600 10px/1 "Plus Jakarta Sans";
+  color: #686d78;
+}
+.h3s-foot .dot { color: #3a3e47; margin: 0 2px; }
+.h3s-foot kbd {
+  font: 700 10px/1 "Plus Jakarta Sans";
+  color: #aeb3bd;
+  background: #22242c;
+  border: 1px solid #313540;
+  border-radius: 4px;
+  padding: 2px 5px;
+  min-width: 14px;
+  text-align: center;
+}
+.h3-actions { display: flex; align-items: center; gap: 12px; flex: none; }
+.perfil-gold { display: flex; align-items: center; gap: 7px; border: 1.5px solid transparent; border-radius: 2px; padding: 7px 12px; color: #fff; font: 800 12px/1 "Plus Jakarta Sans"; letter-spacing: 0.05em; text-decoration: none; cursor: pointer;
+  background: linear-gradient(#d5a038, #d5a038) padding-box, linear-gradient(135deg, #ffeabd 0%, #d5a038 48%, #ae7e17 100%) border-box; }
+.perfil-gold:hover { filter: brightness(1.06); }
+.perfil-gold .ico { width: 16px; height: 16px; background: url(/assets/fig/icon-arena.png) center/contain no-repeat; flex: none; }
+.trophy { display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 8px; background: #25272f; color: var(--gold-bright, #ecc77a); font-size: 22px; cursor: pointer; }
+.trophy:hover { background: #2e313a; color: var(--gold, #d9b25f); }
+.btn-perfil { background: #25272f; color: #fff; border: none; border-radius: 8px; padding: 10px 19px; font: 800 13px/1 "Plus Jakarta Sans"; letter-spacing: 0.03em; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; }
+.btn-perfil:hover { background: #2e313a; }
+.btn-entrar { background: var(--entrar, #ec3a34); color: #fff; border: none; border-radius: 8px; padding: 10px 19px; font: 800 13px/1 "Plus Jakarta Sans"; letter-spacing: 0.03em; cursor: pointer; }
+.btn-entrar:hover { filter: brightness(1.08); }
+
+/* tier 3 — mini modes + navigation */
+.mode-mini { display: flex; align-items: center; gap: 7px; flex: none; }
+.mode-mini .mm { width: 30px; height: 30px; border-radius: 7px; background-size: cover; background-position: center; }
+.mode-mini .mm.alt { width: 24px; height: 24px; filter: grayscale(1) brightness(1.12); }
+.mode-mini .swap { color: #686d78; font-size: 16px; }
+.h3-nav { display: flex; align-items: stretch; gap: 32px; align-self: stretch; }
+.h3-nav a { position: relative; display: flex; align-items: center; font: 700 11px/1 "Plus Jakarta Sans"; letter-spacing: 0.08em; color: var(--text-dim, #9aa0aa); text-decoration: none; transition: color .15s ease; }
+.h3-nav a:hover { color: #fff; }
+.h3-nav a.active { color: #fff; }
+.h3-nav a.active::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 8px; border-radius: 5px 5px 0 0; background: #d5a038; box-shadow: 0 0 16px 1px rgba(213,160,56,0.85), 0 -2px 8px rgba(213,160,56,0.6); }
+
+@media (max-width: 1060px) {
+  .h3-row { flex-wrap: wrap; }
+  .gm-tabs { gap: 12px; }
+}
+
+/* Toast "em breve" (login/perfil ainda não implementados). Overlay flutuante —
+   borda cheia (sem side-stripe), ícone dourado, some sozinho. */
+.h3-toast {
+  position: fixed;
+  left: 50%;
+  bottom: 28px;
+  transform: translateX(-50%);
+  z-index: 80;
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  padding: 12px 18px;
+  background: var(--surface-2, #181a20);
+  border: 1px solid var(--line, #262a33);
+  border-radius: 10px;
+  color: var(--text, #eef0f3);
+  font: 700 13px/1 "Plus Jakarta Sans", sans-serif;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+  animation: h3-toast-in 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.h3-toast .mi { color: var(--gold-bright, #ecc77a); font-size: 18px; }
+@keyframes h3-toast-in {
+  from { opacity: 0; transform: translate(-50%, 12px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .h3-toast { animation: none; }
+}

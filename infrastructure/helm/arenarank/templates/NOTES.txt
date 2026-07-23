@@ -1,0 +1,14 @@
+arenarank {{ .Chart.AppVersion }} deployed as release "{{ .Release.Name }}".
+
+Namespaces:   {{ .Values.namespaces.api }} / {{ .Values.namespaces.processing }} / {{ .Values.namespaces.data }} / {{ .Values.namespaces.observability }}
+API image:    {{ include "arenarank.image" . }}
+
+Next steps:
+  1. Confirm KEDA is installed:        kubectl get crd scaledobjects.keda.sh
+  2. Confirm metrics-server (HPA):     kubectl top nodes
+  3. Watch the API rollout:            kubectl -n {{ .Values.namespaces.api }} rollout status deploy/api
+  4. Check worker autoscaling:         kubectl -n {{ .Values.namespaces.processing }} get scaledobject,deploy
+
+Secrets are NOT rendered by this chart unless secrets.create=true (dev only).
+In staging/production they are reconciled by the External Secrets Operator from
+AWS Secrets Manager. See infrastructure/observability/runbooks for ops procedures.

@@ -1,0 +1,151 @@
+# arenarank — PRODUCTION stack (single t3.micro box).
+#
+# Database lives on AWS RDS (postgres 18, db.t3.micro), NOT in a container.
+# Frontend runs on AWS Amplify. This box runs only: redis + api + a trimmed
+# worker set. Secrets/config come from a sibling `.env` (never committed).
+#
+#   redis            cache / locks / arq queues / Riot token-bucket
+#   api              FastAPI (uvicorn) on :8000 -> RDS direct
+#   worker-standard  arq StandardWorker (match processor, arena:standard)
+#   worker-ingestion arq IngestionWorker (Riot poller, enqueues match ids)
+#   scheduler        arq SchedulerWorker (season/leaderboard/cache/snapshots)
+#
+# Deliberately trimmed for 908 MB RAM: no local postgres (RDS), no PgBouncer
+# (app connects to RDS directly), no frontend (Amplify), no adminer, no
+# priority/sweep/bulk workers (IngestionWorker covers discovery; priority lane
+# stays empty until a PriorityWorker is added). Add those back when the box is
+# resized.
+#
+# Bring up:  docker compose -f docker-compose.prod.yml up -d --build
+# Migrate:   docker compose -f docker-compose.prod.yml run --rm api alembic upgrade head
+# Seed:      docker compose -f docker-compose.prod.yml run --rm api python -m arena.db.seed
+
+name: arenarank-prod
+
+services:
+  redis:
+    image: redis:7
+    # maxmemory 128mb + volatile-lru: a Redis mistura cache descartável (riot:match:*,
+    # TTL curto) com filas/locks (sem TTL). volatile-lru só evicta keys COM TTL quando
+    # cheia, então o cache é descartado sob pressão e as filas ficam intactas — NUNCA
+    # use noeviction aqui (rejeita escritas ao encher = pipeline morre).
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory", "128mb", "--maxmemory-policy", "volatile-lru"]
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command:
+      ["uvicorn", "arena.api.app:app", "--host", "0.0.0.0", "--port", "8000",
+       "--proxy-headers", "--forwarded-allow-ips", "*"]
+    env_file: [.env]
+    environment:
+      SERVICE_NAME: arenarank-api
+      REDIS_URL: redis://redis:6379/0
+    # No host port publish: the API is reached only via the caddy reverse proxy
+    # (which Cloudflare fronts). Keeps :8000 off the public internet.
+    expose:
+      - "8000"
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Reverse proxy / TLS origin for api.arenarank.lol (behind Cloudflare).
+  caddy:
+    image: caddy:2
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - api
+    restart: unless-stopped
+
+  # Standard sweep: a rotating DB cursor pages tracked players in bounded batches
+  # and pushes discovered match ids to the sweep pending list. This REPLACES the
+  # IngestionWorker (poll_riot), which pulled ALL tracked players every tick and
+  # timed out once the ladder grew past a few thousand players. The sweep is
+  # cursor-paged, tick-locked (no overlap) and backpressured, so it scales.
+  # The image HEALTHCHECK curls :8000/healthz (api role); workers run arq, not
+  # uvicorn, so disable it or they'd flap to "unhealthy".
+  worker-sweep:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command: ["arq", "arena.workers.main.SweepWorker"]
+    env_file: [.env]
+    environment:
+      SERVICE_NAME: arenarank-worker-sweep
+      REDIS_URL: redis://redis:6379/0
+      SWEEP_INTERVAL_MINUTES: "1"
+      # Balanceado com o bulk (BULK_BATCH_SIZE=40): produtor ≈ consumidor, então a
+      # pending list não cresce sem limite (antes: 200 in / 40 out = +160/min → 38k
+      # de backlog acumulado + churn eterno no cache de payloads).
+      SWEEP_BATCH_SIZE: "40"
+      SWEEP_MATCHES_PER_PLAYER: "10"
+    healthcheck:
+      disable: true
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Bulk processor: drains the sweep pending lists (priority first) and runs
+  # process_match directly (bounded concurrency). Replaces StandardWorker — the
+  # sweep pipeline calls process_match in-process, so the arena:standard arq queue
+  # has no producer.
+  worker-bulk:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command: ["arq", "arena.workers.main.BulkProcessorWorker"]
+    env_file: [.env]
+    environment:
+      SERVICE_NAME: arenarank-worker-bulk
+      REDIS_URL: redis://redis:6379/0
+      BULK_PROCESSOR_INTERVAL_MINUTES: "1"
+      BULK_BATCH_SIZE: "40"
+      BULK_CONCURRENCY: "4"
+      # Payloads de match (~135KB) só vivem no cache entre fetch→rate. O bulk é quem
+      # busca+cacheia via get_match; TTL 10min impede que se acumulem 24h e estourem
+      # o Redis (era o principal consumidor de memória).
+      RIOT_MATCH_CACHE_TTL_SECONDS: "600"
+    healthcheck:
+      disable: true
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  scheduler:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command: ["arq", "arena.workers.main.SchedulerWorker"]
+    env_file: [.env]
+    environment:
+      SERVICE_NAME: arenarank-scheduler
+      REDIS_URL: redis://redis:6379/0
+    healthcheck:
+      disable: true
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  redisdata:
+  caddy_data:
+  caddy_config:

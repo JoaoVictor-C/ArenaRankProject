@@ -1,0 +1,126 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-07-18T00:00:00Z",
+  "title": "Design System: ArenaRank",
+  "extensions": {
+    "colorMeta": {
+      "primary": { "role": "primary", "displayName": "Azul Arena", "canonical": "#2f9bd6", "tonalRamp": ["#0a1f2d", "#103049", "#164365", "#1d6291", "#2f9bd6", "#4cb6ec", "#82cef3", "#c2e6fa"] },
+      "gold": { "role": "secondary", "displayName": "Ouro Conquista", "canonical": "#d9b25f", "tonalRamp": ["#2a2008", "#4a3a10", "#6e561a", "#9a7c2f", "#d9b25f", "#ecc77a", "#f2d99e", "#f8ecc9"] },
+      "up-green": { "role": "tertiary", "displayName": "Verde Subida", "canonical": "#46c084", "tonalRamp": ["#0a2417", "#0f3a25", "#155338", "#2b8a5d", "#46c084", "#6fd3a0", "#9ee2c1", "#cbf1e0"] },
+      "down-red": { "role": "tertiary", "displayName": "Vermelho Queda", "canonical": "#e2574f", "tonalRamp": ["#2e1210", "#4b1c19", "#6e2925", "#a53c36", "#e2574f", "#ec7f79", "#f3a8a4", "#f9d0ce"] },
+      "surface": { "role": "neutral", "displayName": "Rampa de Superfície", "canonical": "#131419", "tonalRamp": ["#08090b", "#0b0c0f", "#131419", "#181a20", "#1e2128", "#262a33", "#333845", "#5e6470"] },
+      "text": { "role": "neutral", "displayName": "Tinta", "canonical": "#eef0f3", "tonalRamp": ["#5e6470", "#787f8b", "#9aa0aa", "#b7bcc4", "#d3d7dd", "#eef0f3", "#f6f7f9", "#ffffff"] }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display (Anton)", "purpose": "Só o wordmark do herói, em caixa-alta. Nunca em UI." },
+      "headline": { "displayName": "Headline", "purpose": "Títulos de seção — o maior tipo do corpo do produto." },
+      "label": { "displayName": "Label", "purpose": "Eyebrows, headers de tabela, badges — caixa-alta com tracking largo." },
+      "data": { "displayName": "Data (mono)", "purpose": "Números competitivos com tabular-nums: CR, deltas, ids." }
+    },
+    "shadows": [
+      { "name": "overlay-only", "value": "0 12px 40px rgba(0,0,0,0.5)", "purpose": "Exceção única: elemento em portal que genuinamente flutua (dropdown/popover, toast). Nunca em card em repouso — profundidade padrão é tonal." }
+    ],
+    "motion": [
+      { "name": "ease-ui", "value": "ease", "duration": "0.15s", "purpose": "Transições de estado de UI (nav, chip, hover) — rápidas, users em fluxo." },
+      { "name": "brighten-hover", "value": "filter: brightness(1.08)", "purpose": "Resposta tátil de botões primário/ouro no hover — clareia, não troca de cor." }
+    ],
+    "breakpoints": [
+      { "name": "header-wrap", "value": "1060px" },
+      { "name": "shell-max", "value": "1240px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Ação principal. Azul Arena sólido, hover que clareia (tátil).",
+      "html": "<button class=\"ds-btn-primary\">Ver leaderboard</button>",
+      "css": ".ds-btn-primary { display: inline-flex; align-items: center; justify-content: center; background: #2f9bd6; color: #fff; font: 600 13px/1 'Plus Jakarta Sans', system-ui, sans-serif; padding: 10px 16px; border: 1px solid #2f9bd6; border-radius: 9px; cursor: pointer; transition: filter .15s ease; } .ds-btn-primary:hover { filter: brightness(1.08); } .ds-btn-primary:focus-visible { outline: 2px solid #4cb6ec; outline-offset: 2px; }"
+    },
+    {
+      "name": "Gold Button",
+      "kind": "button",
+      "refersTo": "button-gold",
+      "description": "Ação premium/conquista. Gradiente dourado sobre texto quase-preto. Raro.",
+      "html": "<button class=\"ds-btn-gold\">Reivindicar perfil</button>",
+      "css": ".ds-btn-gold { display: inline-flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #ecc77a, #d9b25f); color: #2a2008; font: 700 13px/1 'Plus Jakarta Sans', system-ui, sans-serif; padding: 10px 16px; border: none; border-radius: 9px; cursor: pointer; transition: filter .15s ease; } .ds-btn-gold:hover { filter: brightness(1.06); } .ds-btn-gold:focus-visible { outline: 2px solid #f2d99e; outline-offset: 2px; }"
+    },
+    {
+      "name": "Filter Chip",
+      "kind": "chip",
+      "refersTo": "chip",
+      "description": "Filtro em pílula. Default tonal + fio; ativo vira azul sólido.",
+      "html": "<div style=\"display:flex; gap:6px\"><button class=\"ds-chip\">DUOS</button><button class=\"ds-chip ds-chip-active\">TRIOS</button></div>",
+      "css": ".ds-chip { font: 600 12px/1 'Plus Jakarta Sans', system-ui, sans-serif; padding: 8px 13px; border-radius: 999px; cursor: pointer; background: #181a20; border: 1px solid #262a33; color: #9aa0aa; transition: color .15s ease, border-color .15s ease; } .ds-chip:hover { color: #fff; border-color: #333845; } .ds-chip-active { background: #2f9bd6; border-color: #2f9bd6; color: #fff; }"
+    },
+    {
+      "name": "Panel",
+      "kind": "card",
+      "refersTo": "panel",
+      "description": "Contêiner base. Um degrau tonal acima do palco + fio hairline; sem sombra.",
+      "html": "<div class=\"ds-panel\"><div class=\"ds-panel-title\">Top Global</div><div class=\"ds-panel-body\">Camadas tonais separam do fundo — sem box-shadow.</div></div>",
+      "css": ".ds-panel { background: #131419; border: 1px solid #262a33; border-radius: 12px; padding: 20px; } .ds-panel-title { font: 700 15px/1.2 'Plus Jakarta Sans', system-ui, sans-serif; color: #eef0f3; margin-bottom: 8px; } .ds-panel-body { font: 400 14px/1.6 'Plus Jakarta Sans', system-ui, sans-serif; color: #9aa0aa; }"
+    },
+    {
+      "name": "Search Input",
+      "kind": "input",
+      "refersTo": "input-search",
+      "description": "Busca do header. Foco troca a borda para azul; sem glow.",
+      "html": "<div class=\"ds-search\"><svg width=\"19\" height=\"19\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"#686d78\" stroke-width=\"2\"><circle cx=\"11\" cy=\"11\" r=\"7\"/><path d=\"m21 21-4.3-4.3\"/></svg><input placeholder=\"Buscar jogador...\" /></div>",
+      "css": ".ds-search { display: flex; align-items: center; gap: 12px; background: #141519; border: 1px solid #23252d; border-radius: 9px; height: 44px; padding: 0 8px 0 16px; transition: border-color .15s ease; } .ds-search:focus-within { border-color: #2f9bd6; } .ds-search input { flex: 1; background: none; border: none; outline: none; color: #fff; font: 500 14px/1 'Plus Jakarta Sans', system-ui, sans-serif; min-width: 0; } .ds-search input::placeholder { color: #686d78; }"
+    },
+    {
+      "name": "Active Nav Link",
+      "kind": "nav",
+      "refersTo": "nav-active",
+      "description": "Link de navegação ativo: texto branco + barra inferior dourada com glow contido (única assinatura luminosa tolerada).",
+      "html": "<nav class=\"ds-nav\"><a>LEADERBOARD</a><a class=\"ds-nav-active\">CAMPEONATOS</a><a>WINRATE</a></nav>",
+      "css": ".ds-nav { display: flex; gap: 32px; background: #0c0c0e; padding: 18px 0; } .ds-nav a { position: relative; font: 700 11px/1 'Plus Jakarta Sans', system-ui, sans-serif; letter-spacing: 0.08em; color: #9aa0aa; text-decoration: none; cursor: pointer; transition: color .15s ease; } .ds-nav a:hover { color: #fff; } .ds-nav-active { color: #fff !important; } .ds-nav-active::after { content: ''; position: absolute; left: 0; right: 0; bottom: -18px; height: 8px; border-radius: 5px 5px 0 0; background: #d5a038; box-shadow: 0 0 16px 1px rgba(213,160,56,0.85), 0 -2px 8px rgba(213,160,56,0.6); }"
+    },
+    {
+      "name": "Tier Badge",
+      "kind": "custom",
+      "refersTo": "badge-tier",
+      "description": "Assinatura do sistema: reconhecimento competitivo. Ouro para Top 1, escala semântica abaixo.",
+      "html": "<div style=\"display:flex; gap:6px; align-items:center\"><span class=\"ds-badge ds-badge-top1\">TOP 1</span><span class=\"ds-badge ds-badge-top50\">TOP 50</span><span class=\"ds-delta-up\">▲ +34</span></div>",
+      "css": ".ds-badge { display: inline-flex; align-items: center; font: 700 10px/1 'Plus Jakarta Sans', system-ui, sans-serif; letter-spacing: 0.04em; text-transform: uppercase; padding: 5px 9px; border-radius: 6px; } .ds-badge-top1 { background: linear-gradient(135deg, #ecc77a, #d9b25f); color: #2a2008; } .ds-badge-top50 { background: rgba(47,155,214,0.14); color: #4cb6ec; } .ds-delta-up { font: 700 13px/1 'Plus Jakarta Sans', system-ui, sans-serif; color: #46c084; font-variant-numeric: tabular-nums; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "O Coliseu Escuro",
+    "overview": "ArenaRank é uma arena de gladiadores filmada por um broadcast de esports. O palco é pedra escura — um quase-preto azulado (#0b0c0f) — e a luz que importa é o ouro, reservada para o que foi conquistado: o topo do ranking, o CR, os medalhões, as molduras de campeão. Azul é a voz do sistema; ouro é o troféu. A densidade é de esports — tabelas confiáveis, números tabulares, muita informação por tela — mas curada, nunca o caos de um site de stats coberto de anúncios. Dark por convicção, não por moda. A profundidade nasce de camadas tonais, não de sombras. Ação tem peso e presença física; dados permanecem afiados e legíveis. Mira em FACEIT somado ao acabamento de data-viz de Mobalytics/Blitz.",
+    "keyCharacteristics": [
+      "Palco quase-preto azulado, ouro reservado para conquista, azul para o sistema.",
+      "Densidade de esports curada: tabelas nítidas, tabular-nums, informação sem ruído.",
+      "Profundidade por camadas tonais + hairline, não por sombra.",
+      "Ação tátil e encorpada; dado afiado e sóbrio.",
+      "Legitimidade competitiva acima de decoração."
+    ],
+    "rules": [
+      { "name": "A Regra do Ouro Escasso", "body": "O ouro nunca é decoração. Marca conquista — rating, topo, tier, perfil premiado — e some do resto da tela. Em mais de um punhado de elementos por página, perde o significado.", "section": "colors" },
+      { "name": "A Regra do Duplo Sinal", "body": "Direção (subiu/caiu, vitória/derrota) nunca depende só de verde vs. vermelho. Sempre há um segundo sinal — seta, +/−, ícone.", "section": "colors" },
+      { "name": "A Regra do Número Tabular", "body": "Todo dado numérico em coluna ou que muda (CR, winrate, delta) usa tabular-nums. Números que pulam de largura não parecem confiáveis.", "section": "typography" },
+      { "name": "A Regra do Anton Único", "body": "Anton só no wordmark. Nunca em rótulo, botão, header de tabela ou corpo.", "section": "typography" },
+      { "name": "A Regra da Camada Tonal", "body": "Elevação = um degrau mais claro na rampa de superfície + um fio de borda. Se você está alcançando box-shadow para separar um card do fundo, use tom e borda no lugar.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do reservar o ouro (#d9b25f/#ecc77a) para conquista — rating, topo, tier, perfil premiado — e mantê-lo escasso.",
+      "Do usar tabular-nums em todo número que aparece em coluna ou que muda (CR, winrate, delta).",
+      "Do criar profundidade com a rampa tonal (surface → surface-2 → surface-3) + fio --line, não com sombra.",
+      "Do reforçar direção com um segundo sinal (seta, +/−) além de verde/vermelho.",
+      "Do dar peso tátil à ação (hover que clareia/responde) e manter os dados afiados e sóbrios.",
+      "Do manter o corpo em text (#eef0f3) ou text-dim (#9aa0aa) sobre as superfícies escuras; text-faint só para rótulos grandes."
+    ],
+    "donts": [
+      "Don't deixar parecer dashboard corporativo/SaaS genérico: cinza-azulado, cards idênticos, template hero-metric, Inter sem alma.",
+      "Don't cair no site de stats poluído e ad-heavy — densidade caótica de widgets brigando por atenção.",
+      "Don't usar estética cartoon/infantil: cores primárias saturadas, bordas fofas, mascotes.",
+      "Don't usar neon-cripto: roxo com glow, glassmorphism decorativo, gradientes gritantes, estética web3.",
+      "Don't usar texto com gradiente (background-clip: text) — cor sólida sempre; ênfase por peso/tamanho.",
+      "Don't usar faixa colorida de border-left/border-right > 1px como acento.",
+      "Don't aplicar box-shadow em card em repouso; sombra suave só em overlay que genuinamente flutua.",
+      "Don't usar Anton fora do wordmark, nem depender só de cor para transmitir direção."
+    ]
+  }
+}

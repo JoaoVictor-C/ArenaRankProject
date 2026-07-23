@@ -1,0 +1,824 @@
+/* ============================================================
+   ArenaRank — base + componentes do design system
+   (portado de arena.css, fiel; classes preservadas 1:1)
+   ============================================================ */
+* {
+  box-sizing: border-box;
+}
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+body {
+  background-color: var(--bg);
+  color: var(--text);
+  font-family: "Plus Jakarta Sans", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  font-size: 14px;
+  min-height: 100vh;
+  position: relative;
+}
+
+/* Grid line/pattern — camada própria (::before) para receber blur isolado sem
+   borrar o conteúdo. Opacidade extra reduzida na camada + blur leve. Fica atrás
+   do #root (z:1), então o conteúdo permanece nítido por cima. Absolute (não
+   fixed) e ancorada no body para rolar junto com a página. */
+body::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image:
+    url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='72'%20height='72'%3E%3Cpath%20d='M36%200V72M0%2036H72'%20fill='none'%20stroke='%238ea3c6'%20stroke-opacity='.091'%20stroke-width='.8'/%3E%3Ccircle%20cx='36'%20cy='36'%20r='3.4'%20fill='%23aebdd8'%20fill-opacity='.07'/%3E%3Ccircle%20cx='36'%20cy='36'%20r='1.8'%20fill='%23d7e0f2'%20fill-opacity='.322'/%3E%3C/svg%3E");
+  background-size: 36px 36px;
+  background-position: center top;
+  background-repeat: repeat;
+  opacity: 0.6;
+  filter: blur(1px);
+}
+a {
+  color: inherit;
+}
+#root {
+  position: relative;
+  z-index: 1;
+}
+
+/* Material Symbols (ícones) */
+.mi {
+  font-family: "Material Symbols Outlined";
+  font-weight: normal;
+  font-style: normal;
+  font-size: 1.2em;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  -webkit-font-smoothing: antialiased;
+  vertical-align: middle;
+  display: inline-block;
+  font-feature-settings: "liga";
+  font-variation-settings: "FILL" 0, "wght" 400, "GRAD" 0, "opsz" 24;
+}
+.mi.fill {
+  font-variation-settings: "FILL" 1, "wght" 400, "GRAD" 0, "opsz" 24;
+}
+
+/* ---------- background ---------- */
+.dot-grid {
+  position: fixed;
+  inset: 0;
+  background-image: radial-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+  background-size: 26px 26px;
+  pointer-events: none;
+  z-index: 0;
+}
+body[data-bg="plain"] .dot-grid {
+  display: none;
+}
+.blob-wrap {
+  position: absolute;
+  left: 50%;
+  top: 30px;
+  transform: translateX(-50%);
+  width: 1000px;
+  height: 360px;
+  filter: blur(90px);
+  opacity: 0.22;
+  pointer-events: none;
+  z-index: 0;
+}
+.blob-wrap svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+body[data-bg="plain"] .blob-wrap {
+  display: none;
+}
+body[data-bg="gradient"] .blob-wrap {
+  opacity: 0.5;
+  filter: blur(60px);
+}
+
+/* Old top-bar header removed — now using header3.css (3-tier header) */
+
+/* ============================================================
+   SHELL
+   ============================================================ */
+.shell {
+  position: relative;
+  z-index: 2;
+  max-width: var(--maxw);
+  margin: 0 auto;
+  padding: 28px 24px 70px;
+}
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 20px;
+  font: 600 12px/1 "Plus Jakarta Sans", sans-serif;
+  color: var(--text-faint);
+  letter-spacing: 0.02em;
+}
+.breadcrumb a {
+  color: var(--text-dim);
+  text-decoration: none;
+}
+.breadcrumb a:hover {
+  color: var(--primary);
+}
+.breadcrumb .sep {
+  color: var(--line);
+}
+
+.section-head {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+.section-head h2 {
+  margin: 0;
+  font-weight: 700;
+  font-size: 20px;
+  letter-spacing: 0.01em;
+  line-height: 1;
+  color: var(--text);
+}
+.section-head .rule {
+  display: none;
+}
+.section-head .spacer {
+  flex: 1;
+}
+.section-head .see-all {
+  font: 600 13px/1 "Plus Jakarta Sans", sans-serif;
+  color: var(--primary);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.section-head .see-all:hover {
+  color: var(--primary-bright);
+}
+
+.eyebrow {
+  font: 700 11px/1 "Plus Jakarta Sans", sans-serif;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--primary);
+}
+
+/* ============================================================
+   PANELS / CARDS
+   ============================================================ */
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+}
+.panel.glow {
+  box-shadow: var(--shadow);
+}
+.panel-pad {
+  padding: 20px;
+}
+
+/* champion icon */
+.ch-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: var(--r-sm);
+  background: linear-gradient(135deg, var(--c1, #2a4a6a), var(--c2, #46b4ec));
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  position: relative;
+  overflow: hidden;
+  flex: none;
+}
+.ch-icon::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 50% 32%, rgba(255, 255, 255, 0.18), transparent 55%);
+}
+.ch-icon.sm {
+  width: 28px;
+  height: 28px;
+  border-radius: 5px;
+}
+.ch-icon.lg {
+  width: 44px;
+  height: 44px;
+}
+.ch-icon.xl {
+  width: 60px;
+  height: 60px;
+  border-radius: 8px;
+}
+
+/* player avatar */
+.pavatar {
+  border-radius: var(--r-sm);
+  position: relative;
+  overflow: hidden;
+  flex: none;
+  background: linear-gradient(145deg, var(--c1, #2a4a6a), var(--c2, #46b4ec));
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+.pavatar::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 50% 35%, rgba(255, 255, 255, 0.16), transparent 55%);
+}
+
+/* ============================================================
+   BADGES
+   ============================================================ */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font: 700 10px/1 "Plus Jakarta Sans", sans-serif;
+  letter-spacing: 0.04em;
+  padding: 5px 9px;
+  border-radius: var(--r-sm);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.badge.provisional {
+  background: var(--primary-dim);
+  color: var(--primary-bright);
+}
+.badge.tier-top1 {
+  background: linear-gradient(135deg, var(--gold-bright), var(--gold));
+  color: #2a2008;
+}
+.badge.tier-top10 {
+  background: var(--gold-dim);
+  color: var(--gold-bright);
+}
+.badge.tier-top50 {
+  background: var(--primary-dim);
+  color: var(--primary-bright);
+}
+.badge.tier-top100 {
+  background: var(--green-dim);
+  color: var(--green);
+}
+.badge.tier-top500 {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-dim);
+}
+.badge.neutral {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-dim);
+  border: 1px solid var(--line);
+}
+.badge.pro {
+  background: linear-gradient(135deg, var(--gold-bright), var(--gold));
+  color: #2a2008;
+}
+
+/* integrity flags */
+.flag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font: 600 11px/1 "Plus Jakarta Sans", sans-serif;
+  padding: 5px 10px;
+  border-radius: var(--r-sm);
+  white-space: nowrap;
+}
+.flag .dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex: none;
+}
+.flag.info {
+  background: var(--primary-dim);
+  color: var(--primary-bright);
+}
+.flag.info .dot {
+  background: var(--primary);
+}
+.flag.warn {
+  background: var(--amber-dim);
+  color: var(--amber);
+}
+.flag.warn .dot {
+  background: var(--amber);
+}
+.flag.critical {
+  background: var(--red-dim);
+  color: var(--red);
+}
+.flag.critical .dot {
+  background: var(--red);
+}
+
+/* placement badge */
+.place {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 26px;
+  height: 26px;
+  padding: 0 7px;
+  border-radius: var(--r-sm);
+  font: 800 13px/1 "Plus Jakarta Sans", sans-serif;
+  color: #0c0c0e;
+}
+.place.p1 {
+  background: var(--place-1);
+}
+.place.p2 {
+  background: var(--place-2);
+}
+.place.p3,
+.place.p4 {
+  background: var(--place-3);
+}
+.place.p5,
+.place.p6,
+.place.p7,
+.place.p8 {
+  background: var(--place-low);
+  color: #fff;
+}
+
+.streak {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font: 700 12px/1 "Plus Jakarta Sans", sans-serif;
+  padding: 5px 9px;
+  border-radius: var(--r-sm);
+}
+.streak.win {
+  background: var(--green-dim);
+  color: var(--green);
+}
+.streak.loss {
+  background: var(--red-dim);
+  color: var(--red);
+}
+
+/* player tags (Top 1 Global, Top 1 BR, Em alta, OTP...) — fundo sólido ≥90% */
+.ptag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font: 700 9px/1 "Plus Jakarta Sans", sans-serif;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  padding: 4px 7px;
+  border-radius: 5px;
+  white-space: nowrap;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+.ptag .mi {
+  font-size: 11px;
+}
+.ptag-global {
+  background: linear-gradient(135deg, var(--gold-bright), var(--gold));
+  color: #2a2008;
+}
+.ptag-region {
+  background: var(--primary);
+}
+.ptag-hot {
+  background: var(--amber);
+  color: #241a05;
+}
+.ptag-veteran {
+  background: var(--surface-3);
+  color: var(--text-dim);
+}
+.ptag-rookie {
+  background: var(--green);
+  color: #07210f;
+}
+.ptag-otp {
+  background: var(--primary-bright);
+  color: #04212f;
+}
+/* contador de excedente (+2, +3...) quando há mais de 2 tags */
+.ptag.more {
+  background: var(--surface-2);
+  color: var(--text-dim);
+}
+
+.delta {
+  font: 700 13px/1 "Plus Jakarta Sans", sans-serif;
+  white-space: nowrap;
+}
+.delta.up {
+  color: var(--green);
+}
+.delta.down {
+  color: var(--red);
+}
+.delta.flat {
+  color: var(--text-faint);
+}
+
+.tier {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 5px;
+  font: 800 12px/1 "Plus Jakarta Sans", sans-serif;
+  color: #2a2008;
+  background: linear-gradient(180deg, var(--gold-bright), var(--gold));
+}
+.tier.s {
+  background: linear-gradient(180deg, var(--gold-bright), var(--gold));
+}
+.tier.a {
+  background: linear-gradient(180deg, var(--primary-bright), var(--primary));
+  color: #fff;
+}
+.tier.b {
+  background: linear-gradient(180deg, #6fd0ff, #2a78c7);
+  color: #fff;
+}
+.tier.c {
+  background: linear-gradient(180deg, #8a8a96, #4a4a55);
+  color: #fff;
+}
+
+/* ============================================================
+   CHIPS / TABS / BUTTONS
+   ============================================================ */
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.chip {
+  font: 600 12px/1 "Plus Jakarta Sans", sans-serif;
+  padding: 8px 13px;
+  border-radius: 999px;
+  cursor: pointer;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  color: var(--text-dim);
+  user-select: none;
+}
+.chip:hover {
+  color: #fff;
+  border-color: var(--border-strong);
+}
+.chip[data-active="true"] {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+}
+.chip[data-active="true"].soft {
+  background: var(--primary-dim);
+  border-color: var(--primary);
+  color: var(--primary-bright);
+}
+
+.tabs {
+  display: flex;
+  gap: 2px;
+  border-bottom: 1px solid var(--line);
+}
+.tab {
+  font: 600 14px/1 "Plus Jakarta Sans", sans-serif;
+  padding: 13px 18px;
+  cursor: pointer;
+  color: var(--text-dim);
+  border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  background: none;
+}
+.tab:hover {
+  color: #fff;
+}
+.tab[data-active="true"] {
+  color: #fff;
+  border-bottom-color: var(--primary);
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  font: 600 13px/1 "Plus Jakarta Sans", sans-serif;
+  padding: 10px 16px;
+  border-radius: var(--r-md);
+  cursor: pointer;
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  color: #fff;
+}
+.btn:hover {
+  border-color: var(--border-strong);
+  background: var(--surface-3);
+}
+.btn.primary {
+  background: var(--primary);
+  border-color: var(--primary);
+}
+.btn.primary:hover {
+  filter: brightness(1.08);
+}
+.btn.gold {
+  background: linear-gradient(135deg, var(--gold-bright), var(--gold));
+  border: none;
+  color: #2a2008;
+}
+.btn.ghost {
+  background: transparent;
+}
+.btn.lg {
+  padding: 13px 24px;
+  font-size: 15px;
+}
+
+/* ============================================================
+   TABLE PRIMITIVES
+   ============================================================ */
+.tbl {
+  width: 100%;
+}
+.tbl .row,
+.tbl .head {
+  display: grid;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--line-soft);
+}
+.tbl .head {
+  font: 700 10px/1 "Plus Jakarta Sans", sans-serif;
+  color: var(--text-faint);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  background: rgba(255, 255, 255, 0.015);
+}
+.tbl .row:last-child {
+  border-bottom: none;
+}
+.tbl .row:hover {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.bar {
+  height: 2px;
+  width: 70%;
+  background-image: linear-gradient(to right, var(--bar-c, var(--primary)) 0 6px, transparent 6px 9px);
+  background-size: 9px 100%;
+  background-repeat: repeat-x;
+}
+.bar.cyan {
+  --bar-c: var(--primary-bright);
+}
+.bar.blue {
+  --bar-c: var(--primary);
+}
+.bar.orange {
+  --bar-c: var(--amber);
+}
+.bar.purple {
+  --bar-c: var(--primary);
+}
+.bar.yellow {
+  --bar-c: var(--gold);
+}
+.bar.green {
+  --bar-c: var(--green);
+}
+
+.pbar {
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+.pbar > span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--primary);
+}
+
+/* ============================================================
+   FOOTER
+   ============================================================ */
+.site-footer {
+  position: relative;
+  z-index: 2;
+  border-top: 1px solid var(--line);
+  background: var(--bg-deep);
+  margin-top: 40px;
+}
+.site-footer .inner {
+  max-width: var(--maxw);
+  margin: 0 auto;
+  padding: 38px 24px 40px;
+  display: grid;
+  grid-template-columns: 1.5fr 1fr 1fr 1fr;
+  gap: 32px;
+}
+.site-footer .brand img {
+  height: 28px;
+  margin-bottom: 14px;
+}
+.site-footer p {
+  color: var(--text-faint);
+  font: 400 13px/1.6 "Plus Jakarta Sans", sans-serif;
+  max-width: 280px;
+  margin: 0;
+}
+.site-footer h4 {
+  margin: 0 0 13px;
+  font: 700 11px/1 "Plus Jakarta Sans", sans-serif;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+.site-footer ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+.site-footer a {
+  color: var(--text-faint);
+  text-decoration: none;
+  font: 500 13px/1 "Plus Jakarta Sans", sans-serif;
+}
+.site-footer a:hover {
+  color: #fff;
+}
+.site-footer .legal {
+  max-width: var(--maxw);
+  margin: 0 auto;
+  padding: 16px 24px 28px;
+  border-top: 1px solid var(--line);
+  color: var(--text-faint);
+  font: 400 11px/1.6 "Plus Jakarta Sans", sans-serif;
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+/* ============================================================
+   UTILITIES
+   ============================================================ */
+.muted {
+  color: var(--text-dim);
+}
+.faint {
+  color: var(--text-faint);
+}
+.mono {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+}
+.tnum {
+  font-variant-numeric: tabular-nums;
+}
+.center {
+  text-align: center;
+}
+.nowrap {
+  white-space: nowrap;
+}
+.divider {
+  height: 1px;
+  background: var(--line);
+  border: none;
+  margin: 0;
+}
+.help {
+  border-bottom: 1px dotted var(--text-faint);
+  cursor: help;
+}
+.spark {
+  display: block;
+}
+
+/* ============================================================
+   TWEAKS PANEL (ajustes flutuantes)
+   ============================================================ */
+.tweaks {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 60;
+}
+.tweaks-fab {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  color: var(--text-dim);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--shadow);
+}
+.tweaks-fab:hover {
+  color: #fff;
+  border-color: var(--border-strong);
+}
+.tweaks-panel {
+  position: absolute;
+  right: 0;
+  bottom: 56px;
+  width: 240px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.tweaks-title {
+  font: 700 11px/1 "Plus Jakarta Sans", sans-serif;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+.tweaks-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.tweaks-label {
+  font: 600 12px/1 "Plus Jakarta Sans", sans-serif;
+  color: var(--text-faint);
+}
+.tweaks-seg {
+  display: flex;
+  gap: 4px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  padding: 3px;
+}
+.tweaks-seg button {
+  flex: 1;
+  border: none;
+  background: none;
+  color: var(--text-dim);
+  font: 600 11px/1 "Plus Jakarta Sans", sans-serif;
+  padding: 7px 6px;
+  border-radius: var(--r-sm);
+  cursor: pointer;
+}
+.tweaks-seg button[data-active="true"] {
+  background: var(--primary);
+  color: #fff;
+}
+
+/* ============================================================
+   STATE BLOCK (loading / erro / vazio)
+   ============================================================ */
+.state-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 64px 24px;
+  color: var(--text-dim);
+  font: 600 14px/1.4 "Plus Jakarta Sans", sans-serif;
+  text-align: center;
+}
+.state-spinner {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 3px solid var(--line);
+  border-top-color: var(--primary);
+  animation: ar-spin 0.8s linear infinite;
+}
+@keyframes ar-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

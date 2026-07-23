@@ -1,0 +1,46 @@
+# Recording rules — precompute the dashboard/SLO expressions so panels and alerts
+# read cheap, stable series. Names follow the level:metric:operation convention.
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: arenarank-recording
+  namespace: observability
+  labels:
+    app.kubernetes.io/part-of: arenarank
+    release: kube-prometheus-stack
+spec:
+  groups:
+    - name: arenarank.recording
+      interval: 30s
+      rules:
+        # Processing throughput (success/s) and failure ratio.
+        - record: job:crs_matches_processed:rate5m
+          expr: sum by (outcome) (rate(crs_matches_processed_total[5m]))
+        - record: job:crs_dlq_ratio:5m
+          expr: |
+            sum(increase(crs_matches_processed_total{outcome="failed"}[5m]))
+            / clamp_min(sum(increase(crs_matches_processed_total[5m])), 1)
+
+        # Combined queue depth (priority + standard) for the lag panel/alert.
+        - record: job:crs_queue_depth:sum
+          expr: sum(crs_queue_depth{queue=~"priority|standard"})
+
+        # Processing latency quantiles from the histogram (p50/p95/p99).
+        - record: job:crs_processing_duration:p50
+          expr: histogram_quantile(0.50, sum by (le) (rate(crs_processing_duration_seconds_bucket[5m])))
+        - record: job:crs_processing_duration:p95
+          expr: histogram_quantile(0.95, sum by (le) (rate(crs_processing_duration_seconds_bucket[5m])))
+        - record: job:crs_processing_duration:p99
+          expr: histogram_quantile(0.99, sum by (le) (rate(crs_processing_duration_seconds_bucket[5m])))
+
+        # API request rate + 5xx ratio (SLO numerator/denominator).
+        - record: job:http_requests:rate2m
+          expr: sum by (status) (rate(http_requests_total{job="api"}[2m]))
+        - record: job:http_5xx_ratio:2m
+          expr: |
+            sum(rate(http_requests_total{job="api",status=~"5.."}[2m]))
+            / clamp_min(sum(rate(http_requests_total{job="api"}[2m])), 0.001)
+
+        # API latency p95 (request duration histogram from the instrumentator).
+        - record: job:http_request_duration:p95
+          expr: histogram_quantile(0.95, sum by (le) (rate(http_request_duration_seconds_bucket{job="api"}[5m])))

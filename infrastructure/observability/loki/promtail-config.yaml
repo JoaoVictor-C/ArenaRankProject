@@ -1,0 +1,49 @@
+# Promtail/Alloy scrape config — ships pod stdout (structured JSON, §14.3) to
+# Loki, parsing the mandatory fields (level, service, traceId, timestamp, message)
+# into labels so logs join to traces by traceId in Grafana.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: promtail-config
+  namespace: observability
+  labels:
+    app.kubernetes.io/part-of: arenarank
+data:
+  promtail.yaml: |
+    server:
+      http_listen_port: 3101
+    clients:
+      - url: http://loki-gateway.observability.svc.cluster.local/loki/api/v1/push
+    positions:
+      filename: /run/promtail/positions.yaml
+    scrape_configs:
+      - job_name: kubernetes-pods
+        kubernetes_sd_configs:
+          - role: pod
+        relabel_configs:
+          # Only ship arenarank workloads (api + processing).
+          - source_labels: [__meta_kubernetes_namespace]
+            regex: "api|processing"
+            action: keep
+          - source_labels: [__meta_kubernetes_namespace]
+            target_label: namespace
+          - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_name]
+            target_label: app
+          - source_labels: [__meta_kubernetes_pod_name]
+            target_label: pod
+        pipeline_stages:
+          # Logs are JSON (structlog). Extract the mandatory fields as labels.
+          - cri: {}
+          - json:
+              expressions:
+                level: level
+                service: service
+                traceId: traceId
+                timestamp: timestamp
+          - labels:
+              level:
+              service:
+          # Use the app timestamp, not the ingestion time.
+          - timestamp:
+              source: timestamp
+              format: RFC3339Nano

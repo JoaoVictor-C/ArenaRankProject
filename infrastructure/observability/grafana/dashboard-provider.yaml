@@ -1,0 +1,15 @@
+# Grafana dashboard provisioning — load the JSON dashboards from a mounted dir.
+# Pair with a ConfigMap (or the kube-prometheus-stack sidecar) that mounts
+# infrastructure/observability/grafana/dashboards/ at /var/lib/grafana/dashboards/arenarank.
+apiVersion: 1
+providers:
+  - name: arenarank
+    orgId: 1
+    folder: arenarank
+    type: file
+    disableDeletion: false
+    editable: true
+    allowUiUpdates: true
+    options:
+      path: /var/lib/grafana/dashboards/arenarank
+      foldersFromFilesStructure: false

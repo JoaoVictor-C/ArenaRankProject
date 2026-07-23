@@ -1,0 +1,90 @@
+{
+  "uid": "arenarank-processing",
+  "title": "arenarank — Processing Pipeline",
+  "tags": ["arenarank", "processing"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "time": { "from": "now-6h", "to": "now" },
+  "templating": { "list": [] },
+  "panels": [
+    {
+      "id": 1,
+      "type": "timeseries",
+      "title": "Matches processed /s (by outcome)",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "expr": "job:crs_matches_processed:rate5m", "legendFormat": "{{outcome}}" }
+      ]
+    },
+    {
+      "id": 2,
+      "type": "timeseries",
+      "title": "Queue depth (priority + standard + DLQ)",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "expr": "crs_queue_depth", "legendFormat": "{{queue}}" }
+      ],
+      "thresholds": { "steps": [{ "value": 50000, "color": "red" }] }
+    },
+    {
+      "id": 3,
+      "type": "timeseries",
+      "title": "Processing duration (p50/p95/p99)",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "expr": "job:crs_processing_duration:p50", "legendFormat": "p50" },
+        { "expr": "job:crs_processing_duration:p95", "legendFormat": "p95" },
+        { "expr": "job:crs_processing_duration:p99", "legendFormat": "p99" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "s" } }
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "DLQ ratio (5m)",
+      "gridPos": { "h": 8, "w": 6, "x": 12, "y": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [{ "expr": "job:crs_dlq_ratio:5m" }],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "thresholds": { "steps": [{ "value": null, "color": "green" }, { "value": 0.01, "color": "red" }] }
+        }
+      }
+    },
+    {
+      "id": 5,
+      "type": "stat",
+      "title": "Active worker count",
+      "gridPos": { "h": 8, "w": 6, "x": 18, "y": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [{ "expr": "sum(crs_worker_active_count)" }]
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "Riot API requests /s (by status) + rate-limit hits",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 16 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "expr": "sum by (status) (rate(crs_riot_api_requests_total[5m]))", "legendFormat": "{{status}}" },
+        { "expr": "rate(crs_riot_api_rate_limit_hits_total[5m])", "legendFormat": "rate-limit hits" }
+      ]
+    },
+    {
+      "id": 7,
+      "type": "timeseries",
+      "title": "Integrity flags /s (by type)",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 16 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "expr": "sum by (flag) (rate(crs_integrity_flags_total[5m]))", "legendFormat": "{{flag}}" }
+      ]
+    }
+  ]
+}

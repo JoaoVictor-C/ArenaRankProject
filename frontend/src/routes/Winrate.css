@@ -1,0 +1,588 @@
+/* ============================================================
+   Winrate.css — Página Champ Winrate (ArenaRank)
+   CSS portado fielmente de "Champ Winrate.html" (design staging).
+   Nomenclatura de classes preservada para o motor de animação.
+   ============================================================ */
+
+/* ── Variáveis de cor da página ─────────────────────────────── */
+.wr-page {
+  --wr-panel:    #161616;
+  --wr-panel-2:  #1b1b1b;
+  --wr-panel-3:  #222226;
+  --wr-border:   #2a2a2e;
+  --wr-border-strong: #3a3535;
+  --wr-yellow:   #ffe26c;
+  --wr-yellow-line: #ffc300;
+  --wr-purple:   #9b5cff;
+  --wr-purple-bg: #5c316d;
+  --wr-red:      #ff4a4a;
+  --wr-red-soft: #ff6262;
+  --wr-green:    #006c41;
+  --wr-green-online: #00ff1e;
+  --wr-pink:     #ff32d9;
+  --wr-tier-splus: #f1c54a;
+  --wr-tier-s:   #ff32d9;
+  --wr-tier-a:   #9b5cff;
+  --wr-tier-b:   #48bdff;
+  --wr-tier-c:   #5a8a3a;
+  --wr-tier-d:   #6b6b70;
+}
+
+/* ── Layout de página ────────────────────────────────────────── */
+.wr-page {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  min-height: calc(100vh - 96px);
+  font-family: "Plus Jakarta Sans", system-ui, sans-serif;
+}
+
+.wr-main {
+  padding: 48px 56px 80px 56px;
+}
+
+/* ── Bloco de título ─────────────────────────────────────────── */
+.title-block {
+  display: flex;
+  align-items: center;
+  gap: 26px;
+  margin-bottom: 8px;
+}
+.title-block h1 {
+  margin: 0;
+  font: 400 40px/1 "Plus Jakarta Sans", sans-serif;
+  letter-spacing: 0.04em;
+}
+.title-block .rule {
+  flex: 0 0 190px;
+  height: 2px;
+  background: var(--wr-yellow-line);
+}
+.title-block .spacer { flex: 1; }
+
+/* ── Toggle TIER LIST ↔ TABELA ───────────────────────────────── */
+.view-toggle {
+  display: inline-flex;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--wr-border);
+  border-radius: 6px;
+  padding: 4px;
+}
+.view-toggle button {
+  background: transparent;
+  border: none;
+  color: var(--text-dim, #acacac);
+  font: 700 12px/1 "Plus Jakarta Sans", sans-serif;
+  letter-spacing: 0.08em;
+  padding: 8px 14px;
+  border-radius: 4px;
+  cursor: pointer;
+  text-transform: uppercase;
+  transition: background 0.15s, color 0.15s;
+}
+.view-toggle button.active {
+  background: var(--wr-purple-bg);
+  color: #fff;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+/* ── Subtítulo / metadados ───────────────────────────────────── */
+.wr-subtitle {
+  color: var(--text-dim, #acacac);
+  font: 400 14px/1 "Plus Jakarta Sans", sans-serif;
+  margin: 0 0 32px 0;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.wr-subtitle .dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--text-faint, #6b6b70);
+  display: inline-block;
+  flex-shrink: 0;
+}
+.wr-subtitle .meta-tag {
+  color: var(--wr-yellow);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+.wr-subtitle .live {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--wr-green-online);
+  box-shadow: 0 0 8px var(--wr-green-online);
+  flex-shrink: 0;
+}
+
+/* ── Barra de filtros ────────────────────────────────────────── */
+.lb-filters {
+  display: grid;
+  grid-template-columns: 280px auto auto 1fr auto;
+  gap: 14px;
+  margin-bottom: 28px;
+  align-items: center;
+}
+.filter-search {
+  position: relative;
+}
+.filter-search input {
+  width: 100%;
+  background: var(--wr-panel);
+  border: 1px solid var(--wr-border);
+  color: var(--text, #fff);
+  font: 400 14px/1 "Plus Jakarta Sans", sans-serif;
+  padding: 12px 14px 12px 38px;
+  border-radius: 6px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.filter-search input::placeholder { color: var(--text-faint, #6b6b70); }
+.filter-search input:focus { border-color: var(--wr-purple); }
+.filter-search .icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-faint, #6b6b70);
+  font-size: 14px;
+  pointer-events: none;
+}
+.filter-select {
+  background: var(--wr-panel);
+  border: 1px solid var(--wr-border);
+  color: var(--text, #fff);
+  font: 700 12px/1 "Plus Jakarta Sans", sans-serif;
+  letter-spacing: 0.06em;
+  padding: 12px 14px;
+  border-radius: 6px;
+  text-transform: uppercase;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  user-select: none;
+  transition: border-color 0.15s;
+  white-space: nowrap;
+}
+.filter-select .caret { color: var(--text-faint, #6b6b70); font-size: 9px; }
+.filter-select:hover { border-color: var(--wr-border-strong); }
+
+.role-chips {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+.role-chips button {
+  background: transparent;
+  border: 1px solid var(--wr-border);
+  color: var(--text-dim, #acacac);
+  font: 700 11px/1 "Plus Jakarta Sans", sans-serif;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 9px 14px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+.role-chips button:hover { color: white; border-color: var(--wr-border-strong); }
+.role-chips button.active {
+  background: rgba(155,92,255,0.18);
+  border-color: var(--wr-purple);
+  color: white;
+}
+
+/* ── Abas de métrica ─────────────────────────────────────────── */
+.metric-tabs {
+  display: flex;
+  gap: 0;
+  margin-bottom: 24px;
+  border-bottom: 1px solid var(--wr-border);
+}
+.metric-tabs button {
+  background: transparent;
+  border: none;
+  color: var(--text-dim, #acacac);
+  font: 700 13px/1 "Plus Jakarta Sans", sans-serif;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 16px 22px;
+  cursor: pointer;
+  position: relative;
+  white-space: nowrap;
+  transition: color 0.15s;
+}
+.metric-tabs button:hover { color: white; }
+.metric-tabs button.active { color: white; }
+.metric-tabs button.active::after {
+  content: "";
+  position: absolute;
+  left: 18px;
+  right: 18px;
+  bottom: -1px;
+  height: 2px;
+  background: var(--wr-red);
+}
+.metric-tabs .spacer { flex: 1; }
+.metric-tabs .legend {
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 0;
+  font: 400 11px/1 "Plus Jakarta Sans", sans-serif;
+  color: var(--text-faint, #6b6b70);
+  letter-spacing: 0.04em;
+}
+.metric-tabs .legend-item { display: inline-flex; align-items: center; gap: 6px; }
+.metric-tabs .legend-item .swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+/* ── Tier list ───────────────────────────────────────────────── */
+.tier-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.tier-row {
+  display: grid;
+  grid-template-columns: 96px 1fr;
+  gap: 0;
+  background: var(--wr-panel);
+  border: 1px solid var(--wr-border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.tier-band {
+  background: var(--tier-color);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #0a0a0b;
+  text-align: center;
+  padding: 16px 8px;
+  position: relative;
+  flex-shrink: 0;
+}
+.tier-band::after {
+  content: "";
+  position: absolute;
+  right: -1px;
+  top: 0;
+  bottom: 0;
+  width: 8px;
+  background: linear-gradient(to right, var(--tier-color), transparent);
+}
+.tier-band .label {
+  font: 800 38px/1 "Plus Jakarta Sans", sans-serif;
+  letter-spacing: -0.04em;
+}
+.tier-band .count {
+  margin-top: 8px;
+  font: 700 10px/1 "Plus Jakarta Sans", sans-serif;
+  letter-spacing: 0.1em;
+  color: rgba(0,0,0,0.65);
+}
+
+/* Tiers C e D têm fundo escuro — texto branco */
+.tier-row[data-tier="d"] .tier-band { color: #fff; }
+.tier-row[data-tier="d"] .tier-band .count { color: rgba(255,255,255,0.6); }
+.tier-row[data-tier="c"] .tier-band { color: #fff; }
+.tier-row[data-tier="c"] .tier-band .count { color: rgba(255,255,255,0.7); }
+
+/* Vincula a var --tier-color por data-tier */
+.tier-row[data-tier="splus"] { --tier-color: var(--wr-tier-splus); }
+.tier-row[data-tier="s"]     { --tier-color: var(--wr-tier-s); }
+.tier-row[data-tier="a"]     { --tier-color: var(--wr-tier-a); }
+.tier-row[data-tier="b"]     { --tier-color: var(--wr-tier-b); }
+.tier-row[data-tier="c"]     { --tier-color: var(--wr-tier-c); }
+.tier-row[data-tier="d"]     { --tier-color: var(--wr-tier-d); }
+
+.tier-cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 16px 18px;
+  align-content: center;
+}
+
+/* ── Card de campeão ─────────────────────────────────────────── */
+.champ-card {
+  width: 96px;
+  background: var(--wr-panel-3);
+  border: 1px solid var(--wr-border);
+  border-radius: 6px;
+  padding: 8px;
+  text-align: center;
+  cursor: pointer;
+  transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  position: relative;
+}
+.champ-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--tier-color, var(--wr-purple));
+  background: #2a2a30;
+}
+.champ-card .ch-rank {
+  position: absolute;
+  left: 6px;
+  top: 6px;
+  background: rgba(0,0,0,0.6);
+  color: white;
+  font: 700 9px/1 "Plus Jakarta Sans", sans-serif;
+  padding: 3px 5px;
+  border-radius: 3px;
+  letter-spacing: 0.04em;
+}
+.champ-card .ch-avatar {
+  width: 56px;
+  height: 56px;
+  margin: 6px auto 0 auto;
+  border-radius: 6px;
+  background: radial-gradient(circle at 30% 30%, var(--c2, #ff7af0), var(--c1, #5a1f8c) 70%);
+  border: 1px solid rgba(255,255,255,0.08);
+  position: relative;
+  overflow: hidden;
+}
+.champ-card .ch-avatar::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 50% 35%, rgba(255,255,255,0.22), transparent 55%);
+}
+.champ-card .ch-name {
+  font: 700 12px/1.1 "Plus Jakarta Sans", sans-serif;
+  color: white;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.champ-card .ch-stat {
+  font: 800 13px/1 "Plus Jakarta Sans", sans-serif;
+  color: var(--tier-color, var(--wr-purple));
+  letter-spacing: 0.02em;
+}
+.champ-card .ch-sub {
+  font: 600 9px/1 "Plus Jakarta Sans", sans-serif;
+  color: var(--text-faint, #6b6b70);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* ── Painel de detalhe ───────────────────────────────────────── */
+.panel.detail {
+  margin-top: 32px;
+  background: var(--wr-panel);
+  border: 1px solid var(--wr-border);
+  border-radius: 6px;
+  padding: 22px 28px;
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr) auto;
+  gap: 22px;
+  align-items: center;
+}
+.detail .d-av {
+  width: 96px;
+  height: 96px;
+  border-radius: 8px;
+  background: radial-gradient(circle at 30% 30%, var(--c2, #ff7af0), var(--c1, #5a1f8c) 70%);
+  border: 1px solid rgba(255,255,255,0.1);
+  position: relative;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.detail .d-av::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 50% 35%, rgba(255,255,255,0.22), transparent 55%);
+}
+.detail h2 {
+  margin: 0 0 6px 0;
+  font: 800 28px/1 "Plus Jakarta Sans", sans-serif;
+}
+.detail .d-meta {
+  color: var(--text-dim, #acacac);
+  font: 400 13px/1 "Plus Jakarta Sans", sans-serif;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.detail .d-tier {
+  font: 800 11px/1 "Plus Jakarta Sans", sans-serif;
+  padding: 4px 8px;
+  border-radius: 3px;
+  letter-spacing: 0.08em;
+}
+.detail .d-stats {
+  display: flex;
+  gap: 32px;
+}
+.detail .d-stat { text-align: right; }
+.detail .d-stat .v {
+  font: 800 24px/1 "Plus Jakarta Sans", sans-serif;
+  margin-bottom: 4px;
+}
+.detail .d-stat .v.cyan   { color: #48d9d9; }
+.detail .d-stat .v.blue   { color: #4a78ff; }
+.detail .d-stat .v.orange { color: #ff9a3a; }
+.detail .d-stat .v.pink   { color: var(--wr-pink); }
+.detail .d-stat .l {
+  font: 600 9px/1 "Plus Jakarta Sans", sans-serif;
+  color: var(--text-faint, #6b6b70);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+/* ── View de tabela ──────────────────────────────────────────── */
+.tbl.wr-table {
+  background: rgba(0,0,0,0.25);
+  border: 1px solid var(--wr-border);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.wr-row {
+  display: grid;
+  grid-template-columns:
+    80px
+    minmax(0, 1.6fr)
+    70px
+    minmax(0, 1fr)
+    minmax(0, 1fr)
+    minmax(0, 1fr)
+    minmax(0, 1.1fr)
+    minmax(0, 0.8fr)
+    minmax(0, 1fr);
+  gap: 8px;
+  padding: 12px 22px;
+  align-items: center;
+  border-bottom: 1px solid var(--wr-border);
+}
+.wr-row:last-child { border-bottom: none; }
+.wr-row.wr-head {
+  background: rgba(255,255,255,0.02);
+  font: 700 11px/1 "Plus Jakarta Sans", sans-serif;
+  color: var(--text-dim, #acacac);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.wr-row .wr-rank {
+  font: 200 22px/1 "Plus Jakarta Sans", sans-serif;
+  color: white;
+  text-align: center;
+}
+.wr-row .wr-champ { display: flex; align-items: center; gap: 12px; }
+.wr-row .wr-champ .av {
+  width: 30px;
+  height: 30px;
+  border-radius: 4px;
+  background: radial-gradient(circle at 30% 30%, var(--c2, #ff7af0), var(--c1, #5a1f8c) 70%);
+  border: 1px solid rgba(255,255,255,0.08);
+  flex-shrink: 0;
+}
+.wr-row .wr-champ span {
+  font: 700 14px/1 "Plus Jakarta Sans", sans-serif;
+}
+
+/* Chips de tier na tabela */
+.tier-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 26px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 4px;
+  font: 800 12px/1 "Plus Jakarta Sans", sans-serif;
+  color: #0a0a0b;
+  letter-spacing: -0.02em;
+}
+.tier-chip[data-tier="splus"] { background: var(--wr-tier-splus); color: #0a0a0b; }
+.tier-chip[data-tier="s"]     { background: var(--wr-tier-s); color: white; }
+.tier-chip[data-tier="a"]     { background: var(--wr-tier-a); color: white; }
+.tier-chip[data-tier="b"]     { background: var(--wr-tier-b); color: #0a0a0b; }
+.tier-chip[data-tier="c"]     { background: var(--wr-tier-c); color: white; }
+.tier-chip[data-tier="d"]     { background: var(--wr-tier-d); color: white; }
+
+/* Stat + barra tracejada colorida */
+.wr-stat {
+  font: 700 15px/1 "Plus Jakarta Sans", sans-serif;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.wr-stat .bar {
+  height: 2px;
+  width: 70%;
+  background-image: linear-gradient(to right, var(--bar-c, #48d9d9) 0 6px, transparent 6px 9px);
+  background-size: 9px 100%;
+  background-repeat: repeat-x;
+}
+.wr-stat .bar.cyan   { --bar-c: #48d9d9; }
+.wr-stat .bar.blue   { --bar-c: #4a78ff; }
+.wr-stat .bar.orange { --bar-c: #ff9a3a; }
+.wr-stat .bar.purple { --bar-c: #9b5cff; }
+.wr-stat .bar.yellow { --bar-c: #d4c43a; }
+
+/* ── Sidebar ─────────────────────────────────────────────────── */
+.wr-sidebar {
+  background: var(--wr-panel-2);
+  border-left: 1px solid var(--wr-border);
+  padding: 28px 22px;
+  position: sticky;
+  top: 0;
+  align-self: start;
+  max-height: 100vh;
+  overflow-y: auto;
+  z-index: 4;
+  scrollbar-width: thin;
+  scrollbar-color: var(--wr-border) transparent;
+}
+.wr-sidebar::-webkit-scrollbar { width: 6px; }
+.wr-sidebar::-webkit-scrollbar-thumb { background: var(--wr-border); border-radius: 3px; }
+
+/* Seções da sidebar */
+.wr-side-h {
+  font: 700 11px/1 "Plus Jakarta Sans", sans-serif;
+  letter-spacing: 0.1em;
+  color: white;
+  margin: 18px 0 10px 0;
+  text-transform: uppercase;
+}
+.wr-side-h:first-child { margin-top: 0; }
+
+/* ── Responsivo ──────────────────────────────────────────────── */
+@media (max-width: 1280px) {
+  .wr-page {
+    grid-template-columns: 1fr;
+  }
+  .wr-sidebar {
+    display: none; /* sidebar fica oculta em telas menores */
+  }
+  .lb-filters {
+    grid-template-columns: 1fr;
+  }
+  .role-chips { justify-content: flex-start; }
+  .panel.detail {
+    grid-template-columns: 80px 1fr;
+  }
+  .detail .d-stats {
+    grid-column: 1 / -1;
+    justify-content: space-between;
+    gap: 12px;
+  }
+}

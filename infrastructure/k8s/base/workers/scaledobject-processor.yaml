@@ -1,0 +1,114 @@
+# KEDA ScaledObjects — event-driven autoscaling of the processor pools on Redis
+# queue depth (proposal §10.4: "Scale from 2 → 20 workers when queue depth
+# exceeds 500 matches; scale back to minimum after 5 minutes of idle queue").
+#
+# arq stores queued jobs as a Redis LIST named by the queue. KEDA's `redis`
+# scaler reads LLEN of that list. `listLength` is the *target per replica*: KEDA
+# computes desiredReplicas = ceil(LLEN / listLength). With listLength=500 and a
+# backlog of 10k, KEDA wants 20 replicas (capped by maxReplicaCount).
+#
+# REQUIRES: KEDA installed in-cluster (keda-operator). The `TriggerAuthentication`
+# pulls the Redis password from the same Secret the workers use.
+---
+apiVersion: keda.sh/v1alpha1
+kind: TriggerAuthentication
+metadata:
+  name: redis-auth
+  namespace: processing
+  labels:
+    app.kubernetes.io/part-of: arenarank
+spec:
+  secretTargetRef:
+    - parameter: password
+      name: arenarank-secrets
+      key: REDIS_URL # NOTE: scaler reads host/port from trigger metadata; the
+      # password parameter is optional when REDIS_URL embeds creds. Kept for
+      # clusters that pass an explicit REDIS_PASSWORD secret key instead.
+---
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: processor-priority
+  namespace: processing
+  labels:
+    app.kubernetes.io/part-of: arenarank
+    arenarank.io/lane: priority
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: processor-priority
+  minReplicaCount: 2
+  maxReplicaCount: 20
+  pollingInterval: 15 # seconds between LLEN checks
+  cooldownPeriod: 300 # 5 min idle before scaling to minReplicaCount (§10.4)
+  advanced:
+    horizontalPodAutoscalerConfig:
+      behavior:
+        scaleUp:
+          stabilizationWindowSeconds: 0
+          policies:
+            - type: Percent
+              value: 100
+              periodSeconds: 15
+        scaleDown:
+          stabilizationWindowSeconds: 300
+          policies:
+            - type: Pods
+              value: 2
+              periodSeconds: 60
+  triggers:
+    - type: redis
+      metadata:
+        # ElastiCache primary endpoint. address = host:port. For cluster mode
+        # use the `redis-cluster` scaler type instead and `addresses`.
+        address: arenarank-redis.data.svc.cluster.local:6379
+        listName: "arena:priority"
+        listLength: "500"
+        enableTLS: "false"
+        databaseIndex: "0"
+      authenticationRef:
+        name: redis-auth
+---
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: processor-standard
+  namespace: processing
+  labels:
+    app.kubernetes.io/part-of: arenarank
+    arenarank.io/lane: standard
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: processor-standard
+  minReplicaCount: 2
+  maxReplicaCount: 20
+  pollingInterval: 15
+  cooldownPeriod: 300
+  advanced:
+    horizontalPodAutoscalerConfig:
+      behavior:
+        scaleUp:
+          stabilizationWindowSeconds: 0
+          policies:
+            - type: Percent
+              value: 100
+              periodSeconds: 15
+        scaleDown:
+          stabilizationWindowSeconds: 300
+          policies:
+            - type: Pods
+              value: 2
+              periodSeconds: 60
+  triggers:
+    - type: redis
+      metadata:
+        address: arenarank-redis.data.svc.cluster.local:6379
+        listName: "arena:standard"
+        listLength: "500"
+        enableTLS: "false"
+        databaseIndex: "0"
+      authenticationRef:
+        name: redis-auth

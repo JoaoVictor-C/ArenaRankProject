@@ -1,0 +1,42 @@
+# Grafana datasource provisioning — Prometheus (metrics), Loki (logs), Tempo
+# (traces), wired so a traceId in a log links to its trace and a trace links back
+# to its logs and to RED metrics (proposal §14: unified observability).
+apiVersion: 1
+datasources:
+  - name: Prometheus
+    type: prometheus
+    uid: prometheus
+    access: proxy
+    url: http://prometheus.observability.svc.cluster.local:9090
+    isDefault: true
+    jsonData:
+      timeInterval: 15s
+
+  - name: Loki
+    type: loki
+    uid: loki
+    access: proxy
+    url: http://loki-gateway.observability.svc.cluster.local
+    jsonData:
+      derivedFields:
+        # Click a traceId in a log line → open the trace in Tempo.
+        - name: TraceID
+          matcherRegex: '"traceId":"(\w+)"'
+          url: "$${__value.raw}"
+          datasourceUid: tempo
+
+  - name: Tempo
+    type: tempo
+    uid: tempo
+    access: proxy
+    url: http://tempo-query-frontend.observability.svc.cluster.local:3100
+    jsonData:
+      tracesToLogsV2:
+        datasourceUid: loki
+        filterByTraceID: true
+      tracesToMetrics:
+        datasourceUid: prometheus
+      serviceMap:
+        datasourceUid: prometheus
+      nodeGraph:
+        enabled: true

@@ -1,0 +1,53 @@
+# Loki — Helm values for grafana/loki (scalable, S3-backed). Implements proposal
+# §14.3: structured JSON logs, 30-day hot retention, S3 chunk store (cold tier to
+# Glacier is handled by the S3 bucket lifecycle in the terraform s3 module).
+#
+# Install: helm upgrade --install loki grafana/loki -n observability -f loki-values.yaml
+loki:
+  auth_enabled: false
+  schemaConfig:
+    configs:
+      - from: "2024-01-01"
+        store: tsdb
+        object_store: s3
+        schema: v13
+        index:
+          prefix: loki_index_
+          period: 24h
+  limits_config:
+    retention_period: 720h # 30 days hot (§14.3)
+    reject_old_samples: true
+    reject_old_samples_max_age: 168h
+    max_query_series: 100000
+  compactor:
+    retention_enabled: true
+    delete_request_store: s3
+  storage:
+    type: s3
+    bucketNames:
+      chunks: arenarank-prod-loki-chunks
+      ruler: arenarank-prod-loki-ruler
+    s3:
+      region: us-east-1
+      # IRSA on the loki service account provides creds (no static keys).
+
+# Single-binary is fine for staging; SimpleScalable for prod throughput.
+deploymentMode: SimpleScalable
+
+read:
+  replicas: 2
+write:
+  replicas: 2
+backend:
+  replicas: 2
+
+# Promtail/Alloy ships the pods' structured JSON logs (level, service, traceId,
+# timestamp, message) — configured separately via the alloy/promtail chart.
+gateway:
+  enabled: true
+  replicas: 2
+
+serviceAccount:
+  create: true
+  annotations:
+    # eks.amazonaws.com/role-arn: arn:aws:iam::<acct>:role/arenarank-loki-irsa

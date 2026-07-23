@@ -1,0 +1,13 @@
+# Reverse proxy for the ArenaRank API, fronted by Cloudflare (proxied DNS).
+#
+# Cloudflare terminates the browser-facing TLS; it connects to this origin on
+# 443. With CF SSL/TLS mode "Full", a self-signed origin cert is accepted, so we
+# use Caddy's internal CA (`tls internal`) — public ACME (Let's Encrypt) can't
+# validate here because HTTP-01/TLS-ALPN challenges are intercepted by the CF
+# proxy. Caddy forwards X-Forwarded-* so the API (uvicorn --proxy-headers) sees
+# the real scheme/host.
+api.arenarank.lol {
+	tls internal
+	encode gzip
+	reverse_proxy api:8000
+}

@@ -1,0 +1,26 @@
+# Staging overrides — 25% prod scale (proposal §10.2).
+image:
+  tag: staging
+
+config:
+  environment: staging
+  corsOrigins: "https://staging.arenarank.gg"
+
+api:
+  replicas: 2
+  hpa:
+    minReplicas: 2
+    maxReplicas: 6
+  pdb:
+    minAvailable: 1
+  ingress:
+    host: api.staging.arenarank.gg
+
+workers:
+  processor:
+    priority:
+      minReplicas: 1
+      maxReplicas: 6
+    standard:
+      minReplicas: 1
+      maxReplicas: 6

@@ -1,0 +1,23 @@
+# Base kustomization — the full in-cluster app (namespaces, config, api, workers).
+# Overlays (staging/production) patch image, replicas, IRSA role-arns, and CORS.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+commonLabels:
+  app.kubernetes.io/part-of: arenarank
+  app.kubernetes.io/managed-by: kustomize
+
+resources:
+  - namespaces/namespaces.yaml
+  - config/configmap.yaml
+  - config/secret.yaml
+  - api/deployment.yaml
+  - api/service.yaml
+  - api/hpa.yaml
+  - api/ingress.yaml
+  - workers/deployment-processor.yaml
+  - workers/deployment-ingestion-scheduler.yaml
+  - workers/scaledobject-processor.yaml
+
+# The config/secret are namespaceless in the manifests by design (they need to
+# exist in BOTH api and processing). Overlays replicate them per namespace.

@@ -1,0 +1,14 @@
+# Observability namespace resources that ARE plain manifests (the OTel collector,
+# Prometheus rules, ServiceMonitor/PodMonitor). The exporters/agents installed via
+# Helm (Loki, Tempo, kube-prometheus-stack, Grafana) are applied with their charts
+# and the values files in this directory — they are NOT kustomize resources.
+#
+# Requires the Prometheus Operator + OTel CRDs to be installed first.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - otel/otel-collector.yaml
+  - prometheus/alert-rules.yaml
+  - prometheus/recording-rules.yaml
+  - prometheus/servicemonitor.yaml

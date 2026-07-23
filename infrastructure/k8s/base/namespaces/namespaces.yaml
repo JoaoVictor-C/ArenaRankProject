@@ -1,0 +1,51 @@
+# Namespace topology mirrors proposal §10.1:
+#   api           → api (+ admin) deployments, public read/admin surface
+#   processing    → ingestion / processor / scheduler arq worker pools
+#   data          → in-cluster stateful proxies (PgBouncer) + exporters; the
+#                   managed datastores (RDS/ElastiCache) live in AWS, but their
+#                   exporters and the connection-pooler run here
+#   observability → Prometheus, Grafana, Loki, Tempo, OTel collector, Alertmanager
+#
+# pod-security: enforce the `restricted` PSA profile everywhere — the workloads
+# run non-root, no privilege escalation, read-only-friendly. `data` is `baseline`
+# because PgBouncer/exporters may need a slightly looser profile.
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: api
+  labels:
+    app.kubernetes.io/part-of: arenarank
+    arenarank.io/tier: api
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/warn: restricted
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: processing
+  labels:
+    app.kubernetes.io/part-of: arenarank
+    arenarank.io/tier: processing
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/warn: restricted
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: data
+  labels:
+    app.kubernetes.io/part-of: arenarank
+    arenarank.io/tier: data
+    pod-security.kubernetes.io/enforce: baseline
+    pod-security.kubernetes.io/warn: baseline
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: observability
+  labels:
+    app.kubernetes.io/part-of: arenarank
+    arenarank.io/tier: observability
+    pod-security.kubernetes.io/enforce: baseline
+    pod-security.kubernetes.io/warn: baseline

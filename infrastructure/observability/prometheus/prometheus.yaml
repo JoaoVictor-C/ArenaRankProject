@@ -1,0 +1,74 @@
+# Standalone Prometheus config (for clusters NOT running the Prometheus Operator;
+# the operator path uses ServiceMonitor/PodMonitor instead). Uses Kubernetes SD
+# with the annotation-based scrape convention (prometheus.io/scrape) the app
+# Deployments set. Mount this as prometheus.yml; mount the rule files alongside.
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: arenarank
+    environment: production
+
+rule_files:
+  - /etc/prometheus/rules/alert-rules.yaml
+  - /etc/prometheus/rules/recording-rules.yaml
+
+alerting:
+  alertmanagers:
+    - kubernetes_sd_configs:
+        - role: endpoints
+          namespaces:
+            names: ["observability"]
+      relabel_configs:
+        - source_labels: [__meta_kubernetes_service_name]
+          regex: alertmanager
+          action: keep
+
+scrape_configs:
+  # arenarank pods (api + workers) via the prometheus.io/* annotations.
+  - job_name: arenarank-pods
+    kubernetes_sd_configs:
+      - role: pod
+        namespaces:
+          names: ["api", "processing"]
+    relabel_configs:
+      - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+        regex: "true"
+        action: keep
+      - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
+        target_label: __metrics_path__
+        regex: (.+)
+      - source_labels: [__address__, __meta_kubernetes_pod_annotation_prometheus_io_port]
+        regex: ([^:]+)(?::\d+)?;(\d+)
+        replacement: $1:$2
+        target_label: __address__
+      - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_name]
+        target_label: job
+      - source_labels: [__meta_kubernetes_namespace]
+        target_label: namespace
+      - source_labels: [__meta_kubernetes_pod_name]
+        target_label: pod
+
+  # kube-state-metrics (cluster object state).
+  - job_name: kube-state-metrics
+    kubernetes_sd_configs:
+      - role: endpoints
+        namespaces:
+          names: ["observability"]
+    relabel_configs:
+      - source_labels: [__meta_kubernetes_service_name]
+        regex: kube-state-metrics
+        action: keep
+
+  # Exporters (postgres_exporter, redis_exporter) discovered by service name.
+  - job_name: data-exporters
+    kubernetes_sd_configs:
+      - role: endpoints
+        namespaces:
+          names: ["data"]
+    relabel_configs:
+      - source_labels: [__meta_kubernetes_service_name]
+        regex: (postgres-exporter|redis-exporter)
+        action: keep
+      - source_labels: [__meta_kubernetes_service_name]
+        target_label: job

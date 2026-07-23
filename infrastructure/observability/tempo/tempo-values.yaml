@@ -1,0 +1,47 @@
+# Tempo — Helm values for grafana/tempo-distributed (proposal §14.4: OTLP traces,
+# end-to-end match waterfall ingestion → queue → processing → DB write). The OTel
+# collector exports here on :4317. S3-backed trace store with IRSA creds.
+#
+# Install: helm upgrade --install tempo grafana/tempo-distributed -n observability -f tempo-values.yaml
+traces:
+  otlp:
+    grpc:
+      enabled: true
+    http:
+      enabled: true
+
+storage:
+  trace:
+    backend: s3
+    s3:
+      bucket: arenarank-prod-tempo-traces
+      region: us-east-1
+      # IRSA on the tempo service account provides creds.
+
+# Retention: 14 days of traces (debugging window; longer than the 30-day log hot
+# tier is unnecessary for traces).
+compactor:
+  compaction:
+    block_retention: 336h
+
+distributor:
+  replicas: 2
+ingester:
+  replicas: 3
+querier:
+  replicas: 2
+queryFrontend:
+  replicas: 2
+
+# metricsGenerator turns spans into RED metrics (service graph) for Grafana.
+metricsGenerator:
+  enabled: true
+  config:
+    storage:
+      remote_write:
+        - url: http://prometheus.observability.svc.cluster.local:9090/api/v1/write
+
+serviceAccount:
+  create: true
+  annotations:
+    # eks.amazonaws.com/role-arn: arn:aws:iam::<acct>:role/arenarank-tempo-irsa

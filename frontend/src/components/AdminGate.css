@@ -1,0 +1,73 @@
+.admin-gate {
+  min-height: 60vh;
+  display: grid;
+  place-items: center;
+  padding: 48px 16px;
+}
+
+.admin-gate-checking {
+  margin: 0;
+  color: var(--text-dim, #9aa3b2);
+  font: 500 15px/1.4 "Plus Jakarta Sans", system-ui, sans-serif;
+}
+
+.admin-gate-card {
+  width: 100%;
+  max-width: 360px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 28px;
+  background: var(--surface, #16181d);
+  border: 1px solid var(--line, #262a31);
+  border-radius: var(--r-lg, 16px);
+  box-shadow: var(--shadow, 0 12px 40px rgba(0, 0, 0, 0.35));
+}
+
+.admin-gate-title {
+  margin: 0;
+  font: 700 20px/1.2 "Plus Jakarta Sans", system-ui, sans-serif;
+  color: var(--text, #eef1f7);
+}
+
+.admin-gate-sub {
+  margin: 0;
+  color: var(--text-dim, #9aa3b2);
+  font: 400 13px/1.5 "Plus Jakarta Sans", system-ui, sans-serif;
+}
+
+.admin-gate-input {
+  padding: 11px 13px;
+  color: var(--text, #eef1f7);
+  background: var(--surface-2, #1d2026);
+  border: 1px solid var(--line, #2a2f37);
+  border-radius: var(--r-md, 10px);
+  outline: none;
+  font: 500 14px/1 "Plus Jakarta Sans", system-ui, sans-serif;
+}
+
+.admin-gate-input:focus-visible {
+  border-color: var(--primary, #6aa0ff);
+}
+
+.admin-gate-error {
+  margin: 0;
+  color: var(--red, #ff6b6b);
+  font: 500 13px/1.4 "Plus Jakarta Sans", system-ui, sans-serif;
+}
+
+.admin-gate-btn {
+  margin-top: 4px;
+  padding: 11px 16px;
+  color: #07101f;
+  background: var(--primary, #6aa0ff);
+  border: none;
+  border-radius: var(--r-md, 10px);
+  cursor: pointer;
+  font: 700 14px/1 "Plus Jakarta Sans", system-ui, sans-serif;
+}
+
+.admin-gate-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}

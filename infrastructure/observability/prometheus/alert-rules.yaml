@@ -1,0 +1,150 @@
+# Prometheus alerting rules — a 1:1 implementation of proposal §14.2, using the
+# metric names defined in §14.1 (crs_* app metrics + exporter metrics). Packaged
+# as a PrometheusRule CR so the Prometheus Operator picks it up; the bare
+# `groups:` also loads via a classic Prometheus rule_files mount.
+#
+# Metric provenance:
+#   crs_*                     → app (api + workers) /metrics
+#   pg_*                      → postgres_exporter
+#   redis_*                   → redis_exporter
+#   up / kube_*               → kube-state-metrics / scrape targets
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: arenarank-alerts
+  namespace: observability
+  labels:
+    app.kubernetes.io/part-of: arenarank
+    release: kube-prometheus-stack # match the operator's ruleSelector
+spec:
+  groups:
+    - name: arenarank.processing
+      rules:
+        # §14.2 — Processing lag: queue depth > 50k for > 10 min (WARNING).
+        - alert: ProcessingLag
+          expr: sum(crs_queue_depth{queue=~"priority|standard"}) > 50000
+          for: 10m
+          labels:
+            severity: warning
+            team: processing
+          annotations:
+            summary: "Match queue backlog > 50k for 10m"
+            description: "Combined priority+standard queue depth is {{ $value }} (>50000) for 10m. See runbook dlq-backlog / scale processors."
+            runbook_url: "https://github.com/clesioalopes/arenarank-realoficial/blob/main/infrastructure/observability/runbooks/processing-lag.md"
+
+        # §14.2 — Processing stalled: no matches processed in > 15 min during an
+        # active season (CRITICAL). `crs_active_season_player_count > 0` proxies
+        # "active season".
+        - alert: ProcessingStalled
+          expr: |
+            increase(crs_matches_processed_total{outcome="success"}[15m]) == 0
+            and on() (max(crs_active_season_player_count) > 0)
+          for: 1m
+          labels:
+            severity: critical
+            team: processing
+          annotations:
+            summary: "No matches processed in 15m during an active season"
+            description: "crs_matches_processed_total has not advanced in 15m while a season is active. Pipeline likely stalled."
+            runbook_url: "https://github.com/clesioalopes/arenarank-realoficial/blob/main/infrastructure/observability/runbooks/processing-stalled.md"
+
+        # §14.2 — High DLQ rate: DLQ intake > 1% of processed in 5 min (WARNING).
+        - alert: HighDLQRate
+          expr: |
+            (
+              sum(increase(crs_matches_processed_total{outcome="failed"}[5m]))
+              /
+              clamp_min(sum(increase(crs_matches_processed_total[5m])), 1)
+            ) > 0.01
+          for: 5m
+          labels:
+            severity: warning
+            team: processing
+          annotations:
+            summary: "DLQ intake > 1% of processed (5m)"
+            description: "Failed/DLQ rate is {{ $value | humanizePercentage }} of processed matches over 5m."
+            runbook_url: "https://github.com/clesioalopes/arenarank-realoficial/blob/main/infrastructure/observability/runbooks/dlq-backlog.md"
+
+    - name: arenarank.api
+      rules:
+        # §14.2 — API error spike: 5xx rate > 1% over 2 min (CRITICAL).
+        - alert: APIErrorSpike
+          expr: |
+            (
+              sum(rate(http_requests_total{job="api",status=~"5.."}[2m]))
+              /
+              clamp_min(sum(rate(http_requests_total{job="api"}[2m])), 0.001)
+            ) > 0.01
+          for: 2m
+          labels:
+            severity: critical
+            team: api
+          annotations:
+            summary: "API 5xx rate > 1% over 2m"
+            description: "5xx error ratio is {{ $value | humanizePercentage }} for the api over 2m."
+            runbook_url: "https://github.com/clesioalopes/arenarank-realoficial/blob/main/infrastructure/observability/runbooks/api-error-spike.md"
+
+    - name: arenarank.leaderboard
+      rules:
+        # §14.2 — Leaderboard staleness: Top-1000 unupdated > 10 min (WARNING).
+        - alert: LeaderboardStaleness
+          expr: |
+            (time() - max(crs_leaderboard_last_refresh_timestamp_seconds)) > 600
+          for: 0m
+          labels:
+            severity: warning
+            team: api
+          annotations:
+            summary: "Top-1000 leaderboard stale > 10m"
+            description: "Leaderboard last refreshed {{ $value | humanizeDuration }} ago (>10m)."
+            runbook_url: "https://github.com/clesioalopes/arenarank-realoficial/blob/main/infrastructure/observability/runbooks/leaderboard-freeze.md"
+
+    - name: arenarank.infra
+      rules:
+        # §14.2 — DB replication lag > 5s (WARNING).
+        - alert: DBReplicationLag
+          expr: pg_replication_lag_seconds > 5
+          for: 2m
+          labels:
+            severity: warning
+            team: data
+          annotations:
+            summary: "Postgres replication lag > 5s"
+            description: "Replica lag is {{ $value }}s (>5s) on {{ $labels.instance }}."
+            runbook_url: "https://github.com/clesioalopes/arenarank-realoficial/blob/main/infrastructure/observability/runbooks/database-failover.md"
+
+        # §14.2 — Redis memory > 80% (WARNING).
+        - alert: RedisMemoryHigh
+          expr: |
+            (redis_memory_used_bytes / clamp_min(redis_memory_max_bytes, 1)) > 0.80
+          for: 5m
+          labels:
+            severity: warning
+            team: data
+          annotations:
+            summary: "Redis memory > 80%"
+            description: "Redis used memory is {{ $value | humanizePercentage }} of max on {{ $labels.instance }}."
+            runbook_url: "https://github.com/clesioalopes/arenarank-realoficial/blob/main/infrastructure/observability/runbooks/redis-memory.md"
+
+        # Supporting: Riot API rate-limit pressure (not in §14.2 table but feeds
+        # the key-rotation runbook; informational).
+        - alert: RiotRateLimitHits
+          expr: increase(crs_riot_api_rate_limit_hits_total[5m]) > 0
+          for: 5m
+          labels:
+            severity: info
+            team: processing
+          annotations:
+            summary: "Riot API rate-limit hits in last 5m"
+            description: "{{ $value }} rate-limit (429) responses in 5m; ingestion is throttling."
+            runbook_url: "https://github.com/clesioalopes/arenarank-realoficial/blob/main/infrastructure/observability/runbooks/riot-key-rotation.md"
+
+        # Supporting: scrape target down.
+        - alert: TargetDown
+          expr: up == 0
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Scrape target down: {{ $labels.job }}/{{ $labels.instance }}"
+            description: "Prometheus has not scraped {{ $labels.job }} ({{ $labels.instance }}) for 5m."

@@ -1,0 +1,586 @@
+/* ============================================================
+   ArenaRank — camada de animação (compartilhada, site inteiro)
+   Portado fiel de arena-anim.css. Discreta, rápida, profissional.
+   Respeita prefers-reduced-motion e degrada com segurança.
+   ============================================================ */
+
+@media (prefers-reduced-motion: no-preference) {
+  /* ---------- estado inicial (escondido) ---------- */
+  html.ar-anim:not(.ar-anim-off)
+    :where(
+      .breadcrumb, .hero, .metrics-band, .sec, .cta,
+      .lb-top, .softlock, .podium, .lb-filters, .lb-table, .pager,
+      .rail-card, .panel, .tabs, .section-head, .tbl,
+      .doc-hero, .doc-sec, .mh, .standings, .grid2,
+      .title-block, .metrics, .panel-2col, .admin-h,
+      .steps, .features, .tourn-grid, .lbp, .form-row, .cards
+    ) {
+    opacity: 0;
+    transform: translateY(28px) scale(0.975);
+    filter: blur(7px);
+    transition:
+      opacity 0.7s cubic-bezier(0.16, 0.84, 0.44, 1),
+      transform 0.8s cubic-bezier(0.16, 0.84, 0.44, 1),
+      filter 0.7s cubic-bezier(0.16, 0.84, 0.44, 1);
+  }
+
+  /* ---------- entrada do cromo da página ---------- */
+  html.ar-anim:not(.ar-anim-off) .top-bar {
+    animation: ar-drop 0.55s cubic-bezier(0.16, 0.84, 0.44, 1) both;
+  }
+  html.ar-anim:not(.ar-anim-off) .top-bar .logo {
+    animation: ar-fade 0.6s ease 0.08s both;
+  }
+  html.ar-anim:not(.ar-anim-off) .top-bar .top-nav a {
+    animation: ar-fade 0.5s ease both;
+  }
+  html.ar-anim:not(.ar-anim-off) .top-bar .top-nav a:nth-child(1) {
+    animation-delay: 0.12s;
+  }
+  html.ar-anim:not(.ar-anim-off) .top-bar .top-nav a:nth-child(2) {
+    animation-delay: 0.17s;
+  }
+  html.ar-anim:not(.ar-anim-off) .top-bar .top-nav a:nth-child(3) {
+    animation-delay: 0.22s;
+  }
+  html.ar-anim:not(.ar-anim-off) .top-bar .top-nav a:nth-child(4) {
+    animation-delay: 0.27s;
+  }
+  html.ar-anim:not(.ar-anim-off) .top-bar .hdr-right {
+    animation: ar-fade 0.6s ease 0.2s both;
+  }
+
+  html:not(.ar-anim-off) .blob-wrap {
+    animation: ar-blob 26s ease-in-out infinite alternate;
+  }
+}
+
+@keyframes ar-drop {
+  from {
+    opacity: 0;
+    transform: translateY(-12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes ar-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes ar-blob {
+  from {
+    transform: translateX(-50%) translateY(0) scale(1);
+  }
+  to {
+    transform: translateX(-47%) translateY(14px) scale(1.06);
+  }
+}
+
+/* ============================================================
+   TOQUES EXTRAVAGANTES (gradientes vivos, flutuação, brilho)
+   ============================================================ */
+@media (prefers-reduced-motion: no-preference) {
+  html:not(.ar-anim-off) {
+    --ar-shine: linear-gradient(
+      100deg,
+      var(--gold) 0%,
+      var(--gold-bright) 30%,
+      #fff6e0 48%,
+      var(--gold-bright) 66%,
+      var(--gold) 100%
+    );
+  }
+  html:not(.ar-anim-off) .hero-copy h1 .g {
+    background: var(--ar-shine);
+    background-size: 260% 100%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+    animation: ar-shine 7s linear infinite;
+  }
+  @keyframes ar-shine {
+    to {
+      background-position: -260% 0;
+    }
+  }
+
+  html:not(.ar-anim-off) .eyebrow {
+    position: relative;
+  }
+  html:not(.ar-anim-off) .hero .eyebrow::after,
+  html:not(.ar-anim-off) .sec-top .eyebrow::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: -5px;
+    height: 2px;
+    background: linear-gradient(90deg, var(--primary), transparent);
+    transform-origin: left;
+    animation: ar-eyebrow 4s ease-in-out infinite;
+  }
+  @keyframes ar-eyebrow {
+    0%,
+    100% {
+      transform: scaleX(0.4);
+      opacity: 0.5;
+    }
+    50% {
+      transform: scaleX(1);
+      opacity: 1;
+    }
+  }
+
+  html:not(.ar-anim-off) .rc-float {
+    animation: ar-bob 4.5s ease-in-out infinite;
+  }
+  @keyframes ar-bob {
+    0%,
+    100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-8px);
+    }
+  }
+
+  .feat,
+  .tcard,
+  .step,
+  .pod,
+  .rank-card {
+    transform-style: preserve-3d;
+    will-change: transform;
+  }
+  .feat,
+  .tcard,
+  .step {
+    transition:
+      transform 0.25s cubic-bezier(0.16, 0.84, 0.44, 1),
+      box-shadow 0.25s ease,
+      border-color 0.2s ease;
+  }
+}
+
+/* ============================================================
+   PÓDIO TOP 3 — líquido/óleo fluorescente (cor do ícone do invocador)
+   ============================================================ */
+.pod {
+  position: relative;
+}
+.pod > *:not(.pod-fx) {
+  position: relative;
+  z-index: 1;
+}
+.pod-fx {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+  border-radius: inherit;
+  background: linear-gradient(
+    155deg,
+    color-mix(in srgb, var(--pc1, #2f9bd6) 60%, #06070a),
+    color-mix(in srgb, var(--pc2, #4cb6ec) 40%, #06070a) 60%,
+    color-mix(in srgb, var(--pc1, #2f9bd6) 50%, #06070a)
+  );
+}
+.pod-fx b {
+  position: absolute;
+  left: -25%;
+  top: -25%;
+  width: 150%;
+  height: 150%;
+  will-change: transform;
+  background: radial-gradient(
+    var(--sz, 52%) var(--sz, 52%) at var(--x, 50%) var(--y, 50%),
+    var(--c, #4cb6ec) 0%,
+    color-mix(in srgb, var(--c, #4cb6ec) 30%, transparent) 46%,
+    transparent 72%
+  );
+  mix-blend-mode: screen;
+  opacity: 0.72;
+}
+@media (prefers-reduced-motion: no-preference) {
+  html:not(.ar-anim-off) .pod-fx {
+    filter: blur(18px) saturate(1.22) contrast(1.05);
+  }
+  html:not(.ar-anim-off) .pod-fx b {
+    animation: var(--anim, ar-fl-a) var(--d, 24s) ease-in-out infinite var(--dl, 0s) alternate;
+  }
+  @keyframes ar-fl-a {
+    0% {
+      transform: translate(0, 0) scale(1);
+    }
+    50% {
+      transform: translate(7%, 9%) scale(1.12) rotate(6deg);
+    }
+    100% {
+      transform: translate(-6%, 5%) scale(0.95) rotate(-4deg);
+    }
+  }
+  @keyframes ar-fl-b {
+    0% {
+      transform: translate(0, 0) scale(1.06);
+    }
+    50% {
+      transform: translate(-9%, 7%) scale(0.93) rotate(-7deg);
+    }
+    100% {
+      transform: translate(6%, -7%) scale(1.1) rotate(5deg);
+    }
+  }
+  @keyframes ar-fl-c {
+    0% {
+      transform: translate(0, 0) scale(0.97);
+    }
+    50% {
+      transform: translate(8%, -8%) scale(1.1) rotate(8deg);
+    }
+    100% {
+      transform: translate(-7%, -4%) scale(1.02) rotate(-6deg);
+    }
+  }
+  @keyframes ar-fl-d {
+    0% {
+      transform: translate(0, 0) scale(1.08);
+    }
+    50% {
+      transform: translate(-6%, -9%) scale(0.94) rotate(-5deg);
+    }
+    100% {
+      transform: translate(9%, 6%) scale(1.12) rotate(7deg);
+    }
+  }
+}
+
+/* ---- borda soft-gloss / beveled ---- */
+.pod,
+.pod .punit {
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.34),
+    inset 0 -1px 1px rgba(0, 0, 0, 0.3),
+    inset 1px 0 0 rgba(255, 255, 255, 0.08),
+    0 6px 18px rgba(0, 0, 0, 0.34);
+}
+.pod .punit {
+  position: relative;
+}
+.pod .punit::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: 2;
+  background: linear-gradient(
+    125deg,
+    rgba(255, 255, 255, 0.48) 0%,
+    rgba(255, 255, 255, 0.12) 15%,
+    transparent 34%,
+    transparent 86%,
+    rgba(0, 0, 0, 0.16) 100%
+  );
+}
+.pod .punit .sheen {
+  z-index: 3;
+}
+
+/* ---- número da posição: degradê ouro/prata/bronze com ângulo animado ---- */
+@property --pa {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 90deg;
+}
+.pod-rank {
+  flex: none;
+  font: 800 27px/1 "Plus Jakarta Sans";
+  letter-spacing: -0.03em;
+  background: linear-gradient(
+    var(--pa, 90deg),
+    var(--ra) 0%,
+    var(--rb) 38%,
+    var(--rhi) 50%,
+    var(--rb) 62%,
+    var(--ra) 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  text-shadow: none;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.5));
+}
+.pod-rank.m1 {
+  --ra: #b9842b;
+  --rb: #e9c161;
+  --rhi: #fff1c4;
+}
+.pod-rank.m2 {
+  --ra: #767f8e;
+  --rb: #c2cad6;
+  --rhi: #ffffff;
+}
+.pod-rank.m3 {
+  --ra: #9a5526;
+  --rb: #d6884a;
+  --rhi: #ffd6ad;
+}
+@media (prefers-reduced-motion: no-preference) {
+  html:not(.ar-anim-off) .pod-rank {
+    animation: ar-rank-rot 4.5s linear infinite;
+  }
+}
+@keyframes ar-rank-rot {
+  to {
+    --pa: 450deg;
+  }
+}
+
+/* ============================================================
+   GRÁFICO DE BARRAS ARREDONDADAS (anima ao revelar)
+   ============================================================ */
+.ar-chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 7px;
+  height: 132px;
+  padding-top: 6px;
+}
+.ar-chart .ar-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 7px;
+  height: 100%;
+  min-width: 0;
+}
+.ar-chart .ar-bar-track {
+  width: 100%;
+  flex: 1;
+  display: flex;
+  align-items: flex-end;
+}
+.ar-chart .ar-bar {
+  width: 100%;
+  height: 0;
+  border-radius: 7px 7px 4px 4px;
+  background: linear-gradient(180deg, var(--primary-bright), var(--primary));
+  transition: height 0.9s cubic-bezier(0.16, 0.84, 0.44, 1);
+  position: relative;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.04) inset;
+}
+.ar-chart .ar-col.hi .ar-bar {
+  background: linear-gradient(180deg, var(--gold-bright), var(--gold));
+}
+.ar-chart .ar-bar .ar-val {
+  position: absolute;
+  top: -17px;
+  left: 50%;
+  transform: translateX(-50%);
+  font: 800 10px/1 "Plus Jakarta Sans", sans-serif;
+  color: var(--text-dim);
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity 0.4s ease 0.5s;
+}
+.ar-chart .ar-col.hi .ar-bar .ar-val {
+  color: var(--gold-bright);
+}
+.ar-chart.ar-shown .ar-bar .ar-val {
+  opacity: 1;
+}
+.ar-chart .ar-xlbl {
+  font: 700 9px/1 "Plus Jakarta Sans", sans-serif;
+  color: var(--text-faint);
+  letter-spacing: 0.02em;
+}
+
+/* ============================================================
+   MICRO-INTERAÇÕES (sempre ativas, exceto reduced-motion)
+   ============================================================ */
+@media (prefers-reduced-motion: no-preference) {
+  .btn {
+    transition:
+      transform 0.15s ease,
+      filter 0.15s ease,
+      background 0.15s ease,
+      border-color 0.15s ease,
+      box-shadow 0.15s ease;
+  }
+  .btn:hover {
+    transform: translateY(-1px);
+  }
+  .btn:active {
+    transform: translateY(1px) scale(0.99);
+  }
+  .btn.primary:hover {
+    box-shadow: 0 8px 20px rgba(47, 155, 214, 0.28);
+  }
+
+  .pro-pill {
+    transition:
+      background 0.18s ease,
+      transform 0.15s ease,
+      box-shadow 0.18s ease;
+  }
+  .pro-pill:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(217, 178, 95, 0.18);
+  }
+
+  .chip {
+    transition:
+      transform 0.15s ease,
+      color 0.15s ease,
+      background 0.15s ease,
+      border-color 0.15s ease;
+  }
+  .chip:hover {
+    transform: translateY(-1px);
+  }
+  .chip:active {
+    transform: translateY(0) scale(0.97);
+  }
+  .tab {
+    transition:
+      color 0.15s ease,
+      border-color 0.2s ease;
+  }
+
+  nav.top-nav a::after {
+    content: "";
+    position: absolute;
+    left: 17px;
+    right: 17px;
+    bottom: -19px;
+    height: 2px;
+    background: var(--primary);
+    border-radius: 2px;
+    transform: scaleX(0);
+    transform-origin: left center;
+    transition: transform 0.26s cubic-bezier(0.16, 0.84, 0.44, 1);
+  }
+  .two-tier nav.top-nav a::after {
+    bottom: -19px;
+  }
+  nav.top-nav a:hover::after {
+    transform: scaleX(1);
+  }
+  nav.top-nav a[aria-current="page"]::after {
+    transform: scaleX(1);
+  }
+
+  .see-all {
+    transition:
+      transform 0.18s ease,
+      color 0.15s ease;
+    display: inline-flex;
+  }
+  .see-all:hover {
+    transform: translateX(3px);
+  }
+
+  .pavatar,
+  .ch-icon {
+    transition:
+      transform 0.2s ease,
+      border-color 0.2s ease;
+  }
+  .hdr-profile:hover .pavatar {
+    transform: scale(1.06);
+  }
+  a:hover > .ch-icon,
+  .feat:hover .ic,
+  .step:hover .n {
+    transform: scale(1.06);
+  }
+  .feat .ic,
+  .step .n {
+    transition: transform 0.2s ease;
+  }
+
+  .tbl .row,
+  .lbp-row,
+  .lb-table .row {
+    transition:
+      background 0.15s ease,
+      box-shadow 0.15s ease;
+  }
+
+  .hdr-search,
+  .search-big .field,
+  .lb-search input,
+  input[type="text"],
+  input[type="search"] {
+    transition:
+      border-color 0.2s ease,
+      box-shadow 0.2s ease,
+      background 0.2s ease;
+  }
+  .hdr-search:focus-within,
+  .search-big .field:focus-within {
+    box-shadow: 0 0 0 3px var(--primary-dim);
+  }
+  input[type="text"]:focus-visible,
+  input[type="search"]:focus-visible {
+    box-shadow: 0 0 0 3px var(--primary-dim);
+  }
+
+  .btn.gold,
+  .badge.pro,
+  .badge.tier-top1 {
+    position: relative;
+    overflow: hidden;
+  }
+  .btn.gold::after,
+  .badge.pro::after,
+  .badge.tier-top1::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(110deg, transparent 35%, rgba(255, 255, 255, 0.5) 50%, transparent 65%);
+    transform: translateX(-130%);
+    transition: transform 0.7s ease;
+    pointer-events: none;
+  }
+  .btn.gold:hover::after,
+  .badge.pro:hover::after,
+  .badge.tier-top1:hover::after {
+    transform: translateX(130%);
+  }
+
+  .pbar > span {
+    transition: width 1.1s cubic-bezier(0.16, 0.84, 0.44, 1);
+  }
+  .bar {
+    transition: width 1.1s cubic-bezier(0.16, 0.84, 0.44, 1);
+  }
+}
+
+a:focus-visible,
+button:focus-visible,
+.chip:focus-visible,
+.tab:focus-visible {
+  outline: 2px solid var(--primary-bright);
+  outline-offset: 2px;
+}
+
+/* tweak "Animações: Desligadas" — corta todo o movimento */
+html.ar-anim-off *,
+html.ar-anim-off *::before,
+html.ar-anim-off *::after {
+  animation: none !important;
+  transition: none !important;
+}

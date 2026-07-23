@@ -1,0 +1,34 @@
+# ClusterIP service fronting the API pods. The AWS ALB Ingress (or Gateway API)
+# targets this service; TLS terminates at the ALB. Service is ClusterIP — never
+# expose pods directly.
+apiVersion: v1
+kind: Service
+metadata:
+  name: api
+  namespace: api
+  labels:
+    app.kubernetes.io/name: api
+    app.kubernetes.io/part-of: arenarank
+    app.kubernetes.io/component: web
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: api
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+      protocol: TCP
+---
+# ServiceAccount for the API. In AWS this is annotated for IRSA (S3 read for
+# season archives, etc.); the annotation is patched per-environment overlay.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: api
+  namespace: api
+  labels:
+    app.kubernetes.io/name: api
+    app.kubernetes.io/part-of: arenarank
+  # annotations:
+  #   eks.amazonaws.com/role-arn: arn:aws:iam::<acct>:role/arenarank-api-irsa

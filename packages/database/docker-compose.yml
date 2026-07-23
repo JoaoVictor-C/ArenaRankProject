@@ -1,0 +1,21 @@
+services:
+  db:
+    image: timescale/timescaledb-ha:pg16
+    container_name: crs-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: crs
+    ports:
+      - "5432:5432"
+    volumes:
+      - crs-db-data:/home/postgres/pgdata/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d crs"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+volumes:
+  crs-db-data:

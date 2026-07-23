@@ -1,0 +1,365 @@
+/* ============================================================
+   Sistema CR — estilos específicos da página "Como funciona"
+   Portado de "Sistema CR.html" <style>, versão enxugada.
+   (sem Planos, API Devs, Roadmap)
+   ============================================================ */
+
+.doc {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 0 36px;
+}
+
+/* ---------- HERO ---------- */
+.doc-hero {
+  position: relative;
+  z-index: 2;
+  padding: 52px 0 32px;
+  text-align: center;
+}
+.doc-hero .eyebrow {
+  display: block;
+  margin-bottom: 16px;
+}
+.doc-hero h1 {
+  margin: 0;
+  font: 800 38px/1.08 "Plus Jakarta Sans", sans-serif;
+  letter-spacing: -0.01em;
+  text-wrap: balance;
+}
+.doc-hero h1 .cr {
+  color: var(--gold-bright);
+}
+.doc-hero p {
+  max-width: 640px;
+  margin: 18px auto 0;
+  font: 400 16px/1.6 "Plus Jakarta Sans", sans-serif;
+  color: var(--text-dim);
+  text-wrap: pretty;
+}
+
+/* métricas do hero */
+.hero-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-top: 36px;
+}
+.hmetric {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  padding: 18px 16px;
+}
+.hmetric b {
+  font: 800 26px/1 "Plus Jakarta Sans", sans-serif;
+  display: block;
+  color: var(--gold-bright);
+}
+.hmetric span {
+  font: 600 11px/1.4 "Plus Jakarta Sans", sans-serif;
+  color: var(--text-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-top: 10px;
+  display: block;
+}
+
+/* ---------- SEÇÕES ---------- */
+.doc-sec {
+  position: relative;
+  z-index: 2;
+  padding: 44px 0;
+  border-top: 1px solid var(--border);
+}
+.doc-sec.first {
+  border-top: none;
+}
+
+.sec-head {
+  text-align: center;
+  margin-bottom: 32px;
+}
+.sec-head .eyebrow {
+  display: block;
+  margin-bottom: 12px;
+}
+.sec-head h2 {
+  margin: 0;
+  font: 800 26px/1.1 "Plus Jakarta Sans", sans-serif;
+  letter-spacing: -0.01em;
+}
+.sec-head p {
+  max-width: 600px;
+  margin: 14px auto 0;
+  font: 400 15px/1.6 "Plus Jakarta Sans", sans-serif;
+  color: var(--text-dim);
+}
+
+/* ---------- GRADE DE CARDS (Como o CR funciona) ---------- */
+.formula-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+.fcard {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.3);
+  padding: 26px;
+}
+.fcard h3 {
+  margin: 0 0 8px;
+  font: 800 18px/1.2 "Plus Jakarta Sans", sans-serif;
+}
+.fcard p {
+  margin: 0 0 18px;
+  font: 400 14px/1.6 "Plus Jakarta Sans", sans-serif;
+  color: var(--text-dim);
+}
+.ffact {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  font: 600 13px/1 "Plus Jakarta Sans", sans-serif;
+  color: var(--text-dim);
+  background: var(--primary-dim);
+  border: 1px solid rgba(47, 155, 214, 0.25);
+  border-radius: 8px;
+  padding: 11px 14px;
+}
+.ffact b {
+  font: 800 18px/1 "Plus Jakarta Sans", sans-serif;
+  color: var(--primary-bright);
+}
+
+/* ---------- MODIFICADORES ---------- */
+.mod-cards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+}
+.modc {
+  border: 1px solid var(--border);
+  border-radius: 11px;
+  background: rgba(0, 0, 0, 0.3);
+  padding: 20px;
+}
+.modc .ic {
+  width: 40px;
+  height: 40px;
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 19px;
+  background: var(--primary-dim);
+  margin-bottom: 14px;
+  color: var(--primary-bright);
+}
+.modc h4 {
+  margin: 0 0 7px;
+  font: 800 15px/1.2 "Plus Jakarta Sans", sans-serif;
+}
+.modc p {
+  margin: 0;
+  font: 400 13px/1.55 "Plus Jakarta Sans", sans-serif;
+  color: var(--text-dim);
+}
+
+/* ---------- INTEGRIDADE ---------- */
+.integ-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.integ-item {
+  display: grid;
+  grid-template-columns: 48px 1fr auto;
+  gap: 18px;
+  align-items: center;
+  border: 1px solid var(--border);
+  border-radius: 11px;
+  background: rgba(0, 0, 0, 0.3);
+  padding: 20px 24px;
+}
+.integ-item .ico {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  background: var(--red-dim);
+  color: var(--red);
+  flex: none;
+}
+.integ-item h4 {
+  margin: 0 0 6px;
+  font: 800 16px/1.2 "Plus Jakarta Sans", sans-serif;
+}
+.integ-item p {
+  margin: 0;
+  font: 400 13px/1.55 "Plus Jakarta Sans", sans-serif;
+  color: var(--text-dim);
+  max-width: 640px;
+}
+
+/* ---------- PIPELINE ---------- */
+.pipe {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  max-width: 760px;
+  margin: 0 auto;
+}
+.pstep {
+  display: grid;
+  grid-template-columns: 56px 1fr;
+  gap: 20px;
+}
+.pstep .num-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.pstep .num {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 2px solid var(--primary);
+  background: rgba(47, 155, 214, 0.12);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font: 800 16px/1 "Plus Jakarta Sans", sans-serif;
+  color: #7fd0ff;
+  flex: none;
+}
+.pstep .line {
+  width: 2px;
+  flex: 1;
+  background: var(--border);
+  min-height: 18px;
+}
+.pstep:last-child .line {
+  display: none;
+}
+.pstep .body {
+  padding-bottom: 22px;
+}
+.pstep h4 {
+  margin: 8px 0 6px;
+  font: 800 16px/1.2 "Plus Jakarta Sans", sans-serif;
+}
+.pstep p {
+  margin: 0;
+  font: 400 13px/1.55 "Plus Jakarta Sans", sans-serif;
+  color: var(--text-dim);
+}
+
+/* ---------- ARQUITETURA ---------- */
+.arch-layers {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.alayer {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px 22px;
+  background: rgba(0, 0, 0, 0.3);
+  display: grid;
+  grid-template-columns: 160px 1fr;
+  gap: 20px;
+  align-items: center;
+}
+.alayer .ln {
+  font: 800 13px/1.2 "Plus Jakarta Sans", sans-serif;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+.alayer .lc {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.alayer .tech {
+  font: 600 12px/1 "Plus Jakarta Sans", sans-serif;
+  padding: 7px 12px;
+  border-radius: 6px;
+  background: var(--panel-3);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+}
+
+/* ---------- CTA BAND ---------- */
+.cta-band {
+  text-align: center;
+  padding: 56px 0 30px;
+}
+.cta-band h2 {
+  margin: 0 0 14px;
+  font: 800 30px/1.1 "Plus Jakarta Sans", sans-serif;
+}
+.cta-band p {
+  margin: 0 auto 26px;
+  max-width: 540px;
+  color: var(--text-dim);
+  font: 400 16px/1.6 "Plus Jakarta Sans", sans-serif;
+}
+.cta-row {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+.btn-lg {
+  padding: 15px 30px;
+  font-size: 16px;
+  border-radius: 10px;
+}
+
+/* ---------- RESPONSIVO ---------- */
+@media (max-width: 1000px) {
+  .hero-metrics,
+  .mod-cards {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .formula-grid {
+    grid-template-columns: 1fr;
+  }
+  .doc-hero h1 {
+    font-size: 28px;
+  }
+  .alayer {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+  .integ-item {
+    grid-template-columns: 48px 1fr;
+  }
+  .integ-item .flag-col {
+    display: none;
+  }
+}
+@media (max-width: 600px) {
+  .doc {
+    padding: 0 18px;
+  }
+  .hero-metrics,
+  .mod-cards {
+    grid-template-columns: 1fr;
+  }
+  .integ-item {
+    grid-template-columns: 1fr;
+  }
+  .integ-item .ico {
+    display: none;
+  }
+  .cta-row {
+    flex-direction: column;
+    align-items: center;
+  }
+}

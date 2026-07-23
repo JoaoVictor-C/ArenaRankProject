@@ -1,0 +1,43 @@
+# Production overlay — pins the image to an ECR digest/tag (CI patches `newTag`),
+# applies prod CORS + IRSA roles, and keeps the base's HA replica floors.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../base
+
+images:
+  - name: ARENARANK_IMAGE
+    newName: 000000000000.dkr.ecr.us-east-1.amazonaws.com/arenarank-backend
+    newTag: latest # CI sets the immutable release tag / digest
+
+patches:
+  # Annotate the API ServiceAccount for IRSA (S3 read).
+  - target:
+      kind: ServiceAccount
+      name: api
+      namespace: api
+    patch: |
+      - op: add
+        path: /metadata/annotations
+        value:
+          eks.amazonaws.com/role-arn: arn:aws:iam::000000000000:role/arenarank-prod-api-irsa
+  # Annotate the worker ServiceAccount for IRSA (S3 archive writes).
+  - target:
+      kind: ServiceAccount
+      name: worker
+      namespace: processing
+    patch: |
+      - op: add
+        path: /metadata/annotations
+        value:
+          eks.amazonaws.com/role-arn: arn:aws:iam::000000000000:role/arenarank-prod-worker-irsa
+  # Attach the ACM cert to the ingress.
+  - target:
+      kind: Ingress
+      name: api
+      namespace: api
+    patch: |
+      - op: add
+        path: /metadata/annotations/alb.ingress.kubernetes.io~1certificate-arn
+        value: arn:aws:acm:us-east-1:000000000000:certificate/REPLACE

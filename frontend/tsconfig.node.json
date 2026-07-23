@@ -1,0 +1,15 @@
+{
+  "compilerOptions": {
+    "composite": true,
+    // emitDeclarationOnly: type-check vite.config.ts em `tsc -b` SEM emitir
+    // vite.config.js. Sem isso, o .js compilado sombreava o .ts (Vite carrega
+    // .js antes de .ts) e o proxy/dev ficava preso na config antiga.
+    "emitDeclarationOnly": true,
+    "skipLibCheck": true,
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "allowSyntheticDefaultImports": true,
+    "strict": true
+  },
+  "include": ["vite.config.ts"]
+}
