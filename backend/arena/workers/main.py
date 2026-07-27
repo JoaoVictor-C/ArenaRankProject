@@ -26,7 +26,7 @@ from arq import cron
 from arena.core.config import settings
 from arena.core.logging import configure_logging, get_logger
 from arena.workers import queues as Q
-from arena.workers.bulk_processor import bulk_process_tick
+from arena.workers.backfill import backfill_tick
 from arena.workers.deps import redis_settings
 from arena.workers.ingestion import poll_riot
 from arena.workers.processor import MAX_TRIES, process_match
@@ -142,20 +142,24 @@ class SchedulerWorker:
 
 
 # ---------------------------------------------------------------------------
-# Sweep + bulk-processor pools (cron-driven; each toggled via Redis enable flag
-# and independently start/stoppable as its own docker-compose service).
-# Intervals come from settings (env); each value must divide 60 evenly.
+# Sweep pools (cron-driven discovery; each toggled via Redis enable flag and
+# independently start/stoppable as its own docker-compose service). They
+# enqueue discovered match ids straight onto the arq queues above — processing
+# is PriorityWorker/StandardWorker's job, not the sweep's; there is no separate
+# drain step. Intervals come from settings (env); each value must divide 60.
 # ---------------------------------------------------------------------------
 
 
 class SweepWorker:
-    """Rotating sweep over ALL tracked players → standard pending lane.
+    """Rotating sweep over ALL tracked players → the standard arq queue.
 
     Also hosts the session re-arm tick (every minute): quick re-polls of
-    players whose match was just processed, feeding the priority lane; and the
+    players whose match was just processed, feeding the priority queue; the
     outage-reconciliation tick (every minute, no-op unless SchedulerWorker's
     heartbeat_tick flagged a gap), which runs one bounded catch-up sweep after
-    a restart instead of requiring a manual backfill.
+    a restart instead of requiring a manual backfill; and the new-player
+    backfill tick, which imports the history of accounts the write path has just
+    seen for the first time.
     """
 
     # Own queue so its cron jobs don't collide with the other cron workers
@@ -180,6 +184,13 @@ class SweepWorker:
             minute=set(range(60)),
             run_at_startup=True,
         ),
+        # New-player history import. Drains its own pending list, so a tick with
+        # nothing queued is two cheap Redis reads.
+        cron(
+            backfill_tick,
+            minute=set(range(0, 60, settings.backfill_interval_minutes)),
+            run_at_startup=True,
+        ),
     ]
     redis_settings = redis_settings()
     on_startup = staticmethod(_on_startup)
@@ -188,7 +199,7 @@ class SweepWorker:
 
 
 class PrioritySweepWorker:
-    """Sweep over Top-1000 + admin-selected players → priority pending lane."""
+    """Sweep over Top-1000 + admin-selected players → the priority arq queue."""
 
     queue_name = "arena:cron:priority_sweep"
     functions: list[Any] = []
@@ -205,24 +216,6 @@ class PrioritySweepWorker:
     health_check_interval = 30
 
 
-class BulkProcessorWorker:
-    """Drains the sweep pending lists (priority first) and runs process_match."""
-
-    queue_name = "arena:cron:bulk_processor"
-    functions: list[Any] = []
-    cron_jobs = [
-        cron(
-            bulk_process_tick,
-            minute=set(range(0, 60, settings.bulk_processor_interval_minutes)),
-            run_at_startup=True,
-        )
-    ]
-    redis_settings = redis_settings()
-    on_startup = staticmethod(_on_startup)
-    on_shutdown = staticmethod(_on_shutdown)
-    health_check_interval = 30
-
-
 __all__ = [
     "PriorityWorker",
     "StandardWorker",
@@ -230,5 +223,4 @@ __all__ = [
     "SchedulerWorker",
     "SweepWorker",
     "PrioritySweepWorker",
-    "BulkProcessorWorker",
 ]

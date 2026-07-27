@@ -8,8 +8,19 @@ import type {
   WorkerHealth,
 } from "./types";
 
-/** Workers that expose pause/resume + priority controls (Redis enable flag). */
-export const CONTROLLABLE = new Set(["sweep", "priority_sweep", "bulk_processor"]);
+/** Workers that expose pause/resume + priority controls (Redis enable flag).
+ *  Mirrors `PAUSABLE_WORKERS` in backend/arena/workers/queues.py — keep in sync
+ *  or a pausable worker renders as "somente leitura" here. Note: standard/
+ *  priority (StandardWorker/PriorityWorker) are deliberately absent — they are
+ *  continuous arq consumers, not cron-tick workers, and arq has no native
+ *  consumer-level pause, so they don't appear as LiveWorker rows at all. */
+export const CONTROLLABLE = new Set([
+  "sweep",
+  "priority_sweep",
+  "backfill",
+  "rearm",
+  "reconcile",
+]);
 
 function liveHealth(paused: boolean, active: boolean): WorkerHealth {
   if (paused) return "paused";
@@ -50,9 +61,6 @@ export function fromLive(snap: LiveSnapshot): Telemetry {
       priorityQueue: snap.pipeline.priorityQueue,
       standardQueue: snap.pipeline.standardQueue,
       dlq: snap.pipeline.dlq,
-      sweepPendingPriority: snap.pipeline.sweepPendingPriority,
-      sweepPendingStandard: snap.pipeline.sweepPendingStandard,
-      sweepAttemptsTracked: snap.pipeline.sweepAttemptsTracked,
       topPlayersPool: snap.pipeline.topPlayersPool,
       totalBacklog: snap.pipeline.totalBacklog,
     },
@@ -103,9 +111,6 @@ export function fromOverview(ov: AdminOverview, tsFallback: string): Telemetry {
       priorityQueue,
       standardQueue,
       dlq,
-      sweepPendingPriority: null,
-      sweepPendingStandard: null,
-      sweepAttemptsTracked: null,
       topPlayersPool: null,
       totalBacklog: priorityQueue + standardQueue,
     },

@@ -25,7 +25,7 @@ Identity that ties it together: `cr_delta = Δμ_final − 3·Δσ`.
 
 The engine math + production evidence were sent to the **Trinity** reasoning
 runtime (`F:\wn-lab\trinity\core`, profile `claw_max`, model opus,
-`--data-origin meta_validation`; brief in `backend/trinity_rating_brief.md`).
+`--data-origin meta_validation`; brief in `backend/docs/trinity/trinity_rating_brief.md`).
 Trinity returned a 6-change feature-flagged bundle optimized for a **live hot-fix
 with no reseed**. Because our situation is a full **re-rate of a dev season** (no
 live standings to preserve), we adopted Trinity's own *preferred, Bayesian-

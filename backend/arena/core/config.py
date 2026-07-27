@@ -52,9 +52,13 @@ class Settings(BaseSettings):
         description="Redis connection URL (cache, locks, arq queues, token bucket).",
     )
     db_pool_size: int = Field(
-        default=20,
+        default=30,
         description="SQLAlchemy async engine pool size. Should be >= a worker's "
-        "max_jobs so concurrent matches don't serialize on connections.",
+        "max_jobs so concurrent matches don't serialize on connections. NOTE: "
+        "this is a per-process ceiling, not the real one — "
+        "every worker service connects through pgbouncer-session, whose "
+        "DEFAULT_POOL_SIZE caps the entire worker tier. Raising this without "
+        "raising that just moves the queue from SQLAlchemy to PgBouncer.",
     )
     db_max_overflow: int = Field(
         default=10,
@@ -127,6 +131,38 @@ class Settings(BaseSettings):
         default=10.0,
         description="Refill window (seconds) for each match-v5 method bucket.",
     )
+    riot_bucket_headroom: float = Field(
+        default=0.90,
+        ge=0.05,
+        le=1.0,
+        description="Fração da capacidade anunciada pela Riot que o limiter "
+        "realmente gasta (0.90 = usa 1800 de um limite de 2000/10s). A margem "
+        "absorve o que o token bucket não enxerga: relógios levemente "
+        "dessincronizados entre workers, chamadas em voo quando uma réplica "
+        "sobe, e o próprio slack documentado no acquire multi-bucket. 1.0 mira "
+        "o limite exato — só faz sentido com uma única réplica.",
+    )
+    riot_http_max_connections: int = Field(
+        default=200,
+        description="Teto de conexões simultâneas do pool httpx do cliente Riot. "
+        "O default do httpx (100 total / 20 keepalive) vira gargalo silencioso "
+        "acima de ~20 chamadas concorrentes: as chamadas excedentes esperam por "
+        "uma conexão livre, o que parece latência da Riot e não saturação de "
+        "pool. Dimensione junto com sweep_fetch_concurrency e o max_jobs dos "
+        "consumidores StandardWorker/PriorityWorker.",
+    )
+    riot_http_max_keepalive: int = Field(
+        default=100,
+        description="Conexões mantidas vivas entre chamadas. Baixo demais e cada "
+        "requisição paga TLS handshake de novo contra a mesma origem.",
+    )
+    riot_penalty_enabled: bool = Field(
+        default=True,
+        description="Ao receber 429, drenar o bucket culpado (via X-Rate-Limit-Type) "
+        "pelo Retry-After em vez de deixar só o retry do chamador reagir. Sem isso "
+        "as outras corrotinas continuam gastando tokens que a Riot já recusou, e o "
+        "429 vira uma rajada em vez de um evento isolado.",
+    )
     riot_match_cache_ttl_seconds: int = Field(
         default=24 * 60 * 60,
         description="TTL (segundos) do cache de payloads de match no Redis "
@@ -147,6 +183,16 @@ class Settings(BaseSettings):
         "Example: 1784365200000 = 2026-07-18T09:00:00Z (06:00 BRT).",
     )
 
+    # --- Dev seed (arena/db/seed.py) --------------------------------------
+    seed_players: str = Field(
+        default="Presente#1001,CrazzyBoy#Br2",
+        description="Comma-separated Riot IDs (gameName#tagLine) the dev seed "
+        "registers as tracked players. Each is resolved to a real PUUID via "
+        "account-v1, so RIOT_API_KEY must be set for seeding to insert them; "
+        "without a key (or for an unknown Riot ID) the player is skipped with a "
+        "warning and the seed still succeeds. Empty => seed no players.",
+    )
+
     # --- Admin / operator auth -------------------------------------------
     admin_api_key: str = Field(
         default="",
@@ -156,8 +202,10 @@ class Settings(BaseSettings):
 
     # --- InfinitePay (tournament entry payments) -------------------------
     # Checkout Links API is handle-only (no client id/secret). The handle is a
-    # semi-public InfiniteTag; the webhook token is the actual secret. See
-    # docs/superpowers/specs/2026-07-21-infinitepay-inscricao-pix-design.md.
+    # semi-public InfiniteTag; the webhook token is the actual secret. This is
+    # Fatia 1 (admin test surface) only — see arena/api/routers/payments.py
+    # and arena/services/infinitepay.py; the original design doc isn't in
+    # this repo.
     infinitepay_handle: str = Field(
         default="",
         description="InfiniteTag (sem '$') usada na Checkout Links API. Empty => "
@@ -176,23 +224,17 @@ class Settings(BaseSettings):
         default=500,
         description="Taxa de inscrição por jogador, em centavos (R$5,00 = 500).",
     )
-    tournament_payment_ttl_s: int = Field(
-        default=300,
-        description="TTL (segundos) de um slot reservado não-pago antes de expirar (5 min).",
-    )
     public_base_url: str = Field(
         default="https://arenarank.lol",
         description="Base URL pública do app (frontend), usada p/ montar o redirect_url "
         "das cobranças InfinitePay. https válido (InfinitePay valida o formato na criação).",
     )
 
-    # --- Worker sweep + bulk-processor tuning ----------------------------
+    # --- Worker sweep tuning ----------------------------------------------
     sweep_interval_minutes: int = Field(
         default=5, description="Standard sweep tick interval (minutes). Must divide 60.")
     priority_sweep_interval_minutes: int = Field(
         default=5, description="Priority sweep tick interval (minutes). Must divide 60.")
-    bulk_processor_interval_minutes: int = Field(
-        default=2, description="Bulk processor tick interval (minutes). Must divide 60.")
     sweep_batch_size: int = Field(
         default=100, description="Tracked players fetched per standard sweep tick (DB page).")
     priority_sweep_batch_size: int = Field(
@@ -200,30 +242,15 @@ class Settings(BaseSettings):
     sweep_matches_per_player: int = Field(
         default=10, description="Riot match ids fetched per player per sweep tick.")
     sweep_fetch_concurrency: int = Field(
-        default=16,
+        default=32,
         description="Concurrent Riot id-list calls inside one sweep tick (local "
         "semaphore). The client's Redis token bucket remains the hard rate "
         "ceiling; this only stops serial awaits from leaving the budget idle.")
-    bulk_batch_size: int = Field(
-        default=50, description="Max match ids drained+processed per bulk processor tick.")
-    bulk_concurrency: int = Field(
-        default=10, description="Semaphore width for parallel process_match in a bulk tick.")
-    bulk_max_seconds_per_tick: int = Field(
-        default=45,
-        description="Wall-clock budget for draining the sweep pending lists in "
-        "ONE tick invocation. Without this, bulk_process_tick ran exactly one "
-        "bulk_batch_size batch per tick regardless of backlog size, capping "
-        "real throughput at bulk_batch_size / bulk_processor_interval_minutes "
-        "even though individual matches are I/O-bound and process far faster. "
-        "Now it loops batches back-to-back until the pending lists are empty "
-        "or this budget is spent. Keep comfortably under "
-        "bulk_processor_interval_minutes * 60 so the tick lock is released "
-        "before the next scheduled tick fires.",
-    )
     sweep_pending_high_watermark: int = Field(
         default=50_000,
-        description="Standard sweep holds when the combined sweep pending-list depth "
-        "reaches this (the sweep pipeline's own backpressure; priority sweep is exempt).")
+        description="Standard sweep holds when the combined priority+standard arq "
+        "queue depth reaches this (the sweep pipeline's own backpressure; priority "
+        "sweep is exempt).")
     priority_top_n: int = Field(
         default=1000,
         description="Top-N players (by CR) the priority sweep seeds from the DB each tick, "
@@ -235,6 +262,48 @@ class Settings(BaseSettings):
         "matches are buried in the standard pending backlog: reprocessing is safe "
         "(matches.processed idempotency makes repeats cheap no-ops). Keep False in "
         "normal operation — every tick re-enqueues the same recent ids while True.")
+
+    # --- New-player history backfill ---------------------------------------
+    # A player row is born as a side effect of a lobby-mate's match; nothing in
+    # the online path used to look at the history they already had (the sweep
+    # only fetches the newest sweep_matches_per_player ids, and only for players
+    # with matches_played > 0). backfill_tick runs one bounded catch-up per
+    # newly-INSERTed puuid, feeding the normal standard pending list.
+    backfill_enabled: bool = Field(
+        default=True,
+        description="One-shot history import for players seen for the first "
+        "time. Disable to fall back to the old behaviour (a new player's past "
+        "is only whatever arrived via shared lobbies).")
+    backfill_interval_minutes: int = Field(
+        default=1, description="Backfill tick interval (minutes). Must divide 60.")
+    backfill_batch_size: int = Field(
+        default=10,
+        description="New players drained per backfill tick. Each costs up to "
+        "backfill_max_pages_per_player x len(live queues) Riot id-list calls, "
+        "so this is the main lever on how much budget history import may take.")
+    backfill_matches_per_page: int = Field(
+        default=100,
+        description="Page size for the backfill's paginated ids call (Riot's "
+        "match-v5 maximum is 100).")
+    backfill_max_pages_per_player: int = Field(
+        default=5,
+        description="Hard cap on pages per player per live queue — bounds a "
+        "single prolific account's import. Hitting it leaves the remainder to "
+        "a manual scripts/backfill.py run.")
+    backfill_window_seconds: int = Field(
+        default=90 * 24 * 3600,
+        description="How far back the backfill paginates. Additionally clamped "
+        "to match_min_started_at_ms, since anything before the launch-window "
+        "cutoff is dropped by the pipeline anyway.")
+    backfill_max_attempts: int = Field(
+        default=3,
+        description="Riot-failure retries before a player's backfill is "
+        "abandoned (the steady-state sweep still covers them afterwards).")
+    backfill_fetch_concurrency: int = Field(
+        default=4,
+        description="Concurrent players per backfill tick. Deliberately lower "
+        "than sweep_fetch_concurrency: history import is background work and "
+        "must not crowd the live sweep out of the Riot token bucket.")
 
     # --- Live-queue sweep + session re-arm + rotation-detection sample ------
     arena_live_queue_ids: str = Field(
@@ -359,7 +428,7 @@ class Settings(BaseSettings):
     @field_validator(
         "sweep_interval_minutes",
         "priority_sweep_interval_minutes",
-        "bulk_processor_interval_minutes",
+        "backfill_interval_minutes",
     )
     @classmethod
     def _interval_divides_60(cls, v: int) -> int:

@@ -10,7 +10,10 @@ import react from "@vitejs/plugin-react";
 // (CORS is then governed by that backend).
 //
 // VITE_LOCAL_API_TARGET overrides the local proxy target (default :8000).
-const LOCAL_TARGET = process.env.VITE_LOCAL_API_TARGET ?? "http://localhost:8000";
+// 127.0.0.1, not "localhost": on Windows "localhost" resolves to ::1 first, and
+// Docker's published port is reachable over IPv4 while the IPv6 path can fail —
+// which silently drops the console onto the /admin/overview fallback source.
+const LOCAL_TARGET = process.env.VITE_LOCAL_API_TARGET ?? "http://127.0.0.1:8000";
 
 export default defineConfig({
   plugins: [react()],

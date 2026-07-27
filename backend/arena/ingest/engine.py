@@ -1,3 +1,15 @@
+"""A second, offline-tuned SQLAlchemy engine — separate from the app's.
+
+``arena.db.session`` builds the engine the API/workers use, which disables
+asyncpg statement caching (``statement_cache_size=0``) because it runs
+against PgBouncer in transaction-pooling mode, where a cached prepared
+statement can silently bind to the wrong physical connection on the next
+checkout. Backfill scripts connect straight to Postgres (no PgBouncer in the
+loop), so that constraint doesn't apply — this module exists purely so those
+scripts get a faster engine instead of inheriting the app's more conservative
+one.
+"""
+
 from __future__ import annotations
 
 from sqlalchemy.ext.asyncio import (

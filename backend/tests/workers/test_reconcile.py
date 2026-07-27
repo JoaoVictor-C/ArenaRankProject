@@ -39,10 +39,12 @@ class _AlwaysFullPageClient:
 def _patch(monkeypatch, client) -> None:
     monkeypatch.setattr("arena.workers.sweep.get_riot_client", lambda: client)
 
-    async def _fake_page(offset, limit):
-        return list(_FAKE_PUUIDS) if offset == 0 else []
+    async def _fake_page(after, limit):
+        # Keyset pager: the first page starts at "", the next one resumes after
+        # the last puuid handed out and is empty (the fake set is exhausted).
+        return list(_FAKE_PUUIDS) if after == "" else []
 
-    monkeypatch.setattr("arena.workers.sweep._tracked_puuids_page", _fake_page)
+    monkeypatch.setattr("arena.workers.sweep._tracked_puuids_after", _fake_page)
 
 
 async def test_idle_when_no_window_pending(fake_redis, monkeypatch):
@@ -83,9 +85,8 @@ async def test_happy_path_drains_window_and_enqueues(fake_redis, monkeypatch):
     # The window is consumed so a later tick doesn't redo the work.
     assert await fake_redis.get(Q.RECONCILE_WINDOW_KEY) is None
 
-    popped = await fake_redis.rpop(Q.SWEEP_PENDING_STANDARD, expected)
-    assert popped is not None
-    assert len(popped) == expected
+    jobs = [j for j in fake_redis.enqueued if j.queue_name == Q.STANDARD_QUEUE]
+    assert len(jobs) == expected
 
 
 async def test_player_cap_hit_is_reported_not_silently_dropped(fake_redis, monkeypatch):

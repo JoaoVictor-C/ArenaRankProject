@@ -21,16 +21,10 @@ CREATE INDEX IF NOT EXISTS idx_matches_unprocessed
   ON matches (played_at)
   WHERE processed = false;
 
--- materialized leaderboard view (D2.3 / §11.1)
-CREATE MATERIALIZED VIEW IF NOT EXISTS leaderboard_mv AS
-  SELECT season_id, player_id, cr, mu, sigma,
-         RANK() OVER (PARTITION BY season_id ORDER BY cr DESC) AS rank
-  FROM player_seasons;
-
-CREATE UNIQUE INDEX IF NOT EXISTS leaderboard_mv_pk ON leaderboard_mv (season_id, player_id);
-CREATE INDEX IF NOT EXISTS leaderboard_mv_rank ON leaderboard_mv (season_id, rank);
-
--- refresh fn (called by scheduler every 30s per §11.1)
-CREATE OR REPLACE FUNCTION refresh_leaderboard() RETURNS void AS $$
-  REFRESH MATERIALIZED VIEW CONCURRENTLY leaderboard_mv;
-$$ LANGUAGE sql;
+-- NOTE: an earlier design (D2.3 / §11.1) had the leaderboard served by a
+-- `leaderboard_mv` materialized view refreshed every 30s. That was replaced
+-- (see docs/superpowers/specs/2026-06-14-fastapi-backend-master-plan.md) by a
+-- Redis sorted-set read-through with a Postgres fallback — see the deployed
+-- `backend/arena/services/leaderboard_service.py`'s own docstring: "the
+-- leaderboard is not a 30-second materialized view." Do not recreate
+-- `leaderboard_mv`/`refresh_leaderboard()` without updating that decision.

@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import Any
 
+import pytest
+
 import arena.services.match_pipeline as mp
 from arena.riot.arena import parse_arena_match
 from arena.services.match_pipeline import (
@@ -122,6 +124,52 @@ async def test_process_match_drops_pre_cutoff_without_touching_db(monkeypatch: A
     result = await mp.WorkerRatingService().process_match("BR1_OLD", payload, redis=None)
 
     assert result == {"matchId": "BR1_OLD", "status": "filtered", "reason": "before_cutoff"}
+
+
+async def test_process_match_filters_degenerate_single_team_payload(monkeypatch: Any) -> None:
+    """Riot occasionally stamps every participant with playerSubteamId=0 (and
+    placement 0) — real, full-length matches with otherwise-valid data. That
+    collapses parse_arena_match's grouping into one subteam instead of several,
+    which arena.rating.engine.rate() rejects with "a match needs at least 2
+    teams" — a real dead-lettered match this regression-tests against (
+    BR1_3265476308, 18 participants, all playerSubteamId=0/subteamPlacement=0).
+    This must filter before ever reaching the rating engine or a DB session,
+    not retry 3x and dead-letter a match that was never ratable.
+    """
+    monkeypatch.setattr(mp.settings, "match_min_started_at_ms", 0)  # cutoff disabled
+
+    def _boom() -> Any:  # pragma: no cover - only runs if the guard fails
+        raise AssertionError("get_sessionmaker must not be called for an unratable match")
+
+    monkeypatch.setattr(mp, "get_sessionmaker", _boom)
+
+    payload = _arena_payload()
+    for p in payload["info"]["participants"]:
+        p["playerSubteamId"] = 0
+        p["subteamPlacement"] = 0
+
+    result = await mp.WorkerRatingService().process_match("BR1_3265476308", payload, redis=None)
+
+    assert result == {
+        "matchId": "BR1_3265476308",
+        "status": "filtered",
+        "reason": "incomplete_teams",
+    }
+
+
+async def test_process_match_keeps_a_smaller_than_canonical_lobby(monkeypatch: Any) -> None:
+    """The filter mirrors the engine's own >=2-teams guard, not the mode's full
+    canonical shape (is_complete) — a lobby smaller than 8x2/6x3 is still
+    genuinely ratable (arena.rating.engine.rate only requires >=2 teams) and
+    must not be swept up by the same fix."""
+    assert len(parse_arena_match(_arena_payload()).subteams) == 2  # sanity: 2 teams, not 8
+    monkeypatch.setattr(mp.settings, "match_min_started_at_ms", 0)
+
+    marker = RuntimeError("reached get_sessionmaker — proves the filter did not fire")
+    monkeypatch.setattr(mp, "get_sessionmaker", lambda: (_ for _ in ()).throw(marker))
+
+    with pytest.raises(RuntimeError, match="reached get_sessionmaker"):
+        await mp.WorkerRatingService().process_match("BR1_OK", _arena_payload(), redis=None)
 
 
 async def test_eligibility_only_integrity_freezes_listed_players() -> None:

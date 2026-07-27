@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ArenaRank / **CRS** (Casual Ranked System) — a third-party competitive rating ladder for **League of Legends Arena**. Ingests Riot match data, computes a gamified **Casual Rating (CR)** via a Plackett-Luce (OpenSkill/Weng-Lin) engine plus an integrity/anti-abuse layer, and serves leaderboards, profiles, champion stats and tournaments through a read API + React UI. The product is called variously "ArenaRank", "CRS", `@crs/*`, and the `arena` Python package — same system.
 
-**Read `README.md` first** — it has an honest "what actually runs" status table. The product spec of record is `casual_ranked_proposal.md`; code comments reference it as "proposal §N.N".
+**Read `README.md` first** — it has an honest "what actually runs" status table. The product spec of record is `casual_ranked_proposal.md`; code comments reference it as "proposal §N.N". For a directory-by-directory deep dive into `backend/arena/` (including modules this file only summarizes — `ingest/`, `ddragon/`, `tournaments/`, payments — and the full `scripts/` inventory), see **`backend/CLAUDE.md`**. Frontend-specific conventions live in `frontend/AGENTS.md`.
 
 ## Common commands
 
@@ -21,7 +21,10 @@ uv run python -m arena.db.seed                  # seed champions + a dev season
 uv run pytest                                   # all tests
 uv run pytest tests/rating/test_engine.py       # one file
 uv run pytest tests/rating -k dispersion        # one test by name
-uv run ruff check . && uv run mypy .            # lint + typecheck (mypy strict)
+uv run ruff check . && uv run mypy arena        # lint + typecheck (mypy strict; scope to
+                                                 # `arena`, matching CI — `mypy .` also walks
+                                                 # `tests/`, which hits an unrelated module-path
+                                                 # collision between arena/ingest and tests/ingest)
 
 # arq worker pools (need Redis; ingestion needs RIOT_API_KEY):
 uv run arq arena.workers.main.StandardWorker    # match processor (see worker classes below)
@@ -77,13 +80,12 @@ Key invariants in that path:
 
 ### Worker pools (arq, one `WorkerSettings` class each in `arena/workers/main.py`)
 Each is a separate `docker compose` service and scales independently. **Each cron pool has its own arq `queue_name`** — a shared queue makes a worker pick up jobs whose function it lacks (this was a real bug; see the top commit).
-- `StandardWorker` / `PriorityWorker` — consume the `arena:standard` / `arena:priority` lanes (`process_match`). Priority = a Top-1000 player is involved (sub-5-min SLA).
-- `IngestionWorker` — Riot poller (cron), enqueues new match ids.
-- `SweepWorker` / `PrioritySweepWorker` — rotating sweeps over tracked / Top-N players → push match ids to `arena:sweep:pending:{standard,priority}`.
-- `BulkProcessorWorker` — drains the sweep pending lists (priority first) → `process_match`.
+- `StandardWorker` / `PriorityWorker` — continuous consumers (no cron, no idle window between batches) of the `arena:standard` / `arena:priority` arq queues (`process_match`). Priority = a Top-1000 player is involved (sub-5-min SLA).
+- `IngestionWorker` — Riot poller (cron), enqueues new match ids (k8s/Helm topology only — not run in any docker-compose stack today).
+- `SweepWorker` / `PrioritySweepWorker` — rotating sweeps over tracked / Top-N players → enqueue `process_match` jobs straight onto `arena:standard` / `arena:priority` via `enqueue_job` (same pattern as `IngestionWorker`). No separate pending-list/drain stage.
 - `SchedulerWorker` — maintenance cron (season transitions, leaderboard refresh maintaining `TOP_PLAYERS_SET`, cache warm, cr-snapshots).
 
-`arena/workers/queues.py` is the **single source of truth** for all queue names, Redis keys, and the match-eligibility filter (queue id / participant count 16–18 / duration 120s–1h). Producers and consumers both import from it — never hardcode a queue name or Redis key elsewhere. Sweep/bulk workers are pausable at runtime via the `arena:worker:enabled:<name>` Redis flag (admin API).
+`arena/workers/queues.py` is the **single source of truth** for all queue names, Redis keys, and the match-eligibility filter (queue id / participant count 16–18 / duration 120s–1h). Producers and consumers both import from it — never hardcode a queue name or Redis key elsewhere. Sweep workers are pausable at runtime via the `arena:worker:enabled:<name>` Redis flag (admin API); `StandardWorker`/`PriorityWorker` are not (arq has no native consumer-level pause — see the git history around the bulk-processor→continuous-consumer migration for why a job-level `Retry`-based pause was rejected).
 
 ### Read API (`arena/api/`)
 `create_app()` in `arena/api/app.py` is the factory; all routes mount under `/api/v1`. Routers are included **defensively** (each in its own try/except) so the app still boots if an optional router's deps are absent. `arena/services/*_service.py` back the routers (leaderboard, stats, season). Leaderboard results are Redis-cached.

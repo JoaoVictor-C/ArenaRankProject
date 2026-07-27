@@ -1,5 +1,14 @@
 # Three Workers Implementation Plan
 
+> **Superseded — do not implement as written.** This plan's `BulkProcessorWorker`
+> (cron-tick batch drain of `arena:sweep:pending:priority`/`:standard` Redis
+> lists) shipped, then was later **retired** in favor of continuous arq
+> consumers (`StandardWorker`/`PriorityWorker` draining `arena:standard`/
+> `arena:priority` directly, no cron tick, no idle window — see root
+> `CLAUDE.md`'s worker-pool section). The `SEEN_MATCHES_SET`/`SWEEP_CURSOR_KEY`
+> Redis keys this doc's dedup relies on were also removed as dead code. Kept
+> as a historical record of the earlier architecture, not a build guide.
+
 > Execute task-by-task (subagent-driven). Steps use checkbox tracking.
 
 **Goal:** Add 3 independently start/stoppable, Docker-compatible workers: (1) **Sweep** — discover new matches every X min across ALL players (standard lane); (2) **Priority Sweep** — every X min for Top-1000 ∪ admin-selected players (priority lane, processed first); (3) **Bulk Processor** — every few min, drain pending matches priority-first and process in bulk via the existing `process_match`.

@@ -11,7 +11,10 @@
 #   redis         escrita: filas arq, locks por jogador, token-bucket Riot,
 #                 cache de payloads de match
 #   worker-sweep  descoberta rotativa de partidas (substitui o IngestionWorker)
-#   worker-bulk   drena as pending lists e roda process_match
+#   worker-priority-sweep  varre Top-1000, enfileira em arena:priority
+#   worker-standard/worker-priority  consumidores contínuos de process_match
+#                 (arq StandardWorker/PriorityWorker — sem cron, drenam a fila
+#                 continuamente; substituem o worker-bulk antigo)
 #   scheduler     manutenção cron (temporadas, snapshots, refresh)
 #   api           OPCIONAL/LAN: console admin (telemetria de workers) e
 #                 diagnóstico local — NÃO é o caminho público de leitura
@@ -31,43 +34,6 @@
 name: arenarank-prod
 
 services:
-  postgres:
-    image: postgres:18
-    # Replicação lógica (T2.4/T2.5): wal_level=logical + folga de senders/slots.
-    # ATENÇÃO: um slot com o assinante (EC2) fora do ar retém WAL — monitorar
-    # pg_replication_slots + disco (runbook).
-    command:
-      [
-        "postgres",
-        "-c", "wal_level=logical",
-        "-c", "max_wal_senders=5",
-        "-c", "max_replication_slots=5",
-        "-c", "shared_buffers=512MB",
-        "-c", "effective_cache_size=2GB",
-        "-c", "max_connections=60",
-      ]
-    environment:
-      POSTGRES_USER: arena
-      POSTGRES_DB: arena
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?defina no .env}
-    volumes:
-      # postgres:18 mudou o data path: monta /var/lib/postgresql (NÃO .../data).
-      - pgdata:/var/lib/postgresql
-      - ./backend/scripts/replication:/replication:ro
-    ports:
-      # Só loopback — o tailnet chega via proxy do próprio tailscaled
-      # (T2.1/T2.5): `sudo tailscale serve --bg --tcp 5432 tcp://127.0.0.1:5432`.
-      # Mais robusto que bind do IP tailnet aqui (docker pode subir antes do
-      # tailscaled num reboot e o bind falharia). Nunca publicar 5432 em
-      # interface pública/roteador.
-      - "127.0.0.1:5432:5432"
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U arena -d arena"]
-      interval: 10s
-      timeout: 3s
-      retries: 10
-    restart: unless-stopped
-
   redis:
     image: redis:7
     # 512mb + volatile-lru: mistura cache descartável (riot:match:*, com TTL)
@@ -115,7 +81,7 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    command: ["arq", "arena.workers.main.SweepWorker"]
+    command: ["arq", "arena.workers.main.SweepWorker", "--custom-log-dict", "arena.core.logging.ARQ_LOG_CONFIG"]
     env_file: [.env]
     environment:
       SERVICE_NAME: arenarank-worker-sweep
@@ -144,16 +110,17 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
-  # Priority sweep: varre o Top-1000 (PRIORITY_TOP_N) e empurra para
-  # arena:sweep:pending:priority — o bulk drena essa lista PRIMEIRO. Isento do
-  # pressure_hold do watermark. CONTÍNUO desde 21/07 (operação normal do
-  # design): top-1000 com partida descoberta em <=5min. O modo catch-up
-  # (PRIORITY_SWEEP_SKIP_DEDUP=true) fica só para runs sob demanda.
+  # Priority sweep: varre o Top-1000 (PRIORITY_TOP_N) e enfileira process_match
+  # em arena:priority (enqueue_job) — worker-priority abaixo consome
+  # continuamente, sem esperar por tick. Isento do pressure_hold do watermark.
+  # CONTÍNUO desde 21/07 (operação normal do design): top-1000 com partida
+  # descoberta em <=5min. O modo catch-up (PRIORITY_SWEEP_SKIP_DEDUP=true)
+  # fica só para runs sob demanda.
   worker-priority-sweep:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    command: ["arq", "arena.workers.main.PrioritySweepWorker"]
+    command: ["arq", "arena.workers.main.PrioritySweepWorker", "--custom-log-dict", "arena.core.logging.ARQ_LOG_CONFIG"]
     env_file: [.env]
     environment:
       SERVICE_NAME: arenarank-worker-priority-sweep
@@ -175,38 +142,62 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
-  # Bulk: drena as pending lists (priority primeiro) e roda process_match com
-  # concorrência limitada.
-  worker-bulk:
+  # Consumidores contínuos de process_match — sem cron, sem janela ociosa: cada
+  # um drena sua fila arq (arena:standard / arena:priority) assim que
+  # worker-sweep/worker-priority-sweep enfileira (enqueue_job), até o limite de
+  # concorrência de cada pool (max_jobs — 10 standard / 20 priority, definidos
+  # em arena/workers/main.py, não configuráveis por env hoje). Substitui o
+  # worker-bulk antigo (drenava uma lista Redis por timer, chamando
+  # process_match em processo contra um ctx de arq falso).
+  #
+  # Força total (21/07). Round 3: caiu o funil app-wide 500/10s (não existe no
+  # portal — limites são por método) e o match-v5 foi dividido em dois buckets
+  # independentes (ids 2000/10s + matches/{id} 2000/10s), então o teto Riot
+  # real do fetch é 200 rps. O limitador é o hardware (N4020 2-core + postgres
+  # local), não a Riot — max_jobs 10+20=30 concorrentes entre os dois processos
+  # fica perto do BULK_CONCURRENCY=32 já validado num processo só.
+  worker-standard:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    command: ["arq", "arena.workers.main.BulkProcessorWorker"]
+    command: ["arq", "arena.workers.main.StandardWorker", "--custom-log-dict", "arena.core.logging.ARQ_LOG_CONFIG"]
     env_file: [.env]
     environment:
-      SERVICE_NAME: arenarank-worker-bulk
+      SERVICE_NAME: arenarank-worker-standard
       REDIS_URL: redis://redis:6379/0
       DATABASE_URL: postgresql+asyncpg://arena:${POSTGRES_PASSWORD:?defina no .env}@postgres:5432/arena
-      BULK_PROCESSOR_INTERVAL_MINUTES: "1"
-      # Força total (21/07). Round 3: caiu o funil app-wide 500/10s (não existe
-      # no portal — limites são por método) e o match-v5 foi dividido em dois
-      # buckets independentes (ids 2000/10s + matches/{id} 2000/10s), então o
-      # teto Riot real do fetch é 200 rps. O limitador agora é o hardware
-      # (N4020 2-core + postgres local): 800/32 dá ~13 rps médios com bursts
-      # fetch-bound bem maiores. Tick cabe no lock TTL de 55s no pior caso
-      # (~40s com 800 processamentos reais a ~20/s; no-ops/filtered são
-      # fetch-bound e terminam em ~10s). Ordem FIFO mantida — rating é
-      # sequencial, das antigas para as novas.
-      BULK_BATCH_SIZE: "800"
-      BULK_CONCURRENCY: "32"
-      # Pool asyncpg precisa acompanhar BULK_CONCURRENCY ou as goroutines
-      # serializam na espera de conexão (default 20+10). 32+8=40 conexões,
-      # cabe no max_connections=60 do postgres junto com sweep/scheduler/api.
-      DB_POOL_SIZE: "32"
-      DB_MAX_OVERFLOW: "8"
+      # Pool asyncpg precisa acompanhar max_jobs (10) ou os jobs serializam na
+      # espera de conexão. Mantém o MESMO orçamento total já validado
+      # (32+8=40 conexões, cabe no max_connections=60 do postgres junto com
+      # sweep/scheduler/api), agora dividido entre os dois processos
+      # proporcionalmente ao max_jobs de cada um (10:20 -> 15:25).
+      DB_POOL_SIZE: "12"
+      DB_MAX_OVERFLOW: "3"
       # TTL do cache de payloads (riot:match:*) vem do .env — 7d no notebook
       # (RIOT_MATCH_CACHE_TTL_SECONDS=604800) para reaproveitar payloads em
       # backfills sem re-fetch; o Redis local (512mb, volatile-lru) comporta.
+    healthcheck:
+      disable: true
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  worker-priority:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command: ["arq", "arena.workers.main.PriorityWorker", "--custom-log-dict", "arena.core.logging.ARQ_LOG_CONFIG"]
+    env_file: [.env]
+    environment:
+      SERVICE_NAME: arenarank-worker-priority
+      REDIS_URL: redis://redis:6379/0
+      DATABASE_URL: postgresql+asyncpg://arena:${POSTGRES_PASSWORD:?defina no .env}@postgres:5432/arena
+      # max_jobs=20 aqui (vs 10 do standard) -> pool proporcionalmente maior.
+      DB_POOL_SIZE: "22"
+      DB_MAX_OVERFLOW: "3"
     healthcheck:
       disable: true
     depends_on:
@@ -220,7 +211,7 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    command: ["arq", "arena.workers.main.SchedulerWorker"]
+    command: ["arq", "arena.workers.main.SchedulerWorker", "--custom-log-dict", "arena.core.logging.ARQ_LOG_CONFIG"]
     env_file: [.env]
     environment:
       SERVICE_NAME: arenarank-scheduler

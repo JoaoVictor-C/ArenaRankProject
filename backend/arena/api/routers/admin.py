@@ -12,6 +12,7 @@ Mounts under ``/api/v1/admin`` and serves the operator surface:
   machine one legal step (ACTIVE → SOFT_LOCK → ENDED → OFF_SEASON), driven by
   :class:`arena.services.season_service.SeasonService`.
 * ``GET  /admin/dlq``                          — list dead-lettered matches.
+* ``POST /admin/dlq/requeue-all``              — re-enqueue every DLQ entry.
 * ``POST /admin/dlq/{matchId}/requeue``        — re-enqueue a failed match.
 * ``DELETE /admin/dlq/{matchId}``              — discard a DLQ entry.
 * ``GET  /admin/integrity``                    — the open integrity-review queue.
@@ -40,14 +41,18 @@ Contract / ToS guardrails honored here:
 from __future__ import annotations
 
 import json
-from datetime import UTC, datetime
+import time
+from datetime import UTC, datetime, timedelta
 from typing import Any, Literal
 
-from fastapi import APIRouter, HTTPException, Path, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request, status
 from pydantic import Field
 
+from arena.api.rbac import record_audit, require_scope
 from arena.core.logging import get_logger
 from arena.schemas.admin import (
+    AdminDailyMatches,
+    AdminDailyMatchStat,
     AdminDlqItem,
     AdminFlag,
     AdminIntegrityItem,
@@ -124,6 +129,14 @@ class DlqRequeueResult(ArenaModel):
     message: str
 
 
+class DlqRequeueAllResult(ArenaModel):
+    total: int
+    requeued: int
+    failed: int
+    queue: str
+    message: str
+
+
 class DlqDiscardResult(ArenaModel):
     match_id: str
     discarded: bool
@@ -159,11 +172,17 @@ class _Runtime:
     availability and fall back to representative data rather than 500-ing.
     """
 
-    __slots__ = ("sessionmaker", "redis_factory", "season_service")
+    __slots__ = ("sessionmaker", "redis_factory", "arq_redis_factory", "season_service")
 
     def __init__(self) -> None:
         self.sessionmaker: Any | None = None
         self.redis_factory: Any | None = None
+        # Async factory returning an ArqRedis (enqueue_job-capable) pool —
+        # separate from redis_factory (a plain redis.asyncio.Redis) because
+        # most handlers only need plain ops, and the two happen to differ in
+        # sync vs async construction (Redis.from_url is sync; arq's create_pool
+        # is not). Only the DLQ requeue needs this today.
+        self.arq_redis_factory: Any | None = None
         self.season_service: Any | None = None
 
 
@@ -192,6 +211,13 @@ def _runtime() -> _Runtime:
         rt.redis_factory = _make_redis
     except Exception:  # pragma: no cover
         rt.redis_factory = None
+
+    try:
+        from arena.workers.deps import create_redis_pool
+
+        rt.arq_redis_factory = create_redis_pool
+    except Exception:  # pragma: no cover - worker deps absent
+        rt.arq_redis_factory = None
 
     try:
         from arena.services.season_service import SeasonService
@@ -229,6 +255,7 @@ def _representative_overview() -> AdminOverview:
         metrics=[
             AdminMetric(key="activePlayers", label="Jogadores ativos", value="0"),
             AdminMetric(key="matchesToday", label="Partidas hoje", value="0"),
+            AdminMetric(key="totalMatches", label="Total de partidas", value="0"),
             AdminMetric(key="queueDepth", label="Fila de processamento", value="0"),
             AdminMetric(key="dlqDepth", label="Fila de erros (DLQ)", value="0"),
         ],
@@ -238,10 +265,9 @@ def _representative_overview() -> AdminOverview:
             AdminWorker(name="scheduler", status="ok", load=0.0),
         ],
         queues=[
-            AdminQueue(name="arena:sweep:pending:priority", depth=0, rate="0/min"),
-            AdminQueue(name="arena:sweep:pending:standard", depth=0, rate="0/min"),
+            AdminQueue(name="arena:priority", depth=0, rate="0/min"),
+            AdminQueue(name="arena:standard", depth=0, rate="0/min"),
             AdminQueue(name="arena:dlq", depth=0, rate="0/min"),
-            AdminQueue(name="arena:sweep:attempts", depth=0, rate="0/min"),
         ],
         integrity=[],
         flags=[],
@@ -261,43 +287,52 @@ def _representative_overview() -> AdminOverview:
 
 
 async def _live_queues(rt: _Runtime) -> tuple[list[AdminQueue], int, int] | None:
-    """Real sweep/bulk-processor pipeline depths from Redis.
+    """Real processing-pipeline depths from Redis.
 
-    Returns (queues, queueDepth, dlqDepth). Reports the backlog this
-    deployment actually uses — ``SWEEP_PENDING_PRIORITY``/``STANDARD``,
-    drained by ``BulkProcessorWorker`` — NOT the legacy ``arena:priority`` /
-    ``arena:standard`` arq zsets. Those have had no producer since
-    ingestion/priority-worker were retired in favor of the sweep pipeline
-    (see docker-compose.prod.yml's design note) and would always read back 0,
-    silently hiding the real backlog from this dashboard.
+    Returns (queues, queueDepth, dlqDepth). ``arena:priority``/``arena:standard``
+    are real arq queues now — the sweep pipeline enqueues ``process_match`` jobs
+    onto them directly (``enqueue_job``) and ``StandardWorker``/``PriorityWorker``
+    consume them continuously. There is no separate pending-list stage anymore
+    (that was ``BulkProcessorWorker``, now retired).
     """
     if rt.redis_factory is None:
         return None
-    from arena.workers.queues import (
-        DLQ_KEY,
-        SWEEP_ATTEMPTS_KEY,
-        SWEEP_PENDING_PRIORITY,
-        SWEEP_PENDING_STANDARD,
-    )
+    from arena.workers.queues import DLQ_KEY, PRIORITY_QUEUE, STANDARD_QUEUE
 
     redis = rt.redis_factory()
     try:
-        priority = int(await redis.llen(SWEEP_PENDING_PRIORITY) or 0)
-        standard = int(await redis.llen(SWEEP_PENDING_STANDARD) or 0)
+        priority = int(await redis.zcard(PRIORITY_QUEUE) or 0)
+        standard = int(await redis.zcard(STANDARD_QUEUE) or 0)
         dlq = int(await redis.llen(DLQ_KEY) or 0)
-        retrying = int(await redis.hlen(SWEEP_ATTEMPTS_KEY) or 0)
     except Exception:  # pragma: no cover - Redis down
         return None
     finally:
         await _close_redis(redis)
 
     queues = [
-        AdminQueue(name=SWEEP_PENDING_PRIORITY, depth=priority, rate="—"),
-        AdminQueue(name=SWEEP_PENDING_STANDARD, depth=standard, rate="—"),
+        AdminQueue(name=PRIORITY_QUEUE, depth=priority, rate="—"),
+        AdminQueue(name=STANDARD_QUEUE, depth=standard, rate="—"),
         AdminQueue(name=DLQ_KEY, depth=dlq, rate="—"),
-        AdminQueue(name=SWEEP_ATTEMPTS_KEY, depth=retrying, rate="—"),
     ]
     return queues, priority + standard, dlq
+
+
+def _dlq_entry_ts(payload: dict[str, Any]) -> str:
+    """Dead-lettered-at timestamp as ISO 8601.
+
+    ``processor._dead_letter`` writes ``deadLetteredAt`` as a ``time.time()``
+    epoch float, not an ISO string — falling straight back to "now" here (the
+    old behavior) made every DLQ row show the same "há Ns" regardless of how
+    long it had actually been stuck.
+    """
+    raw = payload.get("deadLetteredAt")
+    if isinstance(raw, (int, float)):
+        try:
+            return datetime.fromtimestamp(raw, tz=UTC).isoformat()
+        except (OverflowError, OSError, ValueError):
+            pass
+    legacy = payload.get("ts") or payload.get("failedAt")
+    return str(legacy) if legacy else _now_iso()
 
 
 async def _live_dlq_items(rt: _Runtime, limit: int) -> list[AdminDlqItem] | None:
@@ -320,9 +355,11 @@ async def _live_dlq_items(rt: _Runtime, limit: int) -> list[AdminDlqItem] | None
         items.append(
             AdminDlqItem(
                 match_id=str(payload.get("riotMatchId") or payload.get("matchId") or "?"),
-                attempts=int(payload.get("attempts", 0) or 0),
-                reason=str(payload.get("reason") or payload.get("error") or "desconhecido"),
-                ts=str(payload.get("ts") or payload.get("failedAt") or _now_iso()),
+                # `_dead_letter` writes the field as "tries", not "attempts" —
+                # the old key name never matched, so this always read 0.
+                attempts=int(payload.get("tries") or payload.get("attempts") or 0),
+                reason=str(payload.get("error") or payload.get("reason") or "desconhecido"),
+                ts=_dlq_entry_ts(payload),
             )
         )
     return items
@@ -330,10 +367,11 @@ async def _live_dlq_items(rt: _Runtime, limit: int) -> list[AdminDlqItem] | None
 
 async def _live_season_and_metrics(
     rt: _Runtime,
-) -> tuple[AdminSeason, list[AdminIntegrityItem], list[AdminFlag], int, int] | None:
+) -> tuple[AdminSeason, list[AdminIntegrityItem], list[AdminFlag], int, int, int] | None:
     """Real ACTIVE season + open integrity queue + player flags + counts.
 
-    Returns (season, integrity, flags, activePlayers, matchesToday) or ``None``.
+    Returns (season, integrity, flags, activePlayers, matchesToday, totalMatches)
+    or ``None``.
     """
     if rt.sessionmaker is None:
         return None
@@ -394,11 +432,84 @@ async def _live_season_and_metrics(
                     ).scalar_one()
                 )
 
+            # All-time count across every season — not scoped to season_row,
+            # unlike matches_today, so it's still meaningful when no season
+            # is active/found.
+            total_matches = int(
+                (await session.execute(select(func.count()).select_from(md.Match))).scalar_one()
+            )
+
             integrity = await _open_integrity(session, md)
             flags = await _player_flags(session, md)
-            return season, integrity, flags, active_players, matches_today
+            return season, integrity, flags, active_players, matches_today, total_matches
     except Exception:  # pragma: no cover - DB unreachable / schema not migrated
         _log.warning("admin.live_data.failed", exc_info=True)
+        return None
+
+
+async def _live_daily_matches(rt: _Runtime, *, days: int) -> list[AdminDailyMatchStat] | None:
+    """Matches per UTC calendar day, across all seasons, for the last *days* days.
+
+    One grouped query (day, mode) rather than a query per day — the per-day
+    duration average and integrity-flag count are folded in so the console
+    doesn't need a second round-trip. Sparse by design, like
+    ``StatsService.season_activity``: a day with zero matches is simply absent
+    rather than a fabricated zero row.
+    """
+    if rt.sessionmaker is None:
+        return None
+    try:
+        from sqlalchemy import case, func, select
+
+        from arena.db import models as md
+    except Exception:  # pragma: no cover
+        return None
+
+    try:
+        cutoff = datetime.now(UTC).replace(
+            hour=0, minute=0, second=0, microsecond=0
+        ) - timedelta(days=days - 1)
+        day = func.date(md.Match.played_at)
+        flagged = case((func.jsonb_array_length(md.Match.integrity_flags) > 0, 1), else_=0)
+        stmt = (
+            select(
+                day.label("d"),
+                md.Match.mode.label("mode"),
+                func.count().label("c"),
+                func.avg(md.Match.duration_seconds).label("avg_dur"),
+                func.sum(flagged).label("flagged"),
+            )
+            .where(md.Match.played_at >= cutoff)
+            .group_by(day, md.Match.mode)
+            .order_by(day.desc())
+        )
+        async with rt.sessionmaker() as session:
+            rows = (await session.execute(stmt)).all()
+
+        # Fold the per-(day, mode) rows into one stat per day.
+        by_day: dict[str, AdminDailyMatchStat] = {}
+        dur_weighted: dict[str, float] = {}
+        for r in rows:
+            d = r.d
+            key = d.isoformat() if hasattr(d, "isoformat") else str(d)
+            stat = by_day.setdefault(key, AdminDailyMatchStat(date=key, matches=0))
+            count = int(r.c or 0)
+            stat.matches += count
+            stat.with_integrity_flags += int(r.flagged or 0)
+            if r.mode is not None and getattr(r.mode, "value", r.mode) == "DUOS":
+                stat.duos += count
+            elif r.mode is not None and getattr(r.mode, "value", r.mode) == "TRIOS":
+                stat.trios += count
+            if r.avg_dur is not None:
+                dur_weighted[key] = dur_weighted.get(key, 0.0) + float(r.avg_dur) * count
+
+        for key, stat in by_day.items():
+            if stat.matches > 0 and key in dur_weighted:
+                stat.avg_duration_seconds = round(dur_weighted[key] / stat.matches, 1)
+
+        return sorted(by_day.values(), key=lambda s: s.date)
+    except Exception:  # pragma: no cover - DB unreachable / schema not migrated
+        _log.warning("admin.daily_matches.failed", exc_info=True)
         return None
 
 
@@ -531,6 +642,7 @@ def _db_unavailable(action: str) -> HTTPException:
     response_model=AdminOverview,
     summary="Visão geral do painel administrativo",
     response_model_by_alias=True,
+    dependencies=[Depends(require_scope("telemetry:read"))],
 )
 async def get_overview() -> AdminOverview:
     """Aggregate the operator dashboard.
@@ -558,9 +670,10 @@ async def get_overview() -> AdminOverview:
     # --- season + integrity + flags + business metrics (Postgres) ---
     active_players = 0
     matches_today = 0
+    total_matches = 0
     live = await _live_season_and_metrics(rt)
     if live is not None:
-        season, integrity, flags, active_players, matches_today = live
+        season, integrity, flags, active_players, matches_today, total_matches = live
         overview.season = season
         overview.integrity = integrity
         overview.flags = flags
@@ -568,10 +681,32 @@ async def get_overview() -> AdminOverview:
     overview.metrics = [
         AdminMetric(key="activePlayers", label="Jogadores ativos", value=str(active_players)),
         AdminMetric(key="matchesToday", label="Partidas hoje", value=str(matches_today)),
+        AdminMetric(key="totalMatches", label="Total de partidas", value=str(total_matches)),
         AdminMetric(key="queueDepth", label="Fila de processamento", value=str(queue_depth)),
         AdminMetric(key="dlqDepth", label="Fila de erros (DLQ)", value=str(dlq_depth)),
     ]
     return overview
+
+
+@router.get(
+    "/matches/daily",
+    response_model=AdminDailyMatches,
+    summary="Partidas por dia + estatísticas (duração, modo, flags de integridade)",
+    response_model_by_alias=True,
+    dependencies=[Depends(require_scope("telemetry:read"))],
+)
+async def get_daily_matches(
+    days: int = Query(14, ge=1, le=90, description="Janela em dias (UTC), inclusive hoje."),
+) -> AdminDailyMatches:
+    """Match volume per UTC day, across all seasons, for the last *days* days.
+
+    Backed by the ``matches`` table (real per-match rows: duration, mode,
+    integrity flags) — degrades to an empty list rather than 500-ing when
+    Postgres is unavailable, same convention as the rest of this router.
+    """
+    rt = _runtime()
+    result = await _live_daily_matches(rt, days=days)
+    return AdminDailyMatches(ts=_now_iso(), days=result or [])
 
 
 # ===========================================================================
@@ -585,8 +720,9 @@ async def get_overview() -> AdminOverview:
     status_code=status.HTTP_201_CREATED,
     summary="Criar temporada",
     response_model_by_alias=True,
+    dependencies=[Depends(require_scope("season:write"))],
 )
-async def create_season(body: SeasonCreateRequest) -> SeasonOpResult:
+async def create_season(request: Request, body: SeasonCreateRequest) -> SeasonOpResult:
     """Create a season row in ``ACTIVE`` (the lifecycle entry state)."""
     if body.ends_at <= body.starts_at:
         raise HTTPException(
@@ -612,6 +748,7 @@ async def create_season(body: SeasonCreateRequest) -> SeasonOpResult:
             await session.commit()
             await session.refresh(season)
             _log.info("admin.season.created", seasonId=str(season.id), name=season.name)
+            await record_audit(request, action="season.created", target=season.name)
             return SeasonOpResult(
                 season_id=str(season.id),
                 status=season.status.value,
@@ -629,8 +766,10 @@ async def create_season(body: SeasonCreateRequest) -> SeasonOpResult:
     response_model=SeasonOpResult,
     summary="Reconfigurar parâmetros da temporada",
     response_model_by_alias=True,
+    dependencies=[Depends(require_scope("season:write"))],
 )
 async def update_season_config(
+    request: Request,
     body: SeasonConfigUpdateRequest,
     season_id: str = Path(..., description="ID da temporada"),
 ) -> SeasonOpResult:
@@ -653,6 +792,7 @@ async def update_season_config(
             season.config = merged
             await session.commit()
             _log.info("admin.season.config_updated", seasonId=season_id)
+            await record_audit(request, action="season.config_updated", target=season_id)
             return SeasonOpResult(
                 season_id=season_id,
                 status=season.status.value,
@@ -670,8 +810,10 @@ async def update_season_config(
     response_model=SeasonOpResult,
     summary="Avançar o ciclo de vida da temporada",
     response_model_by_alias=True,
+    dependencies=[Depends(require_scope("season:write"))],
 )
 async def transition_season(
+    request: Request,
     body: SeasonTransitionRequest,
     season_id: str = Path(..., description="ID da temporada"),
 ) -> SeasonOpResult:
@@ -708,6 +850,9 @@ async def transition_season(
                 seasonId=season_id,
                 to=new_status.value,
             )
+            await record_audit(
+                request, action="season.transitioned", target=season_id, to=new_status.value
+            )
             return SeasonOpResult(
                 season_id=season_id,
                 status=new_status.value,
@@ -733,6 +878,7 @@ async def transition_season(
     response_model=list[AdminDlqItem],
     summary="Listar partidas na fila de erros (DLQ)",
     response_model_by_alias=True,
+    dependencies=[Depends(require_scope("telemetry:read"))],
 )
 async def list_dlq(
     limit: int = Query(50, ge=1, le=500, description="Máximo de itens"),
@@ -744,36 +890,111 @@ async def list_dlq(
 
 
 @router.post(
-    "/dlq/{match_id}/requeue",
-    response_model=DlqRequeueResult,
-    summary="Reprocessar partida com falha",
+    "/dlq/requeue-all",
+    response_model=DlqRequeueAllResult,
+    summary="Reprocessar toda a DLQ",
     response_model_by_alias=True,
+    dependencies=[Depends(require_scope("dlq:write"))],
 )
-async def requeue_dlq(
-    match_id: str = Path(..., description="riotMatchId da partida com falha"),
-) -> DlqRequeueResult:
-    """Re-enqueue a failed match onto the priority sweep pending list.
+async def requeue_all_dlq(request: Request) -> DlqRequeueAllResult:
+    """Re-enqueue every dead-lettered match onto the priority arq queue.
 
-    Removes the matching DLQ entry (by ``riotMatchId``) and LPUSHes the bare
-    match id onto ``SWEEP_PENDING_PRIORITY`` — the exact list
-    ``BulkProcessorWorker`` drains (priority first) and calls ``process_match``
-    on. NOT the legacy ``arena:standard`` arq queue: nothing consumes that
-    queue in this deployment (sweep/bulk replaced ingestion/priority-worker —
-    see docker-compose.prod.yml), so pushing there was a silent no-op. Its
-    retry-attempt counter was already cleared when the match was originally
-    dead-lettered (``bulk_processor._process_one``'s terminal-status cleanup),
-    so this requeue gets a fresh ``MAX_TRIES`` budget automatically. Returns a
-    404 when the match is not present in the DLQ.
+    Claims the whole DLQ in one shot — one ``LRANGE`` to read it, then
+    ``LTRIM`` to drop exactly the range just read — instead of the per-match
+    route's ``LREM`` scan repeated once per entry (O(n) per item, O(n²) for a
+    bulk drain of a large backlog). Trimming by the captured length rather
+    than clearing the key outright also means an entry dead-lettered
+    *during* this call (appended to the tail after we already read) is left
+    alone rather than raced away. Each captured entry is pushed back onto the
+    DLQ if its own requeue fails (e.g. a Redis blip mid-drain), so a partial
+    failure loses nothing — it just stays queued for the next attempt.
     """
     rt = _runtime()
-    if rt.redis_factory is None:
+    if rt.redis_factory is None or rt.arq_redis_factory is None:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Fila indisponível para reprocessamento.",
         )
-    from arena.workers.queues import DLQ_KEY, SWEEP_PENDING_PRIORITY
+    from arena.workers.queues import DLQ_KEY, PRIORITY_QUEUE, PROCESS_MATCH_TASK
 
-    redis = rt.redis_factory()
+    redis = await rt.arq_redis_factory()
+    try:
+        raw = await redis.lrange(DLQ_KEY, 0, -1)
+        total = len(raw)
+        if total:
+            await redis.ltrim(DLQ_KEY, total, -1)
+
+        requeued = 0
+        failed = 0
+        for entry in raw:
+            payload = _decode_json(entry)
+            match_id = str(payload.get("riotMatchId") or payload.get("matchId") or "")
+            if not match_id:
+                failed += 1
+                continue
+            try:
+                await redis.enqueue_job(
+                    PROCESS_MATCH_TASK,
+                    match_id,
+                    _queue_name=PRIORITY_QUEUE,
+                    _job_id=f"{PROCESS_MATCH_TASK}:{match_id}:requeue:{int(time.time())}",
+                )
+                requeued += 1
+            except Exception:  # noqa: BLE001 - don't lose the entry, put it back
+                await redis.rpush(DLQ_KEY, entry)
+                failed += 1
+    finally:
+        await _close_redis(redis)
+
+    _log.info("admin.dlq.requeued_all", total=total, requeued=requeued, failed=failed)
+    await record_audit(
+        request, action="dlq.requeued_all", total=total, requeued=requeued, failed=failed
+    )
+    return DlqRequeueAllResult(
+        total=total,
+        requeued=requeued,
+        failed=failed,
+        queue=PRIORITY_QUEUE,
+        message=(
+            f"{requeued} partida(s) reenviada(s) para processamento."
+            if failed == 0
+            else f"{requeued} reenviada(s), {failed} falhou(aram) e voltaram para a DLQ."
+        ),
+    )
+
+
+@router.post(
+    "/dlq/{match_id}/requeue",
+    response_model=DlqRequeueResult,
+    summary="Reprocessar partida com falha",
+    response_model_by_alias=True,
+    dependencies=[Depends(require_scope("dlq:write"))],
+)
+async def requeue_dlq(
+    request: Request,
+    match_id: str = Path(..., description="riotMatchId da partida com falha"),
+) -> DlqRequeueResult:
+    """Re-enqueue a failed match onto the priority arq queue.
+
+    Removes the matching DLQ entry (by ``riotMatchId``) and enqueues a fresh
+    ``process_match`` job on ``arena:priority`` — same ``enqueue_job`` pattern
+    as the sweep pipeline and ``ingestion.py``, so ``PriorityWorker`` picks it
+    up immediately rather than waiting for any cron tick. A requeue after a
+    dead-letter gets a fresh ``MAX_TRIES`` budget automatically (arq's own
+    ``job_try`` starts over for a new job id). Returns a 404 when the match is
+    not present in the DLQ.
+    """
+    rt = _runtime()
+    if rt.redis_factory is None or rt.arq_redis_factory is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Fila indisponível para reprocessamento.",
+        )
+    from arena.workers.queues import DLQ_KEY, PRIORITY_QUEUE, PROCESS_MATCH_TASK
+
+    # An arq-capable pool, not rt.redis_factory()'s plain redis.asyncio.Redis —
+    # enqueue_job is an ArqRedis-only method.
+    redis = await rt.arq_redis_factory()
     try:
         removed = await _remove_dlq_entry(redis, DLQ_KEY, match_id)
         if not removed:
@@ -781,15 +1002,28 @@ async def requeue_dlq(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Partida não encontrada na DLQ.",
             )
-        await redis.lpush(SWEEP_PENDING_PRIORITY, match_id)
+        # Deliberately NOT the plain "process_match:{match_id}" job id used by
+        # discovery: arq's own _job_id dedup collapses an enqueue whose id
+        # already has a result cached (success OR failure) within the keep-
+        # result window, which the dead-lettered job just left behind. Reusing
+        # that id here would make this endpoint return 200 while silently
+        # enqueuing nothing. The timestamp suffix guarantees a fresh job id
+        # every time an operator asks for a requeue.
+        await redis.enqueue_job(
+            PROCESS_MATCH_TASK,
+            match_id,
+            _queue_name=PRIORITY_QUEUE,
+            _job_id=f"{PROCESS_MATCH_TASK}:{match_id}:requeue:{int(time.time())}",
+        )
     finally:
         await _close_redis(redis)
 
-    _log.info("admin.dlq.requeued", matchId=match_id, queue=SWEEP_PENDING_PRIORITY)
+    _log.info("admin.dlq.requeued", matchId=match_id, queue=PRIORITY_QUEUE)
+    await record_audit(request, action="dlq.requeued", target=match_id)
     return DlqRequeueResult(
         match_id=match_id,
         requeued=True,
-        queue=SWEEP_PENDING_PRIORITY,
+        queue=PRIORITY_QUEUE,
         message="Partida reenviada para processamento.",
     )
 
@@ -799,8 +1033,10 @@ async def requeue_dlq(
     response_model=DlqDiscardResult,
     summary="Descartar entrada da DLQ",
     response_model_by_alias=True,
+    dependencies=[Depends(require_scope("dlq:write"))],
 )
 async def discard_dlq(
+    request: Request,
     match_id: str = Path(..., description="riotMatchId da partida a descartar"),
 ) -> DlqDiscardResult:
     """Permanently discard a DLQ entry without reprocessing."""
@@ -824,6 +1060,7 @@ async def discard_dlq(
             detail="Partida não encontrada na DLQ.",
         )
     _log.info("admin.dlq.discarded", matchId=match_id)
+    await record_audit(request, action="dlq.discarded", target=match_id)
     return DlqDiscardResult(match_id=match_id, discarded=True, message="Entrada da DLQ descartada.")
 
 
@@ -859,6 +1096,7 @@ async def _remove_dlq_entry(redis: Any, dlq_key: str, match_id: str) -> bool:
     response_model=list[AdminIntegrityItem],
     summary="Fila de revisão de integridade",
     response_model_by_alias=True,
+    dependencies=[Depends(require_scope("telemetry:read"))],
 )
 async def list_integrity_queue(
     limit: int = Query(50, ge=1, le=500, description="Máximo de itens"),
@@ -903,8 +1141,10 @@ async def list_integrity_queue(
     response_model=IntegrityReviewResult,
     summary="Revisar evento de integridade (override manual)",
     response_model_by_alias=True,
+    dependencies=[Depends(require_scope("integrity:review"))],
 )
 async def review_integrity_event(
+    request: Request,
     body: IntegrityReviewRequest,
     event_id: str = Path(..., description="ID do evento de integridade"),
 ) -> IntegrityReviewResult:
@@ -913,7 +1153,21 @@ async def review_integrity_event(
     The override decision and reviewer note are stored on the event's metadata
     JSONB so the audit trail is preserved; ``reviewed`` flips to true and the
     reviewer id is recorded.
+
+    ``integrity:review`` (route-level) covers a plain reviewed-with-no-verdict
+    pass; actually setting an eligible/ineligible override is the stronger
+    action and additionally requires ``integrity:override`` — checked here,
+    against the scopes ``require_scope`` already resolved onto
+    ``request.state``, rather than adding a second route for the same
+    endpoint.
     """
+    if body.override and body.override != "none":
+        scopes: frozenset[str] = getattr(request.state, "scopes", frozenset())
+        if "integrity:override" not in scopes:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Este operador não tem permissão para aplicar override manual.",
+            )
     rt = _runtime()
     if rt.sessionmaker is None:
         raise _db_unavailable("revisão de integridade")
@@ -950,6 +1204,13 @@ async def review_integrity_event(
                 eventId=event_id,
                 override=body.override or "none",
             )
+            has_override = bool(body.override and body.override != "none")
+            await record_audit(
+                request,
+                action="integrity.override_applied" if has_override else "integrity.reviewed",
+                target=event_id,
+                override=body.override or "none",
+            )
             return IntegrityReviewResult(
                 event_id=event_id,
                 reviewed=True,
@@ -982,7 +1243,22 @@ async def _get_integrity_event(session: Any, md: Any, event_id: str) -> Any | No
 # Worker runtime control (pause / resume) + player selection for priority sweep
 # ===========================================================================
 
-_VALID_WORKER_NAMES: frozenset[str] = frozenset({"sweep", "priority_sweep", "bulk_processor"})
+
+def _valid_worker_names() -> frozenset[str]:
+    """Names accepted by pause/resume, from ``queues`` (single source of truth).
+
+    Resolved lazily (like every other queue touch in this module) so admin.py
+    stays importable without the worker deps. Sourcing it from
+    :data:`arena.workers.queues.PAUSABLE_WORKERS` means a newly added pausable
+    worker — e.g. ``backfill`` — is controllable from the admin console instead
+    of 404-ing against a hardcoded list that drifted.
+    """
+    try:
+        from arena.workers.queues import PAUSABLE_WORKERS
+
+        return PAUSABLE_WORKERS
+    except Exception:  # noqa: BLE001 - worker deps absent; fall back to the core pair
+        return frozenset({"sweep", "priority_sweep"})
 
 
 class WorkerControlResult(ArenaModel):
@@ -1017,6 +1293,16 @@ async def _set_worker_enabled(worker_name: str, *, paused: bool) -> None:
             await redis.set(worker_enabled_key(worker_name), "0")
         else:
             await redis.delete(worker_enabled_key(worker_name))
+    except Exception as exc:  # noqa: BLE001 - Redis down/unreachable at call time
+        # `redis_factory` being present only means redis-py is importable; the
+        # connection is made lazily here. Surface the same 503 as a missing
+        # factory instead of a 500 so the console shows "Redis indisponível"
+        # rather than a generic server error.
+        _log.warning("admin.worker.control_failed", worker=worker_name, exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Redis indisponível para controle de worker.",
+        ) from exc
     finally:
         await _close_redis(redis)
 
@@ -1025,17 +1311,22 @@ async def _set_worker_enabled(worker_name: str, *, paused: bool) -> None:
     "/workers/{worker_name}/pause",
     response_model=WorkerControlResult,
     response_model_by_alias=True,
-    summary="Pausar um worker (sweep | priority_sweep | bulk_processor)",
+    summary="Pausar um worker (ver PAUSABLE_WORKERS)",
+    dependencies=[Depends(require_scope("workers:write"))],
 )
 async def pause_worker(
-    worker_name: str = Path(..., description="sweep | priority_sweep | bulk_processor"),
+    request: Request,
+    worker_name: str = Path(
+        ..., description="sweep | priority_sweep | backfill | rearm | reconcile"
+    ),
 ) -> WorkerControlResult:
-    if worker_name not in _VALID_WORKER_NAMES:
+    if worker_name not in _valid_worker_names():
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail=f"Worker '{worker_name}' desconhecido."
         )
     await _set_worker_enabled(worker_name, paused=True)
     _log.info("admin.worker.paused", worker=worker_name)
+    await record_audit(request, action="worker.paused", target=worker_name)
     return WorkerControlResult(
         worker=worker_name, status="paused", message=f"Worker '{worker_name}' pausado."
     )
@@ -1046,16 +1337,21 @@ async def pause_worker(
     response_model=WorkerControlResult,
     response_model_by_alias=True,
     summary="Retomar um worker pausado",
+    dependencies=[Depends(require_scope("workers:write"))],
 )
 async def resume_worker(
-    worker_name: str = Path(..., description="sweep | priority_sweep | bulk_processor"),
+    request: Request,
+    worker_name: str = Path(
+        ..., description="sweep | priority_sweep | backfill | rearm | reconcile"
+    ),
 ) -> WorkerControlResult:
-    if worker_name not in _VALID_WORKER_NAMES:
+    if worker_name not in _valid_worker_names():
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail=f"Worker '{worker_name}' desconhecido."
         )
     await _set_worker_enabled(worker_name, paused=False)
     _log.info("admin.worker.resumed", worker=worker_name)
+    await record_audit(request, action="worker.resumed", target=worker_name)
     return WorkerControlResult(
         worker=worker_name, status="resumed", message=f"Worker '{worker_name}' retomado."
     )
@@ -1066,8 +1362,10 @@ async def resume_worker(
     response_model=PlayerSelectResult,
     response_model_by_alias=True,
     summary="Marcar/desmarcar jogador para o sweep prioritário",
+    dependencies=[Depends(require_scope("workers:write"))],
 )
 async def set_player_selected(
+    request: Request,
     body: PlayerSelectRequest,
     player_id: str = Path(..., description="UUID do jogador"),
 ) -> PlayerSelectResult:
@@ -1090,6 +1388,12 @@ async def set_player_selected(
             player.is_selected = body.is_selected
             await session.commit()
         _log.info("admin.player.select_updated", playerId=player_id, isSelected=body.is_selected)
+        # Logged under the "worker." prefix (not "player.") — this toggles
+        # priority-sweep eligibility, a workers:write action, not moderation.
+        # Phase D's real moderation endpoint is what earns the player.* prefix.
+        await record_audit(
+            request, action="worker.player_selected", target=player_id, isSelected=body.is_selected
+        )
         return PlayerSelectResult(
             player_id=player_id,
             is_selected=body.is_selected,

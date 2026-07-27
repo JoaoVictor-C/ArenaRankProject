@@ -16,9 +16,6 @@ data:
   CORS_ORIGINS: {{ $.Values.config.corsOrigins | quote }}
   OTEL_TRACES_ENABLED: {{ $.Values.config.otelTracesEnabled | quote }}
   OTEL_EXPORTER_OTLP_ENDPOINT: {{ $.Values.config.otelEndpoint | quote }}
-  ARENA_PRIORITY_QUEUE: {{ $.Values.config.queues.priority | quote }}
-  ARENA_STANDARD_QUEUE: {{ $.Values.config.queues.standard | quote }}
-  ARENA_DLQ_KEY: {{ $.Values.config.queues.dlq | quote }}
 {{- end }}
 {{- if .Values.secrets.create }}
 {{- range $ns := list .Values.namespaces.api .Values.namespaces.processing }}

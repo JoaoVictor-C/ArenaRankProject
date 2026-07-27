@@ -1,3 +1,18 @@
+"""Feeds crawled matches through the SAME rating service the online write
+path uses, in the one order that's actually correct: real play order.
+
+The crawler yields matches roughly in discovery order (BFS layer by layer),
+not chronological order — a later-discovered match can easily have an
+earlier ``gameStartTimestamp``. Rating a lobby out of order would corrupt
+both the Plackett-Luce mu/sigma trajectory (each match's update depends on
+the players' state going INTO it) and the premade/party-tracking heuristics
+(they reason about who queued with whom over time). ``replay_chronological``
+sorts once by ``started_at_ms`` and replays sequentially through
+``rating_service.process_match`` — sequentially on purpose: offline replay
+has no concurrent writers to guard against, so it uses ``_noop_lock`` instead
+of the online path's real per-player Redis lock.
+"""
+
 from __future__ import annotations
 
 import uuid
@@ -17,10 +32,19 @@ _log = get_logger("arena.ingest.replay")
 
 @dataclass
 class ReplayStats:
+    """Running tally returned by :func:`replay_chronological`; grow this
+    (not a bare int return) as replay gains more to report."""
+
     processed: int = 0
 
 
 def _noop_lock(_ids: Any) -> Any:
+    """Stand-in for the online path's per-player Redis lock — replay is
+    strictly sequential, so there's never a concurrent writer to guard
+    against; `rating_service.process_match` still expects a lock-shaped
+    async context manager, so this satisfies that shape without doing
+    anything."""
+
     @asynccontextmanager
     async def cm() -> AsyncIterator[None]:
         yield

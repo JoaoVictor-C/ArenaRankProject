@@ -3,12 +3,19 @@
 Each ``sweep_tick`` call:
 1. Checks the worker-level enable flag (Redis key).
 2. Acquires a per-tick mutex so overlapping cron invocations are a no-op.
-3. Delegates to ``_update_pressure_mode`` (ingestion) to honour the
+3. Delegates to ``_combined_queue_depth`` (ingestion) to honour the
    high/low-water backpressure hysteresis.
-4. Pages through tracked players using a rotating DB cursor.
+4. Pages through tracked players using a rotating KEYSET cursor (last puuid).
 5. Fetches recent match ids from Riot for each player (Wave-2 client).
-6. Deduplicates via the shared ``seen_matches`` set (reuses ``_dedup_new``).
-7. Cheap-filters and pushes eligible ids onto ``SWEEP_PENDING_STANDARD``.
+6. Claims unseen ids via the shared seen-ZSET (reuses ``_dedup_new``).
+7. Cheap-filters eligible ids and enqueues them as ``process_match`` arq jobs
+   on ``arena:standard`` (same ``enqueue_job`` pattern as ``ingestion.py``),
+   releasing the claim again for anything it fails to hand on.
+
+Discovery (this module) and processing (``StandardWorker``/``PriorityWorker``
+in ``main.py``) are decoupled by the arq queue itself, not by a Redis list +
+cron drain — the arq consumers poll continuously, so there is no idle window
+between discovery and processing.
 
 Also in this module: ``rearm_tick`` (session re-arm re-polls) and
 ``reconcile_tick`` (bounded, ``start_time``-windowed outage catch-up — see its
@@ -18,6 +25,7 @@ steady-state sweep above).
 Import-safe before Wave 2: all DB / Riot references are wrapped in try/except
 so ruff + mypy pass and the worker degrades gracefully.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -28,19 +36,8 @@ from arena.core.config import settings
 from arena.core.logging import get_logger
 from arena.workers import queues as Q
 from arena.workers.deps import get_riot_client
-from arena.workers.ingestion import _dedup_new
+from arena.workers.ingestion import _combined_queue_depth, _dedup_new, _release_seen
 
-
-async def _sweep_pending_depth(redis: Any) -> int:
-    """Combined depth of the sweep pending lists — the sweep pipeline's OWN
-    backpressure signal (the legacy ``_update_pressure_mode`` only measures the
-    arq queues, which the sweep pipeline never feeds)."""
-    try:
-        p = int(await redis.llen(Q.SWEEP_PENDING_PRIORITY) or 0)
-        s = int(await redis.llen(Q.SWEEP_PENDING_STANDARD) or 0)
-        return p + s
-    except Exception:  # noqa: BLE001
-        return 0
 
 _log = get_logger("arena.workers.sweep")
 _WORKER_SWEEP = "sweep"
@@ -65,8 +62,17 @@ async def _acquire_tick_lock(redis: Any, name: str, ttl: int) -> bool:
     return bool(await redis.set(Q.worker_tick_lock_key(name), "1", nx=True, ex=ttl))
 
 
-async def _tracked_puuids_page(offset: int, limit: int) -> list[str]:
-    """One page of tracked-player PUUIDs from the DB (avoids loading all at once).
+async def _tracked_puuids_after(after: str, limit: int) -> list[str]:
+    """One KEYSET page of tracked-player PUUIDs: the first *limit* rows ordered
+    by puuid strictly greater than *after* (``""`` starts the rotation).
+
+    Keyset — not ``OFFSET`` — on purpose. Players are registered continuously
+    (every processed lobby can mint up to 16 rows) and a puuid sorts to a random
+    position, so under OFFSET paging every insert landing BEHIND the live cursor
+    shifted the remaining pages by one and skipped a tracked player for the rest
+    of the rotation. ``WHERE puuid > :after`` is stable under concurrent inserts:
+    a new player is either ahead of the cursor (swept this rotation) or behind it
+    (swept next), never dropped, and no existing player is displaced.
 
     Falls back to [] when the DB layer is not yet importable (Wave-1 / test
     environments that monkeypatch this function directly).
@@ -83,20 +89,63 @@ async def _tracked_puuids_page(offset: int, limit: int) -> list[str]:
         stmt = (
             select(Player.puuid)
             .join(PlayerSeason, PlayerSeason.player_id == Player.id)
-            .where(PlayerSeason.matches_played > 0)
+            .where(PlayerSeason.matches_played > 0, Player.puuid > after)
             .distinct()
             .order_by(Player.puuid)
-            .offset(offset)
             .limit(limit)
         )
         rows = await session.execute(stmt)
         return [p for (p,) in rows.all() if p]
 
 
+async def _push_claimed(redis: Any, queue_name: str, match_ids: list[str]) -> int:
+    """Enqueue claimed ids as ``process_match`` arq jobs on *queue_name*,
+    releasing the claim on failure.
+
+    ``_dedup_new`` marks an id as seen at DISCOVERY time. If the enqueue then
+    fails the id is claimed but queued nowhere, and — because discovery skips
+    claimed ids — no later sweep would ever rediscover it. Releasing on the
+    failure path keeps the claim a lease rather than a one-way door.
+
+    The match id doubles as the arq ``_job_id`` (same scheme as
+    ``ingestion.py::_enqueue``), so a duplicate enqueue within the job's
+    keep-window collapses in arq itself — a second dedup layer stacked on top
+    of the seen-ZSET claim above.
+
+    Returns the number of ids actually queued.
+    """
+    if not match_ids:
+        return 0
+    queued = 0
+    orphaned: list[str] = []
+    for mid in match_ids:
+        try:
+            await redis.enqueue_job(
+                Q.PROCESS_MATCH_TASK,
+                mid,
+                _queue_name=queue_name,
+                _job_id=f"{Q.PROCESS_MATCH_TASK}:{mid}",
+            )
+        except Exception:  # noqa: BLE001 - claimed but not queued; give it back
+            orphaned.append(mid)
+            continue
+        queued += 1
+    if orphaned:
+        _log.warning("sweep.push_failed", queue=queue_name, count=len(orphaned))
+        await _release_seen(redis, orphaned)
+
+    # Discovery throughput for the admin console's over-time panel (best-effort).
+    if queued:
+        from arena.core import metrics
+
+        await metrics.record(redis, metrics.EVENT_SWEEP_ENQUEUED, queued)
+    return queued
+
+
 async def _fetch_and_enqueue(
-    redis: Any, puuids: list[str], pending_key: str, *, skip_dedup: bool = False
+    redis: Any, puuids: list[str], queue_name: str, *, skip_dedup: bool = False
 ) -> tuple[int, int]:
-    """Fetch match ids for *puuids*, dedup, filter, enqueue to *pending_key*.
+    """Fetch match ids for *puuids*, dedup, filter, enqueue onto *queue_name*.
 
     ``skip_dedup=True`` (priority catch-up) bypasses the shared seen-set so ids
     already discovered — e.g. buried deep in the standard backlog — are enqueued
@@ -130,11 +179,7 @@ async def _fetch_and_enqueue(
                 return []
 
     batches = await asyncio.gather(
-        *[
-            _fetch_one(puuid, queue_id)
-            for puuid in puuids
-            for queue_id in settings.live_queue_ids
-        ]
+        *[_fetch_one(puuid, queue_id) for puuid in puuids for queue_id in settings.live_queue_ids]
     )
     discovered: list[str] = [mid for ids in batches for mid in ids]
 
@@ -142,14 +187,26 @@ async def _fetch_and_enqueue(
         return 0, 0
 
     if skip_dedup:
+        # Nothing was claimed, so there is nothing to release: enqueue directly.
         fresh = list(dict.fromkeys(discovered))  # dedup interno do lote apenas
-    else:
-        fresh = await _dedup_new(redis, discovered)
-    for mid in fresh:
-        if Q.evaluate_match_filters(Q.MatchMeta(riot_match_id=mid)).eligible:
-            await redis.lpush(pending_key, mid)
+        eligible = [
+            m for m in fresh if Q.evaluate_match_filters(Q.MatchMeta(riot_match_id=m)).eligible
+        ]
+        for mid in eligible:
+            await redis.enqueue_job(
+                Q.PROCESS_MATCH_TASK,
+                mid,
+                _queue_name=queue_name,
+                _job_id=f"{Q.PROCESS_MATCH_TASK}:{mid}",
+            )
+        return len(discovered), len(eligible)
 
-    return len(discovered), len(fresh)
+    fresh = await _dedup_new(redis, discovered)
+    eligible = [m for m in fresh if Q.evaluate_match_filters(Q.MatchMeta(riot_match_id=m)).eligible]
+    # Ineligible ids keep their claim on purpose — the cheap filter's verdict is
+    # terminal, so re-discovering them would just burn the same decision again.
+    queued = await _push_claimed(redis, queue_name, eligible)
+    return len(discovered), queued
 
 
 async def _deep_sample(redis: Any, puuids: list[str]) -> int:
@@ -185,12 +242,8 @@ async def _deep_sample(redis: Any, puuids: list[str]) -> int:
     if not discovered:
         return 0
     fresh = await _dedup_new(redis, discovered)
-    enqueued = 0
-    for mid in fresh:
-        if Q.evaluate_match_filters(Q.MatchMeta(riot_match_id=mid)).eligible:
-            await redis.lpush(Q.SWEEP_PENDING_STANDARD, mid)
-            enqueued += 1
-    return enqueued
+    eligible = [m for m in fresh if Q.evaluate_match_filters(Q.MatchMeta(riot_match_id=m)).eligible]
+    return await _push_claimed(redis, Q.STANDARD_QUEUE, eligible)
 
 
 # ---------------------------------------------------------------------------
@@ -213,29 +266,27 @@ async def sweep_tick(ctx: dict[str, Any]) -> dict[str, Any]:
         if not await _acquire_tick_lock(redis, _WORKER_SWEEP, ttl):
             return {"status": "skip_locked"}
 
-        if await _sweep_pending_depth(redis) >= settings.sweep_pending_high_watermark:
+        if await _combined_queue_depth(redis) >= settings.sweep_pending_high_watermark:
             return {"status": "pressure_hold", "discovered": 0, "enqueued": 0}
 
-        cursor = int(await redis.get(Q.SWEEP_CURSOR_KEY) or 0)
-        puuids = await _tracked_puuids_page(cursor, settings.sweep_batch_size)
+        raw_cursor = await redis.get(Q.SWEEP_CURSOR_PUUID_KEY)
+        cursor = (raw_cursor.decode() if isinstance(raw_cursor, bytes) else raw_cursor) or ""
+        puuids = await _tracked_puuids_after(cursor, settings.sweep_batch_size)
 
-        # Advance cursor; wrap to 0 when this page was smaller than the batch
-        # (meaning we've exhausted the player set for this rotation).
-        new_cursor = (
-            cursor + settings.sweep_batch_size
-            if len(puuids) == settings.sweep_batch_size
-            else 0
-        )
-        await redis.set(Q.SWEEP_CURSOR_KEY, str(new_cursor))
+        # Advance the keyset cursor to the last puuid of this page; wrap to the
+        # start of the rotation when the page came back short (set exhausted).
+        new_cursor = puuids[-1] if len(puuids) == settings.sweep_batch_size else ""
+        await redis.set(Q.SWEEP_CURSOR_PUUID_KEY, new_cursor)
 
-        discovered, enqueued = await _fetch_and_enqueue(
-            redis, puuids, Q.SWEEP_PENDING_STANDARD
-        )
+        discovered, enqueued = await _fetch_and_enqueue(redis, puuids, Q.STANDARD_QUEUE)
         deep_enqueued = await _deep_sample(redis, puuids)
 
         result: dict[str, Any] = {
             "status": "ok",
-            "cursor": cursor,
+            # Truncated like every other puuid in this module — enough to tell
+            # rotations apart in the logs without persisting full account ids in
+            # arq job results.
+            "cursor": cursor[:8],
             "puuids": len(puuids),
             "discovered": discovered,
             "enqueued": enqueued,
@@ -318,13 +369,25 @@ async def priority_sweep_tick(ctx: dict[str, Any]) -> dict[str, Any]:
         seeds = await _priority_seeds(redis)
         cursor = int(await redis.get(Q.PRIORITY_SWEEP_CURSOR_KEY) or 0)
         batch = seeds[cursor : cursor + settings.priority_sweep_batch_size]
-        new_cursor = cursor + settings.priority_sweep_batch_size if len(batch) == settings.priority_sweep_batch_size else 0
+        new_cursor = (
+            cursor + settings.priority_sweep_batch_size
+            if len(batch) == settings.priority_sweep_batch_size
+            else 0
+        )
         await redis.set(Q.PRIORITY_SWEEP_CURSOR_KEY, str(new_cursor))
         discovered, enqueued = await _fetch_and_enqueue(
-            redis, batch, Q.SWEEP_PENDING_PRIORITY,
+            redis,
+            batch,
+            Q.PRIORITY_QUEUE,
             skip_dedup=settings.priority_sweep_skip_dedup,
         )
-        result = {"status": "ok", "seeds": len(seeds), "cursor": cursor, "discovered": discovered, "enqueued": enqueued}
+        result = {
+            "status": "ok",
+            "seeds": len(seeds),
+            "cursor": cursor,
+            "discovered": discovered,
+            "enqueued": enqueued,
+        }
         _log.info("priority_sweep.tick", **result)
         return result
     except Exception as exc:  # noqa: BLE001 — never raise out of a cron tick
@@ -344,7 +407,7 @@ async def rearm_tick(ctx: dict[str, Any]) -> dict[str, Any]:
     ENDED, PROCESSED match (they are provably in an Arena session). This tick
     polls the due ones; a hit re-arms at the shortest delay, consecutive misses
     back off through ``settings.rearm_delays`` until the player is dropped.
-    Discovered ids go to the PRIORITY pending lane — session matches are the
+    Discovered ids go to the PRIORITY arq queue — session matches are the
     freshest content the site can show.
     """
     redis = ctx["redis"]
@@ -391,11 +454,9 @@ async def rearm_tick(ctx: dict[str, Any]) -> dict[str, Any]:
         for puuid, ids in results:
             fresh = await _dedup_new(redis, ids) if ids else []
             eligible = [
-                m for m in fresh
-                if Q.evaluate_match_filters(Q.MatchMeta(riot_match_id=m)).eligible
+                m for m in fresh if Q.evaluate_match_filters(Q.MatchMeta(riot_match_id=m)).eligible
             ]
-            for mid in eligible:
-                await redis.lpush(Q.SWEEP_PENDING_PRIORITY, mid)
+            await _push_claimed(redis, Q.PRIORITY_QUEUE, eligible)
             discovered += len(ids)
             enqueued += len(eligible)
             if eligible:
@@ -439,7 +500,7 @@ async def rearm_tick(ctx: dict[str, Any]) -> dict[str, Any]:
 # restart and opens Q.RECONCILE_WINDOW_KEY; reconcile_tick below is a cheap
 # (two Redis reads) no-op every tick unless that window is open, in which case
 # it runs ONE full, start_time-bounded pass over every tracked player and
-# clears the window. Discovered ids flow into the normal standard pending list
+# clears the window. Discovered ids flow into the normal standard arq queue
 # so filtering/dedup/processing is the exact same path as the regular sweep.
 # ---------------------------------------------------------------------------
 
@@ -507,19 +568,25 @@ async def reconcile_tick(ctx: dict[str, Any]) -> dict[str, Any]:
                     hit_cap = True
             return ids, hit_cap
 
-        offset = 0
+        # Keyset-paged for the same reason as the steady-state sweep: a catch-up
+        # pass can span many minutes, and OFFSET paging would drop a tracked
+        # player for every registration that lands behind the cursor mid-scan —
+        # precisely the players an outage catch-up exists to recover.
+        cursor = ""
         players_scanned = 0
         discovered_total = 0
         enqueued_total = 0
         truncated_players = 0
         while True:
-            page = await _tracked_puuids_page(offset, settings.reconcile_batch_size)
+            page = await _tracked_puuids_after(cursor, settings.reconcile_batch_size)
             if not page:
                 break
             players_scanned += len(page)
 
             pairs = [(puuid, queue_id) for puuid in page for queue_id in settings.live_queue_ids]
-            results = await asyncio.gather(*[_fetch_one(puuid, queue_id) for puuid, queue_id in pairs])
+            results = await asyncio.gather(
+                *[_fetch_one(puuid, queue_id) for puuid, queue_id in pairs]
+            )
             page_ids: list[str] = []
             capped_puuids: set[str] = set()
             for (puuid, _queue_id), (ids, hit_cap) in zip(pairs, results):
@@ -531,14 +598,13 @@ async def reconcile_tick(ctx: dict[str, Any]) -> dict[str, Any]:
             if page_ids:
                 fresh = await _dedup_new(redis, page_ids)
                 eligible = [
-                    m for m in fresh
+                    m
+                    for m in fresh
                     if Q.evaluate_match_filters(Q.MatchMeta(riot_match_id=m)).eligible
                 ]
-                for mid in eligible:
-                    await redis.lpush(Q.SWEEP_PENDING_STANDARD, mid)
-                enqueued_total += len(eligible)
+                enqueued_total += await _push_claimed(redis, Q.STANDARD_QUEUE, eligible)
 
-            offset += settings.reconcile_batch_size
+            cursor = page[-1]
             if len(page) < settings.reconcile_batch_size:
                 break
 

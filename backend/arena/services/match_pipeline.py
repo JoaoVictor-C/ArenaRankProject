@@ -36,10 +36,11 @@ import time
 import uuid
 from collections.abc import AsyncIterator, Callable, Iterable, Mapping
 from contextlib import AbstractAsyncContextManager, asynccontextmanager
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any
 
-from sqlalchemy import func, select
+from sqlalchemy import func, literal_column, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -65,6 +66,7 @@ from arena.services.protocols import (
     RawParticipant,
 )
 from arena.services.rating_service import ProcessOutcome, RatingService
+from arena.workers.backfill import enqueue_backfill
 
 _log = get_logger("arena.services.match_pipeline")
 
@@ -269,7 +271,52 @@ async def resolve_active_season_id(session: AsyncSession) -> str:
     return season_id
 
 
-async def register_players(session: AsyncSession, parsed: ParsedArenaMatch) -> dict[str, str]:
+@dataclass(frozen=True, slots=True)
+class RegisteredPlayers:
+    """Outcome of :func:`register_players`.
+
+    ``new_puuids`` are the rows this call genuinely INSERTed (as opposed to
+    upserted onto an existing row). They are the trigger for the one-shot
+    history backfill: a player is born here as a side effect of a lobby-mate's
+    match, and nothing else in the online path ever looks at the history they
+    already had.
+    """
+
+    id_map: dict[str, str]
+    new_puuids: tuple[str, ...] = ()
+
+
+def player_upsert_stmt(rows: list[dict[str, Any]]) -> Any:
+    """The whole-lobby player upsert, returning ``(id, puuid, inserted)``.
+
+    Split out from :func:`register_players` so the SQL shape — specifically the
+    ``xmax`` discriminator, which only a live Postgres can execute — is pinned by
+    a dialect-compile test rather than only by the integration test that skips
+    without a database.
+
+    Return type is ``Any`` because the mixed column/literal RETURNING makes the
+    row type unresolvable for mypy --strict.
+    """
+    ins = pg_insert(m.Player).values(rows)
+    return ins.on_conflict_do_update(
+        index_elements=["puuid"],
+        set_={
+            "profile_icon_id": func.coalesce(ins.excluded.profile_icon_id, m.Player.profile_icon_id),
+            "summoner_name": func.coalesce(ins.excluded.summoner_name, m.Player.summoner_name),
+            "tag_line": func.coalesce(ins.excluded.tag_line, m.Player.tag_line),
+        },
+    ).returning(
+        m.Player.id,
+        m.Player.puuid,
+        # Postgres idiom: on a row this statement INSERTed, xmax is 0; on one it
+        # UPDATEd via ON CONFLICT, xmax carries the updating xid. This is the
+        # only way to tell the two apart in a single round-trip — DO UPDATE
+        # returns both kinds indistinguishably.
+        literal_column("(xmax = 0)").label("inserted"),
+    )
+
+
+async def register_players(session: AsyncSession, parsed: ParsedArenaMatch) -> RegisteredPlayers:
     """Resolve every participant puuid to an internal ``players.id``, creating rows.
 
     One ``INSERT ... ON CONFLICT (puuid) DO UPDATE ... RETURNING`` for the whole
@@ -295,7 +342,7 @@ async def register_players(session: AsyncSession, parsed: ParsedArenaMatch) -> d
                 },
             )
     if not roster:
-        return {}
+        return RegisteredPlayers({})
 
     # Emit rows in a deterministic order (sorted by puuid). register_players runs
     # OUTSIDE the per-player rating lock, so two concurrent matches with an
@@ -303,20 +350,15 @@ async def register_players(session: AsyncSession, parsed: ParsedArenaMatch) -> d
     # different VALUES orders and deadlock. Sorting gives every transaction the
     # same lock-acquisition order, which eliminates the deadlock.
     rows = [roster[pu] for pu in sorted(roster)]
-    ins = pg_insert(m.Player).values(rows)
-    stmt = ins.on_conflict_do_update(
-        index_elements=["puuid"],
-        set_={
-            "profile_icon_id": func.coalesce(ins.excluded.profile_icon_id, m.Player.profile_icon_id),
-            "summoner_name": func.coalesce(ins.excluded.summoner_name, m.Player.summoner_name),
-            "tag_line": func.coalesce(ins.excluded.tag_line, m.Player.tag_line),
-        },
-    ).returning(m.Player.id, m.Player.puuid)
+    stmt = player_upsert_stmt(rows)
 
     id_map: dict[str, str] = {}
-    for pid, pu in (await session.execute(stmt)).all():
+    new_puuids: list[str] = []
+    for pid, pu, inserted in (await session.execute(stmt)).all():
         id_map[str(pu)] = str(pid)
-    return id_map
+        if inserted:
+            new_puuids.append(str(pu))
+    return RegisteredPlayers(id_map, tuple(new_puuids))
 
 
 @asynccontextmanager
@@ -396,10 +438,29 @@ class WorkerRatingService:
             )
             return {"matchId": riot_match_id, "status": "filtered", "reason": "before_cutoff"}
 
+        # Structural sanity (rare Riot-side data anomaly): every participant is
+        # occasionally stamped with playerSubteamId=0 (and placement 0), which
+        # collapses parse_arena_match's grouping into one giant "subteam" instead
+        # of several. Nothing upstream (queue id, participant count, duration)
+        # catches this — it only surfaces as arena.rating.engine.rate() raising
+        # "a match needs at least 2 teams", which used to retry 3x and
+        # dead-letter a match that was never ratable to begin with. Mirrors the
+        # engine's own guard exactly (>=2 teams) rather than requiring the
+        # mode's full canonical shape (is_complete) — a smaller-than-canonical
+        # lobby is still ratable and must not be filtered.
+        if len(parsed.subteams) < 2:
+            _log.info(
+                "pipeline.incomplete_teams",
+                matchId=riot_match_id,
+                subteams=len(parsed.subteams),
+            )
+            return {"matchId": riot_match_id, "status": "filtered", "reason": "incomplete_teams"}
+
         factory = get_sessionmaker()
         async with factory() as session:
             season_id = await resolve_active_season_id(session)
-            id_map = await register_players(session, parsed)
+            registered = await register_players(session, parsed)
+            id_map = registered.id_map
             participants, ineligible = build_raw_participants(parsed, lambda pu: id_map[pu])
             raw = RawMatch(
                 match_id=deterministic_match_id(parsed.match_id),
@@ -413,6 +474,12 @@ class WorkerRatingService:
             )
             service = RatingService(self._integrity_factory(ineligible, redis))
             outcome = await service.process_match(session, _lock_factory(redis), raw)
+
+        # Queue the one-shot history backfill for players this match introduced.
+        # AFTER the transaction commits, so a rollback can't leave us backfilling
+        # a player that does not exist; best-effort inside, so a Redis blip never
+        # fails an already-persisted match.
+        await enqueue_backfill(redis, registered.new_puuids)
 
         return _summary(riot_match_id, raw.match_id, outcome)
 
@@ -429,6 +496,8 @@ __all__ = [
     "NoActiveSeasonError",
     "build_raw_participants",
     "register_players",
+    "RegisteredPlayers",
+    "player_upsert_stmt",
     "resolve_active_season_id",
     "deterministic_match_id",
     "played_at_iso",

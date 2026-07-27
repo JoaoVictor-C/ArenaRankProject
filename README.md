@@ -24,10 +24,7 @@ end. Be honest with yourself about what runs:
 | Offline backfill/rerate (`backend/scripts/*`) | ✅ How the current dev data was produced |
 | `packages/*` — `@crs/*` (TS rating engine + Prisma + Zod types) | ✅ **Enforced oracle / spec-of-record** ([ADR 0001](docs/decisions/0001-rating-engine-oracle.md)) — not deployed, but the parity gate makes the Python port conform |
 | `infrastructure/*` (Helm / K8s / Terraform / observability) | ⚠️ Scaffolded; **not yet validated against the live FastAPI app** |
-| Auth on `/admin/*` and tournament-admin endpoints | ❌ **None yet** — do not expose publicly |
-
-See [`prompt.md`](./prompt.md) (session save-point) and
-[`workaround.md`](./workaround.md) for environment gotchas.
+| Auth on `/admin/*` and tournament-admin endpoints | ⚠️ Shared-key auth only (`ADMIN_API_KEY` → `X-Admin-Key`/`Bearer`, fail-closed) — no per-user identity/RBAC yet |
 
 ---
 
@@ -40,7 +37,8 @@ See [`prompt.md`](./prompt.md) (session save-point) and
 │   ├─ alembic/      DB migrations (SQLAlchemy)
 │   ├─ scripts/      backfill / rerate / sims / e2e fixtures (offline tools)
 │   └─ tests/        pytest
-├─ frontend/         React 18 · Vite 5 · TypeScript · the DEPLOYED UI
+├─ frontend/         React 18 · Vite 5 · TypeScript · the DEPLOYED player UI
+├─ admin-console/    React 18 · Vite 5 · TypeScript · SEPARATE operator UI (port 5174)
 ├─ packages/         TypeScript REFERENCE implementation (not deployed)
 │   ├─ rating-engine/   @crs/rating-engine  — pure rating math, 100% test coverage (the "oracle")
 │   ├─ database/        @crs/database       — Prisma schema + migrations
@@ -99,9 +97,7 @@ docker compose run --rm api python -m arena.db.seed     # seed champions + a dev
 
 ## Manual local dev
 
-All commands are **relative to the repo root** — no absolute paths (older notes
-in `prompt.md`/`workaround.md` reference a different machine's `F:\` drive; ignore
-those paths and use these).
+All commands are **relative to the repo root** — no absolute paths.
 
 ### Backend
 
@@ -119,13 +115,20 @@ uv run python -m arena.db.seed
 uv run uvicorn arena.api.app:app --reload --port 8000
 ```
 
-Workers (ingestion + processing) — requires Redis and a `RIOT_API_KEY`:
+Workers (discovery + processing) — requires Redis and a `RIOT_API_KEY`:
 
 ```bash
 cd backend
-uv run arq arena.workers.main.StandardWorker      # match processor
-uv run arq arena.workers.main.IngestionWorker     # Riot poller (enqueues matches)
+uv run arq arena.workers.main.SweepWorker           # discovers match ids -> arena:standard
+uv run arq arena.workers.main.StandardWorker        # continuous consumer: processes arena:standard
+uv run arq arena.workers.main.PriorityWorker        # continuous consumer: processes arena:priority
+uv run arq arena.workers.main.PrioritySweepWorker    # discovers Top-N/selected players -> arena:priority
+uv run arq arena.workers.main.SchedulerWorker        # maintenance cron (season transitions, cache warm, ...)
 ```
+
+> `StandardWorker`/`PriorityWorker` are continuous arq consumers (no cron tick,
+> no idle window) — they drain their queue as fast as it fills. `IngestionWorker`
+> is a Helm/K8s-only Riot poller, not part of the docker-compose stack.
 
 > After changing backend rating params/services, flush the leaderboard cache:
 > `redis-cli FLUSHALL` (a uvicorn reload does **not** invalidate it).
@@ -136,6 +139,18 @@ uv run arq arena.workers.main.IngestionWorker     # Riot poller (enqueues matche
 cd frontend
 npm install
 npm run dev            # http://localhost:5173 (set VITE_API_URL for a non-proxied API)
+```
+
+### Admin console
+
+A **separate** operator UI (noindex, not linked from the player app) that
+switches its target backend (local/production/custom) at runtime from its own
+top bar — it does not read `VITE_API_URL`.
+
+```bash
+cd admin-console
+npm install
+npm run dev            # http://localhost:5174
 ```
 
 ---
@@ -193,8 +208,9 @@ node parity/compare.mjs    # see parity/README.md
 
 ## Known gaps & conventions
 
-- **No auth** on admin/tournament-admin mutations yet — gate before any public
-  deploy.
+- **Shared-key auth only** on admin/tournament-admin mutations (`ADMIN_API_KEY`,
+  fail-closed) — no per-user identity/RBAC yet; still gate the admin surface
+  before any public deploy.
 - **Dual rating/schema implementations** (`packages/` vs `backend/`) can drift;
   the parity harness covers the engine core only.
 - **Mixed language:** user-facing strings and many docs are **PT-BR**; code

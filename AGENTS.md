@@ -2,7 +2,7 @@
 
 ## Project Structure & Module Organization
 
-`backend/arena/` is the deployed Python FastAPI runtime, organized into API routers, services, database models, Riot integration, rating/integrity engines, and workers. Backend tests live in `backend/tests/`; migrations are in `backend/alembic/`. `frontend/` is the React/Vite user interface, while `admin-console/` is the operator UI. `packages/` contains the TypeScript reference rating engine, Prisma database package, and shared Zod types. Infrastructure definitions live under `infrastructure/`, architecture notes under `docs/`, and `parity/` compares the TypeScript rating oracle with Python. Follow the additional rules in `frontend/AGENTS.md` when editing that subtree.
+`backend/arena/` is the deployed Python FastAPI runtime, organized into API routers, services, database models, Riot integration, rating/integrity engines, and workers. Backend tests live in `backend/tests/`; migrations are in `backend/alembic/`. `frontend/` is the React/Vite user interface, while `admin-console/` is a **separate** React/Vite operator UI (own port, own dev server, switches target backend at runtime — not part of the player app's build). `packages/` contains the TypeScript reference rating engine, Prisma database package, and shared Zod types. Infrastructure definitions live under `infrastructure/`, architecture notes under `docs/`, and `parity/` compares the TypeScript rating oracle with Python. Follow the additional rules in `frontend/AGENTS.md` when editing that subtree.
 
 ## Build, Test, and Development Commands
 
@@ -27,4 +27,4 @@ Recent history follows Conventional Commits with scopes, such as `feat(leaderboa
 
 ## Security & Configuration Tips
 
-Copy values from `backend/.env.example`, `frontend/.env.example`, or package examples; never commit credentials or Riot keys. Admin mutation routes are not fully authenticated, so do not expose them publicly without an explicit security gate.
+Copy values from `backend/.env.example`, `frontend/.env.example`, or package examples; never commit credentials or Riot keys. Admin mutation routes are gated by a shared `ADMIN_API_KEY` (`X-Admin-Key`/`Bearer`, fail-closed if unset) but have no per-user identity/RBAC yet, so do not expose them publicly without an additional gate.

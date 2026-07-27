@@ -39,10 +39,9 @@ export interface History {
   backlog: number[];
   dlq: number[];
   arqQueues: number[];
-  sweepPending: number[];
 }
 
-const EMPTY_HISTORY: History = { backlog: [], dlq: [], arqQueues: [], sweepPending: [] };
+const EMPTY_HISTORY: History = { backlog: [], dlq: [], arqQueues: [] };
 
 export interface TelemetryState {
   telemetry: Telemetry | null;
@@ -115,10 +114,6 @@ export function useTelemetry(conn: Conn, opts: TelemetryOptions): TelemetryState
         backlog: pushCapped(h.backlog, t.pipeline.totalBacklog),
         dlq: pushCapped(h.dlq, t.pipeline.dlq),
         arqQueues: pushCapped(h.arqQueues, t.pipeline.priorityQueue + t.pipeline.standardQueue),
-        sweepPending: pushCapped(
-          h.sweepPending,
-          (t.pipeline.sweepPendingPriority ?? 0) + (t.pipeline.sweepPendingStandard ?? 0),
-        ),
       }));
     };
 

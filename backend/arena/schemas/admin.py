@@ -2,14 +2,16 @@
 
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Literal
 
 from pydantic import Field
 
-from arena.schemas.common import ArenaModel, Severity
+from arena.schemas.common import ArenaModel, AvatarColors, Severity
 
 WorkerStatus = Literal["ok", "warn", "down"]
 RiotApiStatus = Literal["ok", "warn"]
+OperatorRoleName = Literal["owner", "admin", "moderator", "analyst", "support"]
 
 
 class AdminMetric(ArenaModel):
@@ -66,6 +68,26 @@ class AdminRiotApi(ArenaModel):
     usage: str
 
 
+class AdminDailyMatchStat(ArenaModel):
+    """One calendar day's match volume + whatever stats the `matches` row
+    already carries (duration, mode split, integrity flags). No fabricated
+    fields — a stat we can't reliably compute (e.g. per-day DLQ failures,
+    which aren't timestamped in a way that survives a requeue) is simply
+    absent rather than guessed."""
+
+    date: str  # YYYY-MM-DD (UTC)
+    matches: int
+    avg_duration_seconds: float | None = None
+    duos: int = 0
+    trios: int = 0
+    with_integrity_flags: int = 0
+
+
+class AdminDailyMatches(ArenaModel):
+    ts: str
+    days: list[AdminDailyMatchStat] = Field(default_factory=list)
+
+
 class AdminOverview(ArenaModel):
     metrics: list[AdminMetric] = Field(default_factory=list)
     workers: list[AdminWorker] = Field(default_factory=list)
@@ -75,3 +97,87 @@ class AdminOverview(ArenaModel):
     dlq: list[AdminDlqItem] = Field(default_factory=list)
     season: AdminSeason
     riot_api: list[AdminRiotApi] = Field(default_factory=list)
+
+
+# ---- RBAC — /admin/operators (arena/api/rbac.py, arena/api/routers/admin_operators.py) ----
+
+
+class OperatorInfo(ArenaModel):
+    id: str
+    email: str
+    role: OperatorRoleName
+    key_prefix: str
+    created_at: datetime
+    last_seen_at: datetime | None = None
+    revoked: bool = False
+
+
+class OperatorCreateRequest(ArenaModel):
+    email: str
+    role: OperatorRoleName
+
+
+class OperatorCreateResult(ArenaModel):
+    id: str
+    email: str
+    role: OperatorRoleName
+    api_key: str
+    message: str
+
+
+class OperatorRevokeResult(ArenaModel):
+    id: str
+    message: str
+
+
+class PermissionRow(ArenaModel):
+    scope: str
+    label: str
+    roles: list[OperatorRoleName]
+
+
+# ---- Audit log — GET /admin/audit (arena/api/rbac.py::record_audit) ----
+
+
+class AuditEventInfo(ArenaModel):
+    id: str
+    occurred_at: datetime
+    actor: str
+    action: str
+    kind: str
+    target: str | None = None
+    source_ip: str | None = None
+    result: str
+
+
+# ---- Player search + moderation — arena/api/routers/admin_players.py ----
+
+
+class PlayerSearchRow(ArenaModel):
+    id: str
+    riot_id: str
+    puuid: str
+    region: str | None = None
+    cr: int | None = None
+    active: bool
+    banned: bool
+    shadowbanned: bool
+    restricted: bool
+    flag_count: int
+    avatar: AvatarColors
+
+
+class PlayerModerationRequest(ArenaModel):
+    banned: bool | None = None
+    shadowbanned: bool | None = None
+    restricted: bool | None = None
+    flag_type: str | None = Field(default=None, description="Tipo da flag anexada (opcional).")
+    note: str | None = Field(default=None, max_length=500)
+
+
+class PlayerModerationResult(ArenaModel):
+    player_id: str
+    banned: bool
+    shadowbanned: bool
+    restricted: bool
+    message: str

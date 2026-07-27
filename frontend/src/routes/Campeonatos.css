@@ -86,15 +86,6 @@
   font-weight: 700;
 }
 
-.pill.live .blip {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--red);
-  box-shadow: 0 0 8px var(--red);
-  animation: blip 1.4s ease-in-out infinite;
-}
-
 @keyframes blip {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.35; }
@@ -281,15 +272,6 @@
   color: var(--red);
 }
 
-.m-status.live .blip {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--red);
-  box-shadow: 0 0 6px var(--red);
-  animation: blip 1.4s ease-in-out infinite;
-}
-
 .m-status.upcoming {
   background: rgba(255, 255, 255, 0.05);
   color: var(--text-dim);
@@ -346,8 +328,7 @@
   justify-content: center;
 }
 
-.m-winner-label,
-.m-countdown-label {
+.m-winner-label {
   font: 600 10px/1 "Plus Jakarta Sans";
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -419,13 +400,6 @@
   border-radius: 999px;
   background: var(--red);
   transition: width 0.4s ease;
-}
-
-.m-countdown {
-  font: 800 32px/1 "Plus Jakarta Sans";
-  color: var(--text);
-  letter-spacing: 0.01em;
-  font-variant-numeric: tabular-nums;
 }
 
 .m-foot {

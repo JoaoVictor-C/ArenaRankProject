@@ -1,11 +1,12 @@
 """Payments router (InfinitePay) — admin test surface.
 
-**Fatia 1** do design de inscrição paga
-(``docs/superpowers/specs/2026-07-21-infinitepay-inscricao-pix-design.md``):
-um endpoint admin-gated que cria uma cobrança InfinitePay **real** (handle-only)
-para provar a integração ao vivo. Ainda NÃO persiste nada — a tabela
-``tournament_payments`` e o webhook chegam na fatia 2. Criar o link não cobra
-ninguém; a cobrança só ocorre se o pagador concluir o PIX na página hospedada.
+**Fatia 1** do design de inscrição paga (o doc de design original não está
+neste repo — ver ``arena/services/infinitepay.py`` para o client e
+``Settings.infinitepay_*`` para a config): um endpoint admin-gated que cria
+uma cobrança InfinitePay **real** (handle-only) para provar a integração ao
+vivo. Ainda NÃO persiste nada — a tabela ``tournament_payments`` e o webhook
+chegam na fatia 2. Criar o link não cobra ninguém; a cobrança só ocorre se o
+pagador concluir o PIX na página hospedada.
 
 Roda server-side de propósito: ``api.checkout.infinitepay.io`` não devolve headers
 CORS, então uma chamada direta do browser é bloqueada.
@@ -18,7 +19,7 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import Field
 
-from arena.api.security import require_admin
+from arena.api.rbac import require_scope
 from arena.core.config import settings
 from arena.core.logging import get_logger
 from arena.schemas.common import ArenaModel
@@ -26,11 +27,13 @@ from arena.services.infinitepay import InfinitePayClient, InfinitePayError, entr
 
 _log = get_logger("arena.api.payments")
 
-# Self-applies the admin gate on every route (mounted plainly in app.py).
+# Self-applies the scope gate on every route (mounted plainly in app.py).
+# Grouped with tournament provisioning under tournaments:write since a test
+# charge only ever makes sense alongside creating/configuring a tournament.
 router = APIRouter(
     prefix="/admin/payments",
     tags=["payments"],
-    dependencies=[Depends(require_admin)],
+    dependencies=[Depends(require_scope("tournaments:write"))],
 )
 
 

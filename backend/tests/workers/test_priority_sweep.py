@@ -19,7 +19,15 @@ _FAKE_MATCH_IDS = ["m1", "m2", "m3"]
 class _FakeRiotClient:
     """Stub client whose list_match_ids always returns the same 3 ids."""
 
-    async def list_match_ids(self, puuid: str, *, start: int = 0, count: int = 10) -> list[str]:
+    async def list_match_ids(
+        self,
+        puuid: str,
+        *,
+        start: int = 0,
+        count: int = 10,
+        queue: int | None = None,
+        start_time: int | None = None,
+    ) -> list[str]:
         return list(_FAKE_MATCH_IDS)
 
     async def get_match(self, riot_match_id: str):
@@ -51,9 +59,8 @@ async def test_priority_sweep_enqueues_to_priority(fake_redis, monkeypatch):
     assert result["status"] == "ok"
     assert result["seeds"] == 2
 
-    items = await fake_redis.rpop(Q.SWEEP_PENDING_PRIORITY, 10)
-    assert items is not None
-    assert set(items) == {b"m1", b"m2", b"m3"}
+    jobs = [j for j in fake_redis.enqueued if j.queue_name == Q.PRIORITY_QUEUE]
+    assert {j.args[0] for j in jobs} == {"m1", "m2", "m3"}
 
 
 async def test_priority_seeds_union_dedup(fake_redis, monkeypatch):
@@ -90,7 +97,7 @@ async def test_priority_sweep_paused(fake_redis, monkeypatch):
     result = await priority_sweep_tick({"redis": fake_redis})
 
     assert result == {"status": "paused"}
-    assert await fake_redis.rpop(Q.SWEEP_PENDING_PRIORITY) is None
+    assert fake_redis.enqueued == []
 
 
 async def test_priority_sweep_skip_locked(fake_redis, monkeypatch):
@@ -107,4 +114,4 @@ async def test_priority_sweep_skip_locked(fake_redis, monkeypatch):
     result = await priority_sweep_tick({"redis": fake_redis})
 
     assert result == {"status": "skip_locked"}
-    assert await fake_redis.rpop(Q.SWEEP_PENDING_PRIORITY) is None
+    assert fake_redis.enqueued == []

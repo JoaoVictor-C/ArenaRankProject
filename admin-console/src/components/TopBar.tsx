@@ -1,5 +1,4 @@
-import { useEffect, useState } from "react";
-import type { BackendId, Conn } from "../lib/backend";
+import type { Conn } from "../lib/backend";
 import { displayOrigin } from "../lib/backend";
 import type { Source, TeleStatus, Transport } from "../lib/useTelemetry";
 import { clock } from "../lib/format";
@@ -12,22 +11,8 @@ interface Props {
   frames: number;
   lastTs: string | null;
   intervalMs: number;
-  preferStream: boolean;
-  onBackend: (id: BackendId) => void;
-  onUrl: (url: string) => void;
-  onInterval: (ms: number) => void;
-  onToggleStream: (v: boolean) => void;
-  onReconnect: () => void;
-  onChangeKey: () => void;
+  onOpenDrawer: () => void;
 }
-
-const BACKENDS: { id: BackendId; label: string }[] = [
-  { id: "local", label: "Local" },
-  { id: "production", label: "Produção" },
-  { id: "custom", label: "Custom" },
-];
-
-const INTERVALS = [1000, 1500, 2000, 3000, 5000];
 
 function statusInfo(
   status: TeleStatus,
@@ -58,117 +43,63 @@ function statusInfo(
 }
 
 export function TopBar(props: Props) {
-  const {
-    conn,
-    status,
-    transport,
-    source,
-    frames,
-    lastTs,
-    intervalMs,
-    preferStream,
-    onBackend,
-    onUrl,
-    onInterval,
-    onToggleStream,
-    onReconnect,
-    onChangeKey,
-  } = props;
-
-  const editable = conn.id === "production" || conn.id === "custom";
-  const [urlDraft, setUrlDraft] = useState(conn.base);
-  useEffect(() => setUrlDraft(conn.base), [conn.base, conn.id]);
-
+  const { conn, status, transport, source, frames, lastTs, intervalMs, onOpenDrawer } = props;
   const { tone, label } = statusInfo(status, transport, source, intervalMs);
 
   return (
-    <header className="topbar">
-      <div className="tb-brand">
-        <span className="tb-logo" aria-hidden="true">
-          <i />
-          <i />
-          <i />
+    <>
+      <div className="admin-strip">
+        <span className="ms ms-15" aria-hidden="true">
+          lock
         </span>
-        <div className="tb-brand-text">
-          <strong>ARENA·OPS</strong>
-          <small>console de operações</small>
-        </div>
+        <span>PAINEL ADMINISTRATIVO</span>
+        <span className="admin-strip-note">Autenticado via chave de admin</span>
       </div>
 
-      <div className="tb-backend">
-        <div className="seg" role="tablist" aria-label="Backend">
-          {BACKENDS.map((b) => (
-            <button
-              key={b.id}
-              role="tab"
-              aria-selected={conn.id === b.id}
-              className={conn.id === b.id ? "seg-on" : ""}
-              onClick={() => onBackend(b.id)}
-              type="button"
-            >
-              {b.label}
+      <header className="masthead">
+        <div className="mh-row1">
+          <a href="#" className="mh-logo" aria-label="ArenaRank">
+            <img src="/logo-wordmark.png" alt="ArenaRank" />
+          </a>
+          <div className="mh-badges">
+            <span className="mh-badge mh-badge-primary">
+              <span className="mh-badge-text">
+                CONSOLE
+                <sup>OPS</sup>
+              </span>
+            </span>
+            <span className="mh-badge">
+              <span className="mh-badge-text">ARENA 3V3</span>
+            </span>
+          </div>
+          <span className="mh-region">BR</span>
+        </div>
+
+        <div className="mh-row2">
+          <div className="mh-backend">
+            <span className="mh-backend-label">Backend</span>
+            <span className="mh-backend-value" title={displayOrigin(conn)}>
+              {displayOrigin(conn)}
+            </span>
+          </div>
+
+          <div className="mh-right">
+            <span className={`conn conn-${tone}`}>
+              <span key={frames} className="hb" aria-hidden="true" />
+              <span className="conn-label">{label}</span>
+            </span>
+            <span className="tb-clock tnum" title="Horário do último frame recebido">
+              {clock(lastTs)}
+            </span>
+            <button type="button" className="mh-conn-btn" onClick={onOpenDrawer}>
+              <span className="ms ms-15" aria-hidden="true">
+                tune
+              </span>
+              Conexão
             </button>
-          ))}
+          </div>
         </div>
-        {editable ? (
-          <input
-            className="tb-url"
-            value={urlDraft}
-            placeholder="https://api.exemplo.com"
-            spellCheck={false}
-            onChange={(e) => setUrlDraft(e.target.value)}
-            onBlur={() => onUrl(urlDraft)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") (e.target as HTMLInputElement).blur();
-            }}
-            aria-label="URL do backend"
-          />
-        ) : (
-          <span className="tb-origin" title={displayOrigin(conn)}>
-            {displayOrigin(conn)}
-          </span>
-        )}
-      </div>
-
-      <div className="tb-status">
-        <span className={`conn conn-${tone}`}>
-          <span key={frames} className="hb" aria-hidden="true" />
-          <span className="conn-label">{label}</span>
-        </span>
-        <span className="tb-clock tnum" title="Horário do último frame recebido">
-          {clock(lastTs)}
-        </span>
-      </div>
-
-      <div className="tb-controls">
-        <label className="ctl" title="Tentar o stream SSE (com fallback automático para polling)">
-          <input
-            type="checkbox"
-            checked={preferStream}
-            onChange={(e) => onToggleStream(e.target.checked)}
-          />
-          <span>Stream</span>
-        </label>
-        <select
-          className="ctl-select"
-          value={intervalMs}
-          onChange={(e) => onInterval(Number(e.target.value))}
-          aria-label="Intervalo de atualização"
-          title="Cadência do polling (fallback)"
-        >
-          {INTERVALS.map((ms) => (
-            <option key={ms} value={ms}>
-              {ms >= 1000 ? `${ms / 1000}s` : `${ms}ms`}
-            </option>
-          ))}
-        </select>
-        <button className="btn-ghost" type="button" onClick={onReconnect} title="Reconectar">
-          ↻
-        </button>
-        <button className="btn-ghost" type="button" onClick={onChangeKey} title="Trocar chave de admin">
-          🔑
-        </button>
-      </div>
-    </header>
+      </header>
+    </>
   );
 }

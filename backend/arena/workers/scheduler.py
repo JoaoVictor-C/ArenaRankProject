@@ -196,7 +196,10 @@ async def _purge_cr_snapshots_recent() -> int:
     novo na próxima hora. Roda no PRIMÁRIO (o purge replica para a réplica).
     """
     try:
+        from typing import Any, cast
+
         from sqlalchemy import delete, select
+        from sqlalchemy.engine import CursorResult
 
         from arena.db import models as m
         from arena.db.session import get_sessionmaker
@@ -209,7 +212,7 @@ async def _purge_cr_snapshots_recent() -> int:
                 delete(m.CrSnapshotRecent).where(m.CrSnapshotRecent.season_id != current)
             )
             await session.commit()
-            purged = int(result.rowcount or 0)
+            purged = int(cast(CursorResult[Any], result).rowcount or 0)
             if purged:
                 _log.info("scheduler.cr_snapshots_recent.purged", rows=purged)
             return purged

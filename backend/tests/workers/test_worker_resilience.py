@@ -11,10 +11,9 @@ from __future__ import annotations
 import pytest
 from redis.exceptions import BusyLoadingError
 
-from arena.workers.bulk_processor import bulk_process_tick
 from arena.workers.sweep import priority_sweep_tick, sweep_tick
 
-_TICKS = [sweep_tick, priority_sweep_tick, bulk_process_tick]
+_TICKS = [sweep_tick, priority_sweep_tick]
 
 
 @pytest.mark.parametrize("tick", _TICKS)

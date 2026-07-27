@@ -22,7 +22,7 @@ from collections.abc import Awaitable, Callable
 from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING, AsyncIterator
 
-from fastapi import Depends, FastAPI, Request, status
+from fastapi import FastAPI, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -88,10 +88,11 @@ except Exception:  # pragma: no cover - import-order / optional-dep tolerance
 
 try:
     from arena.api.routers.admin import router as _admin_router
-    from arena.api.security import require_admin as _require_admin
 
-    # Gate the entire operator surface (overview + season/DLQ/integrity ops).
-    api_router.include_router(_admin_router, dependencies=[Depends(_require_admin)])
+    # Each route in admin.py now carries its own per-route
+    # Depends(require_scope(...)) — see arena/api/rbac.py — instead of one
+    # blanket gate here.
+    api_router.include_router(_admin_router)
 except Exception:  # pragma: no cover - import-order / optional-dep tolerance
     _log.warning("api.router.admin_unavailable", exc_info=True)
 
@@ -99,10 +100,36 @@ try:
     from arena.api.routers.admin_telemetry import router as _admin_telemetry_router
 
     # Live worker/processor telemetry (admin console). The router self-applies
-    # ``require_admin`` so no extra dependency is needed here.
+    # require_scope("telemetry:read") so no extra dependency is needed here.
     api_router.include_router(_admin_telemetry_router)
 except Exception:  # pragma: no cover - import-order / optional-dep tolerance
     _log.warning("api.router.admin_telemetry_unavailable", exc_info=True)
+
+try:
+    from arena.api.routers.admin_operators import router as _admin_operators_router
+
+    # RBAC operator management (list/create/revoke) + the permission matrix.
+    # The router self-applies require_scope("rbac:write").
+    api_router.include_router(_admin_operators_router)
+except Exception:  # pragma: no cover - import-order / optional-dep tolerance
+    _log.warning("api.router.admin_operators_unavailable", exc_info=True)
+
+try:
+    from arena.api.routers.admin_audit import router as _admin_audit_router
+
+    # Audit log (Phase C). The router self-applies require_scope("audit:read").
+    api_router.include_router(_admin_audit_router)
+except Exception:  # pragma: no cover - import-order / optional-dep tolerance
+    _log.warning("api.router.admin_audit_unavailable", exc_info=True)
+
+try:
+    from arena.api.routers.admin_players import router as _admin_players_router
+
+    # Player search (telemetry:read) + moderation (players:moderate) — each
+    # route carries its own scope, so no router-level dependency here.
+    api_router.include_router(_admin_players_router)
+except Exception:  # pragma: no cover - import-order / optional-dep tolerance
+    _log.warning("api.router.admin_players_unavailable", exc_info=True)
 
 try:
     from arena.tournaments.router import router as _tournaments_router
@@ -114,7 +141,7 @@ except Exception:  # pragma: no cover - import-order / optional-dep tolerance
 try:
     from arena.api.routers.payments import router as _payments_router
 
-    # Router self-applies require_admin on every route.
+    # Router self-applies require_scope("tournaments:write") on every route.
     api_router.include_router(_payments_router)
 except Exception:  # pragma: no cover - import-order / optional-dep tolerance
     _log.warning("api.router.payments_unavailable", exc_info=True)

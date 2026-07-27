@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { Conn } from "../lib/backend";
 import { pauseWorker, resumeWorker } from "../lib/actions";
 import type { NormWorker } from "../lib/types";
@@ -29,30 +29,46 @@ function WorkerCard({
 }) {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  // What we just asked the backend for, held until telemetry catches up.
+  // Without it the card keeps rendering the pre-click snapshot until the next
+  // frame lands, so "Retomar" stays on screen after a successful resume and the
+  // control reads as broken (and a second click fires a redundant request).
+  const [optimisticPaused, setOptimisticPaused] = useState<boolean | null>(null);
+
+  // Drop the override as soon as the server-sent state agrees with it.
+  useEffect(() => {
+    if (optimisticPaused !== null && w.paused === optimisticPaused) setOptimisticPaused(null);
+  }, [w.paused, optimisticPaused]);
+
+  const paused = optimisticPaused ?? w.paused;
+  const health = optimisticPaused === null ? w.health : optimisticPaused ? "paused" : "idle";
 
   async function toggle() {
+    const next = !paused;
     setBusy(true);
     setErr(null);
     try {
-      if (w.paused) await resumeWorker(conn, w.name);
+      if (paused) await resumeWorker(conn, w.name);
       else await pauseWorker(conn, w.name);
+      setOptimisticPaused(next);
       onMutated();
     } catch (e) {
       setErr((e as Error).message);
+      setOptimisticPaused(null);
     } finally {
       setBusy(false);
     }
   }
 
   return (
-    <article className="worker" data-health={w.health}>
+    <article className="worker" data-health={health}>
       <header className="wk-head">
-        <span className={`led led-health led-${w.health}`} />
+        <span className={`led led-health led-${health}`} />
         <div className="wk-id">
           <div className="wk-name">{w.label}</div>
           <code className="wk-code">{w.name}</code>
         </div>
-        <span className={`wk-badge badge-${w.health}`}>{HEALTH_LABEL[w.health] ?? w.health}</span>
+        <span className={`wk-badge badge-${health}`}>{HEALTH_LABEL[health] ?? health}</span>
       </header>
 
       {w.description && <p className="wk-desc">{w.description}</p>}
@@ -97,12 +113,12 @@ function WorkerCard({
       <footer className="wk-foot">
         {w.controllable ? (
           <button
-            className={`wk-btn ${w.paused ? "is-resume" : "is-pause"}`}
+            className={`wk-btn ${paused ? "is-resume" : "is-pause"}`}
             type="button"
             disabled={busy}
             onClick={toggle}
           >
-            {busy ? "…" : w.paused ? "Retomar" : "Pausar"}
+            {busy ? "…" : paused ? "Retomar" : "Pausar"}
           </button>
         ) : (
           <span className="wk-note">somente leitura</span>

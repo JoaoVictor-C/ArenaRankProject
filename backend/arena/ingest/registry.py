@@ -1,3 +1,13 @@
+"""Bulk player registration for the crawl pipeline.
+
+The crawler (`crawler.py`) only knows puuids; the rating engine only knows
+``player_id`` (our own UUIDs). This module bridges the two in bulk, once per
+crawled batch, instead of the online write path's per-lobby
+``INSERT ... ON CONFLICT`` (see ``arena.services.match_pipeline`` /
+``arena.ingest.replay``'s ``id_map``, which is built from this module's
+output).
+"""
+
 from __future__ import annotations
 
 from collections.abc import Sequence

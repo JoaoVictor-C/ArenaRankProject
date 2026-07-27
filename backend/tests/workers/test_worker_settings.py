@@ -1,10 +1,9 @@
-"""The three new WorkerSettings classes are importable and cron-wired."""
+"""The WorkerSettings classes are importable and correctly wired."""
 from __future__ import annotations
 
 import pytest
 
 from arena.workers.main import (
-    BulkProcessorWorker,
     IngestionWorker,
     PriorityWorker,
     PrioritySweepWorker,
@@ -22,14 +21,20 @@ def test_cron_workers_have_distinct_queues():
         SchedulerWorker.queue_name,
         SweepWorker.queue_name,
         PrioritySweepWorker.queue_name,
-        BulkProcessorWorker.queue_name,
     ]
     assert len(set(qs)) == len(qs), f"cron worker queues must be unique: {qs}"
 
 
 def test_sweep_worker_cron_jobs():
-    """sweep_tick + rearm_tick + reconcile_tick, all hosted on this pool."""
-    assert len(SweepWorker.cron_jobs) == 3
+    """sweep + rearm + reconcile + backfill ticks, all hosted on this pool."""
+    assert len(SweepWorker.cron_jobs) == 4
+    names = {job.name for job in SweepWorker.cron_jobs}
+    assert names == {
+        "cron:sweep_tick",
+        "cron:rearm_tick",
+        "cron:reconcile_tick",
+        "cron:backfill_tick",
+    }
     assert SweepWorker.functions == []
 
 
@@ -37,8 +42,13 @@ def test_priority_sweep_worker_has_one_cron():
     assert len(PrioritySweepWorker.cron_jobs) == 1
 
 
-def test_bulk_processor_worker_has_one_cron():
-    assert len(BulkProcessorWorker.cron_jobs) == 1
+def test_consumer_workers_have_distinct_queues():
+    """StandardWorker/PriorityWorker are continuous consumers — no cron_jobs
+    attribute at all (unlike the cron pools above), each bound to its own arq
+    queue_name."""
+    assert StandardWorker.queue_name != PriorityWorker.queue_name
+    assert "cron_jobs" not in StandardWorker.__dict__
+    assert "cron_jobs" not in PriorityWorker.__dict__
 
 
 @pytest.mark.parametrize("worker", [StandardWorker, PriorityWorker])

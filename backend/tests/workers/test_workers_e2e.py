@@ -1,27 +1,47 @@
-"""End-to-end: sweep discovers → pending list → bulk processor drains+processes.
+"""End-to-end: sweep discovers → enqueues process_match jobs onto the real arq
+queues (arena:standard / arena:priority).
 
-All Redis via FakeRedis; Riot client and process_match are async stubs. No DB,
-network, or rating service touched.
+All Redis via FakeRedis; the Riot client is an async stub. No DB, network, or
+rating service touched. Running arq's real dispatch loop against these jobs is
+a different testing strategy (would need a real arq Worker) and is out of
+scope here — these tests assert what sweep_tick/priority_sweep_tick would
+enqueue, via FakeRedis.enqueue_job's call log.
 """
 from __future__ import annotations
 
 from arena.workers import queues as Q
-from arena.workers.bulk_processor import bulk_process_tick
 from arena.workers.sweep import priority_sweep_tick, sweep_tick
 
 
 class _StubClient:
-    async def list_match_ids(self, puuid: str, *, start: int = 0, count: int = 10):
-        return ["m1", "m2", "m3"]
+    # Signature mirrors the real RiotClient protocol — the sweep passes queue /
+    # start_time, and a stub without them raises into the per-call except,
+    # making every "enqueued" assertion below vacuously pass on zero work.
+    #
+    # Ids are namespaced by puuid so the standard sweep (puuid "pu-a") and the
+    # priority sweep (puuid "pu-top") never discover the same match id — with a
+    # shared id set the second sweep to run would find everything already
+    # claimed in the seen-ZSET and enqueue nothing, which would make the
+    # queue-separation test vacuously pass on an empty standard queue.
+    async def list_match_ids(
+        self,
+        puuid: str,
+        *,
+        start: int = 0,
+        count: int = 10,
+        queue: int | None = None,
+        start_time: int | None = None,
+    ):
+        return [f"{puuid}-m1", f"{puuid}-m2", f"{puuid}-m3"]
 
     async def get_match(self, mid):
         return None
 
 
-def _patch(monkeypatch, processed: list[str]):
+def _patch(monkeypatch):
     monkeypatch.setattr("arena.workers.sweep.get_riot_client", lambda: _StubClient())
 
-    async def _page(offset, limit):
+    async def _page(after, limit):
         return ["pu-a"]
 
     async def _selected():
@@ -30,53 +50,40 @@ def _patch(monkeypatch, processed: list[str]):
     async def _top(limit):
         return []
 
-    monkeypatch.setattr("arena.workers.sweep._tracked_puuids_page", _page)
+    monkeypatch.setattr("arena.workers.sweep._tracked_puuids_after", _page)
     monkeypatch.setattr("arena.workers.sweep._selected_puuids", _selected)
     monkeypatch.setattr("arena.workers.sweep._top_n_puuids", _top)
 
-    async def _proc(ctx, mid):
-        processed.append(mid)
-        return {"matchId": mid, "status": "processed"}
 
-    monkeypatch.setattr("arena.workers.bulk_processor.process_match", _proc)
-
-
-async def test_sweep_then_bulk_processes_all(fake_redis, monkeypatch):
-    processed: list[str] = []
-    _patch(monkeypatch, processed)
+async def test_sweep_enqueues_process_match_jobs_on_the_standard_queue(fake_redis, monkeypatch):
+    _patch(monkeypatch)
 
     sweep_res = await sweep_tick({"redis": fake_redis})
+
     assert sweep_res["status"] == "ok"
     assert sweep_res["enqueued"] == 3
+    ids = {"pu-a-m1", "pu-a-m2", "pu-a-m3"}
+    jobs = [j for j in fake_redis.enqueued if j.queue_name == Q.STANDARD_QUEUE]
+    assert {j.args[0] for j in jobs} == ids
+    assert all(j.task == Q.PROCESS_MATCH_TASK for j in jobs)
+    # The match id doubles as the job id — arq's own dedup layer on top of the
+    # seen-ZSET claim (see sweep._push_claimed).
+    assert {j.job_id for j in jobs} == {f"{Q.PROCESS_MATCH_TASK}:{mid}" for mid in ids}
 
-    bulk_res = await bulk_process_tick({"redis": fake_redis})
-    assert bulk_res["status"] == "ok"
-    assert bulk_res["total"] == 3
-    assert set(processed) == {"m1", "m2", "m3"}
-    # Attempts hash cleaned after success.
-    assert await fake_redis.hincrby(Q.SWEEP_ATTEMPTS_KEY, "m1", 0) == 0
 
+async def test_priority_and_standard_sweeps_land_on_separate_queues(fake_redis, monkeypatch):
+    """StandardWorker/PriorityWorker are two independently-scaled consumer
+    pools now (not one pool draining a priority list first) — the queues they
+    read from must stay genuinely separate, or a sustained priority sweep could
+    starve the standard lane the way the old single-pool drain risked."""
+    _patch(monkeypatch)
 
-async def test_priority_drained_before_standard(fake_redis, monkeypatch):
-    processed: list[str] = []
-    _patch(monkeypatch, processed)
-
-    # Seed one priority player so priority_sweep enqueues to the priority list.
     await fake_redis.sadd(Q.TOP_PLAYERS_SET, "pu-top")
     await priority_sweep_tick({"redis": fake_redis})
-    # Standard sweep enqueues the same ids — but they're already in the seen-set,
-    # so push a distinct standard id manually to prove ordering.
-    await fake_redis.lpush(Q.SWEEP_PENDING_STANDARD, "s-late")
+    await sweep_tick({"redis": fake_redis})
 
-    drained_order: list[str] = []
-
-    async def _proc(ctx, mid):
-        drained_order.append(mid)
-        return {"status": "processed"}
-
-    monkeypatch.setattr("arena.workers.bulk_processor.process_match", _proc)
-    await bulk_process_tick({"redis": fake_redis})
-
-    # Priority ids (m1/m2/m3) come before the standard "s-late".
-    assert drained_order[-1] == "s-late"
-    assert set(drained_order[:-1]) == {"m1", "m2", "m3"}
+    priority_jobs = [j for j in fake_redis.enqueued if j.queue_name == Q.PRIORITY_QUEUE]
+    standard_jobs = [j for j in fake_redis.enqueued if j.queue_name == Q.STANDARD_QUEUE]
+    assert priority_jobs, "priority sweep must enqueue onto arena:priority"
+    assert standard_jobs, "standard sweep must enqueue onto arena:standard"
+    assert {j.job_id for j in priority_jobs}.isdisjoint({j.job_id for j in standard_jobs})

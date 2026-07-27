@@ -9,7 +9,7 @@ interface Props {
   max?: number;
 }
 
-export function Sparkline({ data, color = "#4cc2ff", width = 160, height = 38, max }: Props) {
+export function Sparkline({ data, color = "var(--cyan)", width = 160, height = 38, max }: Props) {
   const pad = 3;
   const w = width;
   const h = height;

@@ -24,7 +24,7 @@ from datetime import UTC, datetime, timedelta
 
 from typing import Any
 
-from sqlalchemy import Float, Integer, Select, Table, and_, case, cast, func, select
+from sqlalchemy import Float, FromClause, Integer, Select, and_, case, cast, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
@@ -903,7 +903,7 @@ class StatsService:
 
     @staticmethod
     def _delta7d_stmt(
-        snap: Table, *, season_id: str, ids: list[str], cutoff: datetime
+        snap: FromClause, *, season_id: str, ids: list[str], cutoff: datetime
     ) -> Select[Any]:
         """Build the one-pass delta7d statement over a snapshot-shaped table.
 

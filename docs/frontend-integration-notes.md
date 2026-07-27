@@ -1,7 +1,16 @@
 # Frontend ↔ Backend Integration Notes (for Wire phase + final E2E)
 
+> **Historical, pre-implementation.** Written while the FastAPI backend and the
+> tournaments admin surface were still being built — treat "NOT wired" claims
+> below as a snapshot of that moment, not current state (the admin-console
+> Campeonatos page now exercises the tournament-admin endpoints this doc
+> planned for). It also references `tournament_onboarding_scoring_v1.md`,
+> which isn't in this repo — `arena/tournaments/scoring.py` is the current
+> source of truth for standings computation. Kept for the still-useful
+> endpoint/shape mapping below, not as a live status doc.
+
 Audit of the existing `frontend/` (React+Vite) against the API the FastAPI backend is building.
-Source of truth for shapes: `F:\arenarank\spec\api_contract_v1.md` ↔ `frontend/src/lib/types.ts`.
+Source of truth for shapes: `frontend/src/lib/types.ts` ↔ `backend/arena/schemas/`.
 
 ## Endpoints the frontend ACTUALLY calls (`frontend/src/lib/api.ts`)
 

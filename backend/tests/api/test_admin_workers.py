@@ -7,6 +7,7 @@ from fastapi.testclient import TestClient
 from arena.api.app import create_app
 from arena.api.routers import admin as admin_mod
 from arena.core.config import settings
+from arena.workers.queues import PAUSABLE_WORKERS
 
 _KEY = "s3cret-admin-key"
 
@@ -72,6 +73,50 @@ def test_pause_requires_admin_key(client, monkeypatch):
     monkeypatch.setattr(settings, "admin_api_key", _KEY)
     r = client.post("/api/v1/admin/workers/sweep/pause")  # no key
     assert r.status_code == 401
+
+
+@pytest.mark.parametrize("worker", sorted(PAUSABLE_WORKERS))
+def test_every_pausable_worker_is_controllable(client, monkeypatch, worker):
+    """The admin allow-list must cover every worker that reads the enable flag.
+
+    Regression: `backfill` honored `arena:worker:enabled:backfill` but the
+    router's hardcoded allow-list didn't list it, so the console got a 404 and
+    the worker could never be paused.
+    """
+    monkeypatch.setattr(settings, "admin_api_key", _KEY)
+    fake = _patch_runtime(monkeypatch)
+    r = client.post(f"/api/v1/admin/workers/{worker}/pause", headers={"X-Admin-Key": _KEY})
+    assert r.status_code == 200
+    assert ("set", f"arena:worker:enabled:{worker}", "0") in fake.calls
+
+
+class _DownRuntime:
+    """redis-py importable, but the connection fails at call time."""
+
+    def __init__(self) -> None:
+        self.sessionmaker = None
+        self.season_service = None
+        self.redis_factory = lambda: _DownRedis()
+
+
+class _DownRedis:
+    async def set(self, *a, **kw):
+        raise ConnectionError("connection refused")
+
+    async def delete(self, *a, **kw):
+        raise ConnectionError("connection refused")
+
+    async def aclose(self):
+        return None
+
+
+def test_redis_down_returns_503_not_500(client, monkeypatch):
+    """A dead Redis must degrade to 503, not a generic 500."""
+    monkeypatch.setattr(settings, "admin_api_key", _KEY)
+    monkeypatch.setattr(admin_mod, "_runtime", lambda: _DownRuntime())
+    r = client.post("/api/v1/admin/workers/sweep/pause", headers={"X-Admin-Key": _KEY})
+    assert r.status_code == 503
+    assert "Redis" in r.json()["detail"]
 
 
 # --- player selection: mocked async session (no DB, deterministic) ----------

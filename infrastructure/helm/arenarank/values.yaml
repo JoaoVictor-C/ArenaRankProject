@@ -28,10 +28,6 @@ config:
   corsOrigins: "https://arenarank.gg,https://www.arenarank.gg"
   otelTracesEnabled: "true"
   otelEndpoint: "http://otel-collector.observability.svc.cluster.local:4317"
-  queues:
-    priority: "arena:priority"
-    standard: "arena:standard"
-    dlq: "arena:dlq"
 
 # Secrets — set externally (External Secrets Operator) in real environments.
 # When createSecret=true the chart renders a placeholder Secret (dev only).

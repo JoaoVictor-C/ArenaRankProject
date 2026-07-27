@@ -1,3 +1,22 @@
+"""Breadth-first co-player crawl over the Riot API.
+
+``MatchCrawler.discover()`` starts from a set of seed puuids, fetches each
+player's recent Arena match ids, fetches+parses the full payload for any id
+not already seen, yields the match, and — this is what makes it a *crawl*
+rather than a per-player poll — adds every teammate found in that match to
+the work queue at ``depth + 1``, up to ``CrawlConfig.depth``. That's how a
+handful of seed players (e.g. the site's currently-tracked roster) can
+backfill a much larger slice of real history: teammates you've never seen
+before still show up because someone you already track played with them.
+
+Safety bounds exist because a wide-enough crawl on a large enough seed set
+can otherwise burn an unbounded number of Riot API calls: ``max_api_calls``
+trips the internal ``_Budget`` signal (caught in ``discover()``, ends the
+crawl cleanly instead of raising out to the caller), and ``max_matches``
+caps how many matches are actually yielded regardless of how much further
+the frontier could still expand.
+"""
+
 from __future__ import annotations
 
 import asyncio
@@ -28,6 +47,17 @@ class MatchSource(Protocol):
 
 @dataclass(frozen=True)
 class CrawlConfig:
+    """Tuning knobs for one :meth:`MatchCrawler.discover` run.
+
+    ``depth`` bounds how many co-player hops the crawl follows outward from
+    the seed set (0 = only the seeds themselves, no expansion). ``start_epoch``/
+    ``end_epoch`` (unix seconds) filter which matches are yielded, not which
+    are fetched — a match outside the window is still parsed (needed to find
+    its participants) but dropped by ``_in_window``. ``batch`` is how many
+    puuids are worked concurrently per BFS layer; ``ids_page``/``ids_max_pages``
+    bound the match-id-list pagination per player per queue.
+    """
+
     region: str = "americas"
     queues: tuple[int, ...] = field(default_factory=lambda: ARENA_QUEUES)
     start_epoch: int | None = None
@@ -48,6 +78,14 @@ class _Budget(Exception):
 
 
 class MatchCrawler:
+    """Drives one breadth-first crawl (see module docstring for the shape).
+
+    ``seen_match_ids`` is an externally-owned set the caller can seed with
+    ids already in the DB, so a crawl re-run doesn't re-fetch/re-yield
+    history it already has — the crawler only ever adds to it, never reads
+    from a fresh empty set on its own.
+    """
+
     def __init__(self, source: MatchSource, cfg: CrawlConfig, seen_match_ids: set[str]) -> None:
         self._src = source
         self._cfg = cfg
@@ -87,6 +125,22 @@ class MatchCrawler:
         return True
 
     async def discover(self, seed_puuids: Iterable[str]) -> AsyncIterator[ParsedArenaMatch]:
+        """Yield every new, in-window, complete Arena match reachable from
+        ``seed_puuids`` within ``CrawlConfig.depth`` co-player hops.
+
+        ``work`` is a FIFO of ``(puuid, depth)`` pairs — FIFO (not a stack)
+        so the crawl processes strictly by depth layer (all of depth 0, then
+        all of depth 1, ...) rather than diving arbitrarily deep down one
+        branch first. Each layer: page every queued puuid's match-id lists
+        concurrently, drop ids already seen (globally, via ``_seen_matches``,
+        or within this same layer, via ``local``), fetch+parse only the
+        genuinely new ones, yield the eligible ones, and — the actual "crawl"
+        step — enqueue each teammate found at ``depth + 1`` if not already
+        queued and depth allows it. A hit against ``max_api_calls`` raises
+        ``_Budget`` from inside the gathered coroutines; it's re-raised
+        first (before any per-item error handling) so the crawl stops
+        immediately rather than finishing out a partially-budgeted layer.
+        """
         cfg = self._cfg
         work: deque[tuple[str, int]] = deque((pu, 0) for pu in seed_puuids)
         seen_puuids: set[str] = {pu for pu, _ in work}
@@ -111,6 +165,10 @@ class MatchCrawler:
                         id_lists.append([])
                     else:
                         id_lists.append(res)
+                # Dedup against ids already known (self._seen_matches, shared
+                # across the whole crawl) and ids just discovered elsewhere in
+                # THIS layer (local) — the same match can surface from more
+                # than one participant's id list in a single batch.
                 cand: list[tuple[str, int]] = []
                 local: set[str] = set()
                 for (_pu, d), lst in zip(batch, id_lists):
@@ -134,6 +192,9 @@ class MatchCrawler:
                     except Exception as exc:  # noqa: BLE001
                         _log.warning("ingest.parse_failed", match_id=rid, error=str(exc))
                         continue
+                    # Mark seen even if it gets filtered below — a match
+                    # rejected by is_complete/_in_window is still resolved,
+                    # so re-crawling must not re-fetch it every time.
                     self._seen_matches.add(rid)
                     if not parsed.is_complete or not self._in_window(parsed):
                         continue

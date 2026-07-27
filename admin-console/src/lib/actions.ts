@@ -1,12 +1,35 @@
 /* Operator actions against the gated /admin/* surface. */
 import { apiGet, apiSend, type Conn } from "./backend";
-import type { AdminOverview, LiveSnapshot } from "./types";
+import type {
+  AdminDailyMatches,
+  AdminOverview,
+  LiveSnapshot,
+  RiotUsage,
+  StatsSeries,
+} from "./types";
 
 export const fetchLive = (conn: Conn, signal?: AbortSignal): Promise<LiveSnapshot> =>
   apiGet<LiveSnapshot>(conn, "/admin/workers/live", signal);
 
 export const fetchOverview = (conn: Conn, signal?: AbortSignal): Promise<AdminOverview> =>
   apiGet<AdminOverview>(conn, "/admin/overview", signal);
+
+export const fetchDailyMatches = (
+  conn: Conn,
+  days: number,
+  signal?: AbortSignal,
+): Promise<AdminDailyMatches> =>
+  apiGet<AdminDailyMatches>(conn, `/admin/matches/daily?days=${days}`, signal);
+
+export const fetchRiotUsage = (conn: Conn, signal?: AbortSignal): Promise<RiotUsage> =>
+  apiGet<RiotUsage>(conn, "/admin/riot/usage", signal);
+
+export const fetchStats = (
+  conn: Conn,
+  minutes: number,
+  signal?: AbortSignal,
+): Promise<StatsSeries> =>
+  apiGet<StatsSeries>(conn, `/admin/stats/series?minutes=${minutes}`, signal);
 
 export interface WorkerControlResult {
   worker: string;
@@ -30,6 +53,17 @@ export const requeueDlq = (conn: Conn, matchId: string): Promise<DlqResult> =>
 
 export const discardDlq = (conn: Conn, matchId: string): Promise<DlqResult> =>
   apiSend<DlqResult>(conn, "DELETE", `/admin/dlq/${encodeURIComponent(matchId)}`);
+
+export interface DlqRequeueAllResult {
+  total: number;
+  requeued: number;
+  failed: number;
+  queue: string;
+  message: string;
+}
+
+export const requeueAllDlq = (conn: Conn): Promise<DlqRequeueAllResult> =>
+  apiSend<DlqRequeueAllResult>(conn, "POST", "/admin/dlq/requeue-all");
 
 export interface IntegrityReviewResult {
   eventId: string;

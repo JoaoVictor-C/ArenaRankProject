@@ -23,11 +23,6 @@ data:
   # OpenTelemetry → OTel collector (observability namespace), OTLP/gRPC :4317.
   OTEL_TRACES_ENABLED: "true"
   OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector.observability.svc.cluster.local:4317"
-  # Queue names mirror arena.workers.queues constants (kept in sync for the KEDA
-  # scaler trigger metadata).
-  ARENA_PRIORITY_QUEUE: "arena:priority"
-  ARENA_STANDARD_QUEUE: "arena:standard"
-  ARENA_DLQ_KEY: "arena:dlq"
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -44,6 +39,3 @@ data:
   CORS_ORIGINS: "https://arenarank.gg,https://www.arenarank.gg"
   OTEL_TRACES_ENABLED: "true"
   OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector.observability.svc.cluster.local:4317"
-  ARENA_PRIORITY_QUEUE: "arena:priority"
-  ARENA_STANDARD_QUEUE: "arena:standard"
-  ARENA_DLQ_KEY: "arena:dlq"

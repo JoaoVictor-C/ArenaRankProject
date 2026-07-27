@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { Conn } from "../lib/backend";
-import { discardDlq, requeueDlq, reviewIntegrity } from "../lib/actions";
+import { discardDlq, requeueAllDlq, requeueDlq, reviewIntegrity } from "../lib/actions";
 import type {
   AdminDlqItem,
   AdminFlag,
@@ -65,6 +65,8 @@ export function DlqPanel({
 }) {
   const [busy, setBusy] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const [bulkMsg, setBulkMsg] = useState<string | null>(null);
 
   async function act(matchId: string, kind: "requeue" | "discard") {
     setBusy(matchId + kind);
@@ -80,12 +82,36 @@ export function DlqPanel({
     }
   }
 
+  async function requeueAll() {
+    setBulkBusy(true);
+    setErr(null);
+    setBulkMsg(null);
+    try {
+      const result = await requeueAllDlq(conn);
+      setBulkMsg(result.message);
+      onMutated();
+    } catch (e) {
+      setErr((e as Error).message);
+    } finally {
+      setBulkBusy(false);
+    }
+  }
+
   return (
     <section className="panel">
       <div className="panel-head">
         <h2>Dead-letter (DLQ)</h2>
         <span className="panel-note">{items.length} partidas presas · reprocessar é idempotente</span>
+        <button
+          className="mini is-primary"
+          type="button"
+          disabled={bulkBusy || items.length === 0}
+          onClick={requeueAll}
+        >
+          {bulkBusy ? "Reprocessando…" : "Reprocessar tudo"}
+        </button>
       </div>
+      {bulkMsg && <div className="row-note">{bulkMsg}</div>}
       {err && <div className="row-err">{err}</div>}
       <div className="rows">
         {items.length === 0 && <div className="empty">DLQ vazia.</div>}

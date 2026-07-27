@@ -6,11 +6,15 @@
 #   pgbouncer-session  SESSION pool (workers) : 6433   (Trinity #9 dual-pool)
 #   migrate    one-shot: alembic upgrade head : runs once, then exits
 #   seed       one-shot: idempotent dev seed  : runs once, then exits
+#              (ACTIVE season + the SEED_PLAYERS Riot IDs as tracked players)
 #   api        FastAPI (uvicorn)             : 8000  -> connects via tx pool
-#   worker-sweep / worker-priority-sweep / worker-bulk-processor / scheduler
-#              arq cron pools (discovery + processing + maintenance)
+#   worker-sweep / worker-priority-sweep / scheduler
+#              arq cron pools (discovery + maintenance)
+#   worker-standard / worker-priority
+#              arq continuous consumer pools (process_match, no cron)
 #   adminer    web DB viewer                 : 8080  -> direct postgres endpoint
 #   frontend   React + Vite dev server       : 5173  -> VITE_API_URL=:8000
+#   audit-missing-matches  one-shot, read-only coverage audit (profile: audit)
 #
 # Trinity finding #9 (PgBouncer dual-pool): web requests use TRANSACTION mode
 # (short-lived, high-concurrency), workers use SESSION mode (they hold advisory
@@ -50,10 +54,32 @@ services:
 
   # ------------------------------------------------------------------ #
   # Redis — cache, per-player locks, arq queues, Riot token-bucket.
+  #
+  # 2gb + volatile-lru: mixes disposable cache (riot:match:*, has a TTL —
+  # see RIOT_MATCH_CACHE_TTL_SECONDS below) with queues/locks (no TTL).
+  # volatile-lru only ever evicts keys WITH a TTL, so under memory pressure
+  # the cache gives way first and the queues/locks stay intact — NEVER use
+  # plain allkeys-* or noeviction here, either would risk losing in-flight
+  # job data instead of failing loudly or evicting the disposable cache
+  # (same reasoning already applied in docker-compose.notebook.yml).
+  # mem_limit/cpus are an outer container-level backstop: without them a
+  # Redis memory blowup (this happened for real — 6.87GB during one backlog,
+  # crash-restarting Redis repeatedly and taking Docker Desktop's whole VM
+  # down with it) can starve every other container on the box. With them,
+  # the worst case is this ONE container getting OOM-killed and cleanly
+  # restarting (restart: unless-stopped), not the whole stack.
   # ------------------------------------------------------------------ #
   redis:
     image: redis:7
-    command: ["redis-server", "--appendonly", "yes"]
+    command:
+      [
+        "redis-server",
+        "--appendonly", "yes",
+        "--maxmemory", "2gb",
+        "--maxmemory-policy", "volatile-lru",
+      ]
+    mem_limit: 2560m
+    cpus: 2.0
     ports:
       - "6379:6379"
     volumes:
@@ -106,7 +132,13 @@ services:
       POOL_MODE: session
       AUTH_TYPE: scram-sha-256
       MAX_CLIENT_CONN: "500"
-      DEFAULT_POOL_SIZE: "15"
+      # SESSION mode holds one server connection per client session, so this is
+      # the hard concurrency ceiling for the ENTIRE worker tier (sweep,
+      # priority-sweep, standard/priority processors, scheduler, audit all
+      # connect here) — not a per-service budget. 40 + the transaction pool's
+      # 25 = 65 of postgres' 100 max_connections, leaving headroom for
+      # migrations and adminer.
+      DEFAULT_POOL_SIZE: "40"
       LISTEN_PORT: "6433"
     ports:
       - "6433:6433"
@@ -136,8 +168,15 @@ services:
     restart: "no"
 
   # ------------------------------------------------------------------ #
-  # Seed — one-shot: idempotent dev seed (ACTIVE season + champions
-  # const). Safe to re-run any time via `docker compose run --rm seed`.
+  # Seed — one-shot: idempotent dev seed (ACTIVE season + tracked players).
+  # Safe to re-run any time via `docker compose run --rm seed`.
+  #
+  # SEED_PLAYERS is a comma-separated list of Riot IDs (gameName#tagLine).
+  # Each is resolved to its REAL PUUID via account-v1 — the sweep workers poll
+  # Riot by PUUID, so a synthetic id would 404 on every tick. That means the
+  # seed needs RIOT_API_KEY and Redis (the Riot client's token bucket lives
+  # there). Without a key the season is still seeded and the players are
+  # skipped with a warning, so `compose up` never breaks.
   # ------------------------------------------------------------------ #
   seed:
     build:
@@ -146,11 +185,17 @@ services:
     command: ["python", "-m", "arena.db.seed"]
     environment:
       DATABASE_URL: postgresql+asyncpg://arena:arena@postgres:5432/arena
+      REDIS_URL: redis://redis:6379/0
+      RIOT_API_KEY: ${RIOT_API_KEY}
+      SEED_PLAYERS: "${SEED_PLAYERS:-Presente#1001,CrazzyBoy#Br2}"
+      LOG_LEVEL: INFO
     healthcheck:
       disable: true
     depends_on:
       migrate:
         condition: service_completed_successfully
+      redis:
+        condition: service_healthy
     restart: "no"
 
   # ------------------------------------------------------------------ #
@@ -166,6 +211,11 @@ services:
     environment:
       SERVICE_NAME: arenarank-api
       ENVIRONMENT: development
+      # Launch-window cutoff (Temporada 1, 2026-07-26): ignore any Arena match
+      # whose gameStartTimestamp is before 2026-07-17T00:00:00Z. Enforced in
+      # match_pipeline.before_cutoff (worker-standard/priority) and backfill's
+      # window floor (worker-sweep); harmless elsewhere.
+      MATCH_MIN_STARTED_AT_MS: "1784246400000"
       # Web tier → PgBouncer transaction pool.
       DATABASE_URL: postgresql+asyncpg://arena:arena@pgbouncer:6432/arena
       REDIS_URL: redis://redis:6379/0
@@ -187,15 +237,10 @@ services:
         condition: service_completed_successfully
     restart: unless-stopped
 
-  # Note: there is no StandardWorker/PriorityWorker service here on purpose.
-  # Discovery in this stack is sweep + bulk-processor only (BulkProcessorWorker
-  # calls process_match in-process); the arena:standard/arena:priority arq
-  # queues have no producer, so a consumer for them would just idle. Matches
-  # docker-compose.prod.yml's design.
-
   # ------------------------------------------------------------------ #
   # Worker — SweepWorker: rotating sweep over ALL tracked players. Discovers
-  # new match ids and pushes them to arena:sweep:pending:standard. Independently
+  # new match ids and enqueues them as process_match jobs on arena:standard
+  # (worker-standard/worker-priority below consume them). Independently
   # start/stop (docker compose up/stop worker-sweep) or pause at runtime via the
   # admin API (arena:worker:enabled:sweep flag).
   # ------------------------------------------------------------------ #
@@ -203,17 +248,18 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    command: ["arq", "arena.workers.main.SweepWorker"]
+    command: ["arq", "arena.workers.main.SweepWorker", "--custom-log-dict", "arena.core.logging.ARQ_LOG_CONFIG"]
     environment:
       SERVICE_NAME: arenarank-worker-sweep
       ENVIRONMENT: development
+      MATCH_MIN_STARTED_AT_MS: "1784246400000"
       DATABASE_URL: postgresql+asyncpg://arena:arena@pgbouncer-session:6433/arena
       REDIS_URL: redis://redis:6379/0
       RIOT_API_KEY: ${RIOT_API_KEY}
       LOG_LEVEL: INFO
       SWEEP_INTERVAL_MINUTES: "5"
       SWEEP_BATCH_SIZE: "100"
-      SWEEP_MATCHES_PER_PLAYER: "10"
+      SWEEP_MATCHES_PER_PLAYER: "20"
     healthcheck:
       disable: true
     depends_on:
@@ -227,23 +273,24 @@ services:
 
   # ------------------------------------------------------------------ #
   # Worker — PrioritySweepWorker: sweeps Top-1000 + admin-selected players and
-  # pushes to arena:sweep:pending:priority (drained first by the bulk processor).
+  # enqueues process_match jobs on arena:priority (consumed by worker-priority).
   # ------------------------------------------------------------------ #
   worker-priority-sweep:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    command: ["arq", "arena.workers.main.PrioritySweepWorker"]
+    command: ["arq", "arena.workers.main.PrioritySweepWorker", "--custom-log-dict", "arena.core.logging.ARQ_LOG_CONFIG"]
     environment:
       SERVICE_NAME: arenarank-worker-priority-sweep
       ENVIRONMENT: development
+      MATCH_MIN_STARTED_AT_MS: "1784246400000"
       DATABASE_URL: postgresql+asyncpg://arena:arena@pgbouncer-session:6433/arena
       REDIS_URL: redis://redis:6379/0
       RIOT_API_KEY: ${RIOT_API_KEY}
       LOG_LEVEL: INFO
       PRIORITY_SWEEP_INTERVAL_MINUTES: "5"
       PRIORITY_SWEEP_BATCH_SIZE: "200"
-      SWEEP_MATCHES_PER_PLAYER: "10"
+      SWEEP_MATCHES_PER_PLAYER: "20"
     healthcheck:
       disable: true
     depends_on:
@@ -256,24 +303,59 @@ services:
     restart: unless-stopped
 
   # ------------------------------------------------------------------ #
-  # Worker — BulkProcessorWorker: every few minutes drains the sweep pending
-  # lists (priority first) and runs process_match in bulk.
+  # Workers — StandardWorker / PriorityWorker: continuous arq consumers.
+  # sweep.py enqueues process_match jobs straight onto arena:standard /
+  # arena:priority (enqueue_job); these poll their queue forever, no cron
+  # tick and no idle window between batches. Replaces BulkProcessorWorker,
+  # which drained a Redis LIST on a timer with process_match called
+  # in-process against a hand-built fake arq ctx — the sweep pending lists
+  # and their manual retry-attempts hash are gone along with it.
   # ------------------------------------------------------------------ #
-  worker-bulk-processor:
+  worker-standard:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    command: ["arq", "arena.workers.main.BulkProcessorWorker"]
+    command: ["arq", "arena.workers.main.StandardWorker", "--custom-log-dict", "arena.core.logging.ARQ_LOG_CONFIG"]
     environment:
-      SERVICE_NAME: arenarank-worker-bulk-processor
+      SERVICE_NAME: arenarank-worker-standard
       ENVIRONMENT: development
+      MATCH_MIN_STARTED_AT_MS: "1784246400000"
       DATABASE_URL: postgresql+asyncpg://arena:arena@pgbouncer-session:6433/arena
       REDIS_URL: redis://redis:6379/0
       RIOT_API_KEY: ${RIOT_API_KEY}
       LOG_LEVEL: INFO
-      BULK_PROCESSOR_INTERVAL_MINUTES: "2"
-      BULK_BATCH_SIZE: "50"
-      BULK_CONCURRENCY: "10"
+      # Match payloads (~135KB) only ever get read again between fetch and
+      # rate — this process is the one that fetches+caches them via
+      # get_match(). Left at the 24h default, they're the single biggest
+      # Redis memory driver (was: 6.87GB and climbing during a big backlog,
+      # crash-restarting Redis and taking Docker Desktop with it). Same fix
+      # already applied in docker-compose.prod.yml.
+      RIOT_MATCH_CACHE_TTL_SECONDS: "600"
+    healthcheck:
+      disable: true
+    depends_on:
+      redis:
+        condition: service_healthy
+      pgbouncer-session:
+        condition: service_started
+      seed:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+  worker-priority:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command: ["arq", "arena.workers.main.PriorityWorker", "--custom-log-dict", "arena.core.logging.ARQ_LOG_CONFIG"]
+    environment:
+      SERVICE_NAME: arenarank-worker-priority
+      ENVIRONMENT: development
+      MATCH_MIN_STARTED_AT_MS: "1784246400000"
+      DATABASE_URL: postgresql+asyncpg://arena:arena@pgbouncer-session:6433/arena
+      REDIS_URL: redis://redis:6379/0
+      RIOT_API_KEY: ${RIOT_API_KEY}
+      LOG_LEVEL: INFO
+      RIOT_MATCH_CACHE_TTL_SECONDS: "600"
     healthcheck:
       disable: true
     depends_on:
@@ -294,10 +376,11 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    command: ["arq", "arena.workers.main.SchedulerWorker"]
+    command: ["arq", "arena.workers.main.SchedulerWorker", "--custom-log-dict", "arena.core.logging.ARQ_LOG_CONFIG"]
     environment:
       SERVICE_NAME: arenarank-scheduler
       ENVIRONMENT: development
+      MATCH_MIN_STARTED_AT_MS: "1784246400000"
       DATABASE_URL: postgresql+asyncpg://arena:arena@pgbouncer-session:6433/arena
       REDIS_URL: redis://redis:6379/0
       RIOT_API_KEY: ${RIOT_API_KEY}
@@ -351,6 +434,46 @@ services:
     depends_on:
       - api
     restart: unless-stopped
+
+  # ------------------------------------------------------------------ #
+  # Audit — one-shot, READ-ONLY: walks every player, asks Riot for their
+  # match ids in the window, and reports who has matches we never computed.
+  # Splits the gap into "never ingested" (discovery missed it) vs "participant
+  # gap" (the match exists but this player has no row in it).
+  #
+  # Behind a profile so `docker compose up` never starts it — it burns Riot
+  # budget. Run it explicitly, args after the service name:
+  #   docker compose run --rm audit-missing-matches
+  #   docker compose run --rm audit-missing-matches --since-days 30 --min-missing 10
+  #   docker compose run --rm audit-missing-matches --json /out/audit.json
+  #   docker compose run --rm audit-missing-matches --enqueue   # the only writing mode
+  # ------------------------------------------------------------------ #
+  audit-missing-matches:
+    profiles: ["audit"]
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    entrypoint: ["python", "-m", "scripts.audit_missing_matches"]
+    environment:
+      SERVICE_NAME: arenarank-audit
+      ENVIRONMENT: development
+      # SESSION pool: this is a worker-shaped job, not a web request.
+      DATABASE_URL: postgresql+asyncpg://arena:arena@pgbouncer-session:6433/arena
+      REDIS_URL: redis://redis:6379/0
+      RIOT_API_KEY: ${RIOT_API_KEY}
+      LOG_LEVEL: INFO
+      PYTHONIOENCODING: utf-8
+    volumes:
+      # --json lands on the host: `--json /out/audit.json` -> ./out/audit.json
+      - ./out:/out
+    healthcheck:
+      disable: true
+    depends_on:
+      redis:
+        condition: service_healthy
+      pgbouncer-session:
+        condition: service_started
+    restart: "no"
 
 volumes:
   pgdata:

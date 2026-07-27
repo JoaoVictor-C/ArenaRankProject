@@ -38,6 +38,7 @@ from arq.worker import Retry
 
 from arena.core.config import settings
 from arena.core.logging import get_logger
+from arena.riot.errors import CircuitOpenError, RiotRateLimitError
 from arena.workers import queues as Q
 from arena.workers.deps import get_rating_service, get_riot_client
 
@@ -50,10 +51,50 @@ MAX_TRIES = 3
 #: Short + bounded; the rating pipeline is CPU/DB-bound, not rate-limited here.
 _RETRY_BACKOFF = (0.0, 2.0, 5.0)
 
+#: Upper bound on a Riot-supplied retry hint (see `_retry_after_hint`) so a
+#: pathological value never stalls a job for an unreasonable time.
+_MAX_HINTED_DEFER_SECONDS = 60.0
+
 
 def _backoff_for(job_try: int) -> float:
     idx = min(max(job_try - 1, 0), len(_RETRY_BACKOFF) - 1)
     return _RETRY_BACKOFF[idx]
+
+
+def _retry_after_hint(exc: BaseException) -> float | None:
+    """A Riot-supplied wait time, when the failure carries one.
+
+    The circuit breaker's cooldown is 30s (`CircuitConfig.cooldown_seconds`),
+    but the generic backoff table above tops out at 5s between attempts — so a
+    match caught mid-cooldown burns all `MAX_TRIES` attempts inside the SAME
+    open window and is dead-lettered even though the breaker (or Riot's own
+    Retry-After) was already telling us exactly how long to wait. Honoring
+    that hint instead of the blind schedule gives the retry a real chance to
+    land after the condition clears, rather than a guaranteed re-fail.
+    """
+    if isinstance(exc, (CircuitOpenError, RiotRateLimitError)):
+        if exc.retry_after is not None:
+            return max(0.0, min(exc.retry_after, _MAX_HINTED_DEFER_SECONDS))
+    return None
+
+
+async def _record_outcome(redis: Any, status: str) -> None:
+    """Count one terminal ``process_match`` outcome for the admin console's
+    over-time panel. Recorded per match (not per tick) so it works identically
+    under any consumer — this used to live in bulk_processor.py's tick loop,
+    which no longer exists now that StandardWorker/PriorityWorker consume the
+    arq queue directly.
+    """
+    from arena.core import metrics
+
+    event = {
+        "skipped": metrics.EVENT_MATCH_SKIPPED,
+        "filtered": metrics.EVENT_MATCH_FILTERED,
+        "processed": metrics.EVENT_MATCH_PROCESSED,
+        "dead_lettered": metrics.EVENT_MATCH_FAILED,
+    }.get(status)
+    if event is not None:
+        await metrics.record(redis, event)
 
 
 async def _emit_processed(redis: Any, summary: dict[str, Any]) -> None:
@@ -118,7 +159,10 @@ async def process_match(ctx: dict[str, Any], riot_match_id: str) -> dict[str, An
         acquired = True  # fail open: better to risk a redo than to drop the match
 
     if not acquired:
-        _log.info("processor.skip_already_processed", matchId=riot_match_id)
+        # DEBUG, not INFO: routine (duplicate dequeues are expected under
+        # arq redelivery/retries), not per-match-worth-a-line at scale.
+        _log.debug("processor.skip_already_processed", matchId=riot_match_id)
+        await _record_outcome(redis, "skipped")
         return {"matchId": riot_match_id, "status": "skipped", "reason": "already_processed"}
 
     try:
@@ -131,14 +175,18 @@ async def process_match(ctx: dict[str, Any], riot_match_id: str) -> dict[str, An
     except Exception as exc:  # noqa: BLE001 - boundary: classify into retry vs DLQ
         await _release_flag(redis, flag_key)
         if job_try < MAX_TRIES:
+            hint = _retry_after_hint(exc)
+            defer = hint if hint is not None else _backoff_for(job_try + 1)
             _log.warning(
                 "processor.retry",
                 matchId=riot_match_id,
                 tries=job_try,
                 error=str(exc),
+                defer=round(defer, 1),
             )
-            raise Retry(defer=_backoff_for(job_try + 1)) from exc
+            raise Retry(defer=defer) from exc
         await _dead_letter(redis, riot_match_id, error=str(exc), job_try=job_try)
+        await _record_outcome(redis, "dead_lettered")
         return {"matchId": riot_match_id, "status": "dead_lettered", "error": str(exc)}
 
 
@@ -163,9 +211,13 @@ async def _run_pipeline(
     # 3. Authoritative filter now that the full payload is known.
     verdict = Q.evaluate_match_filters(_payload_meta(riot_match_id, payload))
     if not verdict.eligible:
-        _log.info("processor.filtered", matchId=riot_match_id, reason=verdict.reason)
+        # DEBUG: routine, high-volume, and already aggregated for the admin
+        # console via _record_outcome/metrics — a per-match line at INFO adds
+        # noise, not signal, at sweep-drain scale.
+        _log.debug("processor.filtered", matchId=riot_match_id, reason=verdict.reason)
         # FILTERED is a terminal, non-error outcome: keep the processed flag set
         # so we never re-fetch this match, and emit an audit line.
+        await _record_outcome(redis, "filtered")
         return {"matchId": riot_match_id, "status": "filtered", "reason": verdict.reason}
 
     # 4. Rate + persist via the Wave-2 transactional service.
@@ -180,7 +232,11 @@ async def _run_pipeline(
     # 5. Emit the downstream event + schedule session re-arm re-polls.
     await _emit_processed(redis, summary)
     await _schedule_rearm(redis, payload)
-    _log.info("processor.processed", matchId=riot_match_id, tries=job_try)
+    await _record_outcome(redis, summary["status"])
+    # DEBUG, same reasoning as processor.filtered above — the happy path is
+    # exactly the case that happens thousands of times an hour under a big
+    # backlog; the admin console's throughput panel is the aggregate view.
+    _log.debug("processor.processed", matchId=riot_match_id, tries=job_try)
     return summary
 
 

@@ -9,7 +9,6 @@ from arena.workers import queues as Q
 
 def test_config_defaults():
     assert settings.sweep_batch_size == 100
-    assert settings.bulk_concurrency == 10
     assert settings.sweep_interval_minutes == 5
 
 
@@ -22,5 +21,3 @@ def test_interval_must_divide_60():
 def test_key_helpers():
     assert Q.worker_enabled_key("sweep") == "arena:worker:enabled:sweep"
     assert Q.worker_tick_lock_key("sweep") == "arena:lock:worker:tick:sweep"
-    assert Q.sweep_pending_key(True) == Q.SWEEP_PENDING_PRIORITY
-    assert Q.sweep_pending_key(False) == Q.SWEEP_PENDING_STANDARD

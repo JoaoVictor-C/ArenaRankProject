@@ -46,10 +46,18 @@ PROCESS_MATCH_TASK: Final[str] = "process_match"
 # Redis keys (dedup set, processed flag, locks, pub/sub, ingestion cursor)
 # ---------------------------------------------------------------------------
 
-#: Set of Riot match ids already enqueued/processed (ingestion dedup, §13.1).
-#: A bounded TTL per member keeps it from growing without bound; the set name
-#: is stable so multiple ingestion replicas share it.
-SEEN_MATCHES_SET: Final[str] = "arena:seen_matches"
+#: ZSET of Riot match ids already claimed for processing (ingestion dedup,
+#: §13.1). Member = riot match id, score = epoch second it was claimed.
+#:
+#: This used to be a plain SET (``arena:seen_matches``) whose TTL was refreshed
+#: with ``EXPIRE`` on the WHOLE key every time a tick found anything fresh. On a
+#: live system that meant the key never actually expired, so the "a re-discovered
+#: id is re-checked, not lost" guarantee below never fired and a claimed-then-
+#: dropped id was invisible to discovery FOREVER. A sorted set gives real
+#: per-member ageing (``ZREMRANGEBYSCORE``) and keeps the key bounded. New key
+#: name because the type changed — reusing the old one would raise WRONGTYPE
+#: against a live Redis.
+SEEN_MATCHES_ZSET: Final[str] = "arena:seen_matches:z"
 
 #: TTL (seconds) applied to dedup membership; 24h matches the Riot match cache
 #: TTL (proposal section 9.3) so a re-discovered id is re-checked, not lost.
@@ -96,21 +104,21 @@ def ingest_cursor_key(puuid: str) -> str:
 
 
 # ---------------------------------------------------------------------------
-# Sweep pipeline keys (SweepWorker / PrioritySweepWorker / BulkProcessorWorker)
+# Sweep pipeline keys (SweepWorker / PrioritySweepWorker)
 # ---------------------------------------------------------------------------
 
-#: Redis lists where sweep workers push discovered match ids for bulk processing.
-SWEEP_PENDING_PRIORITY: Final[str] = "arena:sweep:pending:priority"
-SWEEP_PENDING_STANDARD: Final[str] = "arena:sweep:pending:standard"
-
-#: Rotating integer cursor for the standard sweep (DB OFFSET).
-SWEEP_CURSOR_KEY: Final[str] = "arena:sweep:cursor"
+#: Rotating KEYSET cursor for the standard sweep: the last ``players.puuid``
+#: handed out by the previous tick. The next page is ``WHERE puuid > cursor``.
+#:
+#: Replaces the old integer-OFFSET cursor: players are registered continuously
+#: and land at a random position in the puuid ordering, so every insert BEHIND
+#: the live offset shifted the remaining pages by one and silently skipped a
+#: tracked player for the rest of the rotation. Keyset paging is immune to
+#: concurrent inserts. Empty/absent value = start of the rotation.
+SWEEP_CURSOR_PUUID_KEY: Final[str] = "arena:sweep:cursor:puuid"
 
 #: Rotating integer cursor for the priority sweep (offset into priority seeds).
 PRIORITY_SWEEP_CURSOR_KEY: Final[str] = "arena:priority_sweep:cursor"
-
-#: Hash mapping riot_match_id -> attempt count for bulk processor retry tracking.
-SWEEP_ATTEMPTS_KEY: Final[str] = "arena:sweep:attempts"
 
 #: Session re-arm schedule: ZSET member = puuid, score = epoch seconds when the
 #: player is due for a quick re-poll. Fed by the processor after a PROCESSED
@@ -136,11 +144,50 @@ SCHEDULER_HEARTBEAT_KEY: Final[str] = "arena:scheduler:heartbeat"
 #: by sweep.reconcile_tick once it completes the catch-up pass.
 RECONCILE_WINDOW_KEY: Final[str] = "arena:reconcile:window_since"
 
+# ---------------------------------------------------------------------------
+# New-player history backfill (BackfillWorker / backfill_tick)
+# ---------------------------------------------------------------------------
+#
+# A player row is only ever born as a side effect of a lobby-mate's match being
+# processed (``match_pipeline.register_players``). Nothing used to look at the
+# history they already had: the sweep only ever asks Riot for the newest
+# ``sweep_matches_per_player`` ids, and it only sees the player at all once
+# ``player_seasons.matches_played > 0`` — which never happens if their first
+# observed match was AFK/frozen. These keys back the one-shot catch-up that
+# closes that hole.
+
+#: List of puuids awaiting their one-shot history backfill. Producer:
+#: ``match_pipeline`` (on genuine INSERT). Consumer: ``backfill_tick``.
+BACKFILL_PENDING_LIST: Final[str] = "arena:backfill:pending"
+
+#: Set of puuids whose backfill has been claimed (in flight or done). Guarantees
+#: the one-shot stays one-shot across restarts and duplicate registrations.
+BACKFILL_CLAIMED_SET: Final[str] = "arena:backfill:claimed"
+
+#: Hash puuid -> attempt count, so a player whose Riot calls keep failing is
+#: dropped instead of cycling through the pending list forever.
+BACKFILL_ATTEMPTS_HASH: Final[str] = "arena:backfill:attempts"
+
 #: Prefix for per-worker runtime enable flags (value "0" = paused; absent = enabled).
 _WORKER_ENABLED_PREFIX: Final[str] = "arena:worker:enabled:"
 
 #: Prefix for per-worker tick no-overlap locks.
 _WORKER_TICK_LOCK_PREFIX: Final[str] = "arena:lock:worker:tick:"
+
+
+#: Every worker that honors the enable/pause flag above (i.e. checks
+#: ``worker_enabled_key(<name>)`` at the top of its tick and skips when "0").
+#: Single source of truth for the admin pause/resume allow-list — a worker that
+#: reads the flag but is missing here can never be paused from the console.
+PAUSABLE_WORKERS: Final[frozenset[str]] = frozenset(
+    {
+        "sweep",
+        "priority_sweep",
+        "backfill",
+        "rearm",
+        "reconcile",
+    }
+)
 
 
 def worker_enabled_key(name: str) -> str:
@@ -151,11 +198,6 @@ def worker_enabled_key(name: str) -> str:
 def worker_tick_lock_key(name: str) -> str:
     """Per-tick mutex preventing overlapping cron executions for the named worker."""
     return f"{_WORKER_TICK_LOCK_PREFIX}{name}"
-
-
-def sweep_pending_key(priority: bool) -> str:
-    """Return the appropriate sweep pending list key."""
-    return SWEEP_PENDING_PRIORITY if priority else SWEEP_PENDING_STANDARD
 
 
 # ---------------------------------------------------------------------------
@@ -255,7 +297,7 @@ __all__ = [
     "STANDARD_QUEUE",
     "DLQ_KEY",
     "PROCESS_MATCH_TASK",
-    "SEEN_MATCHES_SET",
+    "SEEN_MATCHES_ZSET",
     "SEEN_MATCH_TTL_SECONDS",
     "PROCESSED_FLAG_TTL_SECONDS",
     "MATCH_PROCESSED_CHANNEL",
@@ -276,16 +318,16 @@ __all__ = [
     "match_lock_key",
     "player_lock_key",
     "ingest_cursor_key",
-    "SWEEP_PENDING_PRIORITY",
-    "SWEEP_PENDING_STANDARD",
-    "SWEEP_CURSOR_KEY",
+    "SWEEP_CURSOR_PUUID_KEY",
     "PRIORITY_SWEEP_CURSOR_KEY",
-    "SWEEP_ATTEMPTS_KEY",
+    "BACKFILL_PENDING_LIST",
+    "BACKFILL_CLAIMED_SET",
+    "BACKFILL_ATTEMPTS_HASH",
     "REARM_ZSET",
     "REARM_MISSES_HASH",
     "DEEP_SAMPLE_CURSOR_KEY",
+    "PAUSABLE_WORKERS",
     "worker_enabled_key",
     "worker_tick_lock_key",
-    "sweep_pending_key",
     "evaluate_match_filters",
 ]

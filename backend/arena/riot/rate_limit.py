@@ -60,7 +60,8 @@ if tokens == nil then
   ts = now
 end
 
--- Lazy refill.
+-- Lazy refill. A `ts` in the FUTURE is a 429 penalty (see the penalize script):
+-- elapsed is negative, so no refill happens until the penalty window elapses.
 local elapsed = now - ts
 if elapsed > 0 then
   tokens = math.min(capacity, tokens + (elapsed * rate))
@@ -74,22 +75,70 @@ if tokens >= needed then
   return {1, 0}
 end
 
--- Not enough: report wait until `needed` tokens accrue.
+-- Not enough: report wait until `needed` tokens accrue. Under a penalty the
+-- refill clock has not started yet, so the caller must also wait out the
+-- remainder of the penalty — without this the wait is understated and callers
+-- spin, re-hammering Redis while the bucket is still frozen at zero.
 local deficit = needed - tokens
 local wait_ms = math.ceil((deficit / rate) * 1000)
+if ts > now then
+  wait_ms = wait_ms + math.ceil((ts - now) * 1000)
+end
 redis.call('HSET', key, 'tokens', tokens, 'ts', ts)
 redis.call('EXPIRE', key, ttl)
 return {0, wait_ms}
 """
 
+# KEYS[1] = bucket hash key
+# ARGV[1] = key TTL seconds
+# ARGV[2] = penalty seconds (how long the bucket stays empty)
+#
+# Empties the bucket and parks `ts` that many seconds in the FUTURE, so the
+# acquire script's lazy refill cannot start until the penalty expires. Used when
+# Riot answers 429: every worker sharing the key backs off at once, instead of
+# each discovering the rejection on its own request.
+_PENALIZE_LUA = """
+local key     = KEYS[1]
+local ttl     = tonumber(ARGV[1])
+local penalty = tonumber(ARGV[2])
+
+local t = redis.call('TIME')
+local now = tonumber(t[1]) + (tonumber(t[2]) / 1000000)
+
+-- Never shorten an existing penalty: concurrent 429s must not race each other
+-- into a weaker backoff than the longest Retry-After already seen.
+local current_ts = tonumber(redis.call('HGET', key, 'ts'))
+local until_ts = now + penalty
+if current_ts ~= nil and current_ts > until_ts then
+  until_ts = current_ts
+end
+
+redis.call('HSET', key, 'tokens', 0, 'ts', until_ts)
+redis.call('EXPIRE', key, ttl)
+return math.ceil((until_ts - now) * 1000)
+"""
+
 
 @dataclass(frozen=True, slots=True)
 class TokenBucketConfig:
-    """One token bucket: ``capacity`` tokens refilling over ``refill_seconds``."""
+    """One token bucket: ``capacity`` tokens refilling over ``refill_seconds``.
+
+    ``capacity`` is the **effective** ceiling the limiter enforces — Riot's
+    advertised limit after the headroom factor. ``nominal`` keeps the
+    pre-headroom number so the admin console can render "1800 / 2000 (90%)"
+    instead of silently presenting the reduced budget as the real limit.
+    """
 
     name: str
     capacity: int
     refill_seconds: float
+    #: Riot's advertised ceiling before headroom. 0 => same as ``capacity``.
+    nominal: int = 0
+
+    @property
+    def advertised(self) -> int:
+        """The limit Riot publishes, independent of our safety margin."""
+        return self.nominal or self.capacity
 
     @property
     def rate(self) -> float:
@@ -124,6 +173,13 @@ class RedisTokenBucketLimiter:
         self._max_wait = max_wait_seconds
         # registerScript-style handle; redis-py picks EVALSHA with EVAL fallback.
         self._script = redis.register_script(_TOKEN_BUCKET_LUA)
+        self._penalize_script = redis.register_script(_PENALIZE_LUA)
+
+    def configured(self, bucket: str) -> bool:
+        """Whether *bucket* is modelled. Callers use this to pick a fallback
+        target when Riot blames a limit we do not track (e.g. an app-wide one
+        on a key whose portal lists per-method limits only)."""
+        return bucket in self._buckets
 
     def _key(self, api_key: str, bucket: str) -> str:
         # One bucket-set per API key so multiple keys do not share state.
@@ -163,6 +219,41 @@ class RedisTokenBucketLimiter:
                 return
             await self._sleep(min(longest, self._max_wait))
 
+    async def penalize(
+        self, api_key: str, bucket_names: Sequence[str], *, seconds: float
+    ) -> float:
+        """Freeze the named buckets at zero tokens for *seconds*.
+
+        Called when Riot answers 429. The token bucket is a *model* of Riot's
+        accounting, and a 429 is proof the model drifted optimistic — so we
+        stop guessing and hand authority to Riot's own ``Retry-After``. Because
+        the penalty lives in the shared Redis hash, every worker on the key
+        backs off immediately, rather than each one learning about the limit by
+        spending another rejected request.
+
+        Returns the longest penalty applied, in seconds (0.0 if nothing was
+        penalized). Best-effort: a Redis failure here must not turn a
+        recoverable 429 into a hard error, since the caller's own retry with
+        ``Retry-After`` remains the backstop.
+        """
+        applicable = [self._buckets[b] for b in bucket_names if b in self._buckets]
+        if not applicable or seconds <= 0:
+            return 0.0
+        # The bucket key must outlive the penalty: if it expired mid-penalty the
+        # next acquire would treat the absent hash as a full bucket and undo it.
+        ttl = max(self._key_ttl, int(seconds * 2) + 1)
+        longest = 0.0
+        for cfg in applicable:
+            try:
+                wait_ms = await self._penalize_script(
+                    keys=[self._key(api_key, cfg.name)],
+                    args=[ttl, seconds],
+                )
+                longest = max(longest, int(wait_ms) / 1000.0)
+            except Exception:  # noqa: BLE001 - retry/Retry-After is the backstop
+                continue
+        return longest
+
 
 # --- Riot production-key limits for the Arena client -----------------------
 # The Riot developer portal lists limits PER METHOD for this key:
@@ -179,6 +270,18 @@ MATCH_V5_IDS_BUCKET = "match-v5:ids"
 MATCH_V5_MATCH_BUCKET = "match-v5:match"
 
 
+def apply_headroom(nominal: int, headroom: float) -> int:
+    """Effective capacity for a bucket whose advertised limit is *nominal*.
+
+    Floors at 1 token: a headroom small enough to round a real limit down to
+    zero would deadlock the limiter (no token ever becomes available) instead of
+    merely throttling it.
+    """
+    if nominal <= 0:
+        return 0
+    return max(1, int(nominal * headroom))
+
+
 def default_arena_buckets(
     *,
     app_capacity: int = 0,
@@ -187,6 +290,7 @@ def default_arena_buckets(
     match_v5_refill_seconds: float = 10.0,
     account_v1_capacity: int = 1000,
     account_v1_refill_seconds: float = 60.0,
+    headroom: float = 1.0,
 ) -> dict[str, TokenBucketConfig]:
     """Token buckets matching Riot's per-method limits for the Arena client.
 
@@ -194,20 +298,28 @@ def default_arena_buckets(
     enforces ids-list and match-detail as independent 2000/10s limits, so
     discovery and payload fetch must not share one bucket (that would halve
     the real budget). ``app_capacity=0`` omits the app-wide bucket entirely.
+
+    The capacities passed in are Riot's **advertised** limits; ``headroom``
+    (0..1) scales them into the effective ceiling the limiter enforces, and the
+    advertised value is preserved on :attr:`TokenBucketConfig.nominal` for the
+    admin console. Default 1.0 keeps callers that do not opt in unchanged.
     """
+
+    def _bucket(name: str, nominal: int, refill_seconds: float) -> TokenBucketConfig:
+        return TokenBucketConfig(
+            name,
+            capacity=apply_headroom(nominal, headroom),
+            refill_seconds=refill_seconds,
+            nominal=nominal,
+        )
+
     buckets = {
-        ACCOUNT_V1_BUCKET: TokenBucketConfig(
-            ACCOUNT_V1_BUCKET, capacity=account_v1_capacity, refill_seconds=account_v1_refill_seconds
-        ),
-        MATCH_V5_IDS_BUCKET: TokenBucketConfig(
-            MATCH_V5_IDS_BUCKET, capacity=match_v5_capacity, refill_seconds=match_v5_refill_seconds
-        ),
-        MATCH_V5_MATCH_BUCKET: TokenBucketConfig(
-            MATCH_V5_MATCH_BUCKET, capacity=match_v5_capacity, refill_seconds=match_v5_refill_seconds
+        ACCOUNT_V1_BUCKET: _bucket(ACCOUNT_V1_BUCKET, account_v1_capacity, account_v1_refill_seconds),
+        MATCH_V5_IDS_BUCKET: _bucket(MATCH_V5_IDS_BUCKET, match_v5_capacity, match_v5_refill_seconds),
+        MATCH_V5_MATCH_BUCKET: _bucket(
+            MATCH_V5_MATCH_BUCKET, match_v5_capacity, match_v5_refill_seconds
         ),
     }
     if app_capacity > 0:
-        buckets[APP_BUCKET] = TokenBucketConfig(
-            APP_BUCKET, capacity=app_capacity, refill_seconds=app_refill_seconds
-        )
+        buckets[APP_BUCKET] = _bucket(APP_BUCKET, app_capacity, app_refill_seconds)
     return buckets

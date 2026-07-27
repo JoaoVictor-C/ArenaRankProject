@@ -90,6 +90,14 @@ class TournamentMatchStatus(enum.Enum):
     ended = "ended"
 
 
+class OperatorRole(enum.Enum):
+    owner = "owner"
+    admin = "admin"
+    moderator = "moderator"
+    analyst = "analyst"
+    support = "support"
+
+
 def _pg_enum(py_enum: type[enum.Enum], name: str) -> Enum:
     """Native PG enum that stores the *value* (lower/upper preserved)."""
     return Enum(
@@ -710,6 +718,76 @@ class ChampionBuildRef(Base):
     )
 
 
+# ---------------------------------------------------------------------------
+# admin_operators — per-operator RBAC identities (arena/api/rbac.py).
+#
+# The env ADMIN_API_KEY (arena/core/config.py) stays a separate, permanent
+# "Owner" bootstrap credential and is never stored here — this table is only
+# for additional named operators. Keys are high-entropy random tokens (never
+# user-chosen), so a fast deterministic hash + unique-index lookup is the
+# right tradeoff (no bcrypt/scrypt needed, unlike a user password).
+# ---------------------------------------------------------------------------
+
+
+class AdminOperator(Base):
+    __tablename__ = "admin_operators"
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    email: Mapped[str] = mapped_column(String(254), unique=True)
+    role: Mapped[OperatorRole] = mapped_column(_pg_enum(OperatorRole, "operator_role"))
+    api_key_hash: Mapped[str] = mapped_column(String(64), unique=True)
+    # Last chars of the plaintext key, for display only ("…a1b2c3") — never
+    # enough to reconstruct or brute-force the real key from this column.
+    key_prefix: Mapped[str] = mapped_column(String(12))
+    created_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True), server_default=text("now()"), nullable=False
+    )
+    last_seen_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True))
+    revoked_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True))
+
+    __table_args__ = (
+        Index(
+            "ix_admin_operators_active",
+            "revoked_at",
+            postgresql_where=text("revoked_at IS NULL"),
+        ),
+    )
+
+
+# ---------------------------------------------------------------------------
+# admin_audit_events — immutable trail of privileged actions
+# (arena/api/rbac.py::record_audit, called from every admin mutation route).
+# Written best-effort in its own short transaction, independent of whatever
+# DB/Redis transaction the mutation itself used — several admin actions
+# (DLQ/worker/queue ops) only ever touch Redis and have no DB session to
+# piggyback on, and a logging failure must never break the real action.
+# ---------------------------------------------------------------------------
+
+
+class AdminAuditEvent(Base):
+    __tablename__ = "admin_audit_events"
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    occurred_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True), server_default=text("now()"), nullable=False
+    )
+    # Operator email, or "env:ADMIN_API_KEY" for the bootstrap Owner key —
+    # whatever require_scope resolved onto request.state.actor.
+    actor: Mapped[str] = mapped_column(String(254))
+    # "<domain>.<verb>", e.g. "worker.paused", "dlq.requeued" — the prefix
+    # before the dot buckets into a UI filter chip (workers/moderacao/dlq/
+    # temporada/campeonatos/acesso); see rbac.py::audit_kind.
+    action: Mapped[str] = mapped_column(String(64))
+    target: Mapped[str | None] = mapped_column(String(200))
+    source_ip: Mapped[str | None] = mapped_column(String(64))
+    result: Mapped[str] = mapped_column(String(16), server_default=text("'ok'"), nullable=False)
+    metadata_: Mapped[dict[str, Any]] = mapped_column(
+        "metadata", JSONB, server_default=text("'{}'::jsonb"), nullable=False
+    )
+
+    __table_args__ = (Index("ix_admin_audit_events_occurred_at", "occurred_at"),)
+
+
 __all__ = [
     "Base",
     "BigInteger",  # re-export for migration convenience
@@ -733,4 +811,7 @@ __all__ = [
     "TournamentTeam",
     "TournamentMatch",
     "ChampionBuildRef",
+    "OperatorRole",
+    "AdminOperator",
+    "AdminAuditEvent",
 ]

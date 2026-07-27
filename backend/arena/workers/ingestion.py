@@ -23,6 +23,7 @@ raising, so ``ruff``/import sanity pass and the worker no-ops cleanly.
 
 from __future__ import annotations
 
+import time
 from typing import TYPE_CHECKING, Any
 
 from arena.core.logging import get_logger
@@ -38,7 +39,7 @@ _log = get_logger("arena.workers.ingestion")
 _PRESSURE_FLAG = "arena:ingestion:pressure"
 
 #: How many recent match ids to pull per tracked player per tick.
-_MATCHES_PER_PLAYER = 10
+_MATCHES_PER_PLAYER = 20
 
 #: Cap on tracked players scanned per tick — keeps a single tick bounded; the
 #: cursor (``ingest_cursor_key``) plus a rotating offset cover the full set over
@@ -151,24 +152,59 @@ async def _discover_global() -> list[str]:
 
 
 async def _dedup_new(redis: Any, match_ids: list[str]) -> list[str]:
-    """Return only ids not already in the ``seen_matches`` set, marking new ones.
+    """CLAIM the ids not seen recently; return them in discovery order.
 
-    Uses ``SADD`` (returns count added) per id for atomic test-and-set, then
-    refreshes the set TTL. Order-preserving and idempotent across replicas.
+    Atomic test-and-set per id via ``ZADD NX`` (score = claim time), so
+    concurrent replicas never both claim the same match. Members older than
+    ``SEEN_MATCH_TTL_SECONDS`` are pruned on the way in, which is what makes a
+    re-discovered id genuinely re-checkable — the previous SET + whole-key
+    ``EXPIRE`` refreshed the TTL on every productive tick, so in practice the
+    key never aged out and a claimed id could never be rediscovered.
+
+    A claim is a *lease*, not a completion record. Whoever takes the returned
+    ids owns them: if an id is not durably handed on (push failed, retries
+    exhausted, terminal drop), the owner must call :func:`_release_seen` so
+    discovery can find it again. ``matches.processed`` remains the durable
+    idempotency guard, so a re-claimed id that was in fact processed is a cheap
+    no-op rather than a double-rate.
     """
+    if not match_ids:
+        return []
+    now = int(time.time())
+    try:
+        await redis.zremrangebyscore(
+            Q.SEEN_MATCHES_ZSET, "-inf", now - Q.SEEN_MATCH_TTL_SECONDS
+        )
+    except Exception:  # pragma: no cover - pruning is best-effort housekeeping
+        _log.warning("ingestion.dedup_prune_failed")
+
     fresh: list[str] = []
     for mid in match_ids:
         try:
-            added = await redis.sadd(Q.SEEN_MATCHES_SET, mid)
+            added = await redis.zadd(Q.SEEN_MATCHES_ZSET, {mid: now}, nx=True)
         except Exception:  # pragma: no cover - dedup is best-effort
             _log.warning("ingestion.dedup_failed", matchId=mid)
             continue
         if added:
             fresh.append(mid)
-    if fresh:
-        # Bound the set's lifetime so it can't grow forever (§13.1 / §9.3 TTL).
-        await redis.expire(Q.SEEN_MATCHES_SET, Q.SEEN_MATCH_TTL_SECONDS)
     return fresh
+
+
+async def _release_seen(redis: Any, match_ids: list[str]) -> int:
+    """Give back claims taken by :func:`_dedup_new` so discovery can retry them.
+
+    Called on every path that claims an id but fails to hand it on durably.
+    Best-effort: on Redis failure the id simply ages out of the ZSET after
+    ``SEEN_MATCH_TTL_SECONDS`` instead of being lost forever, which is exactly
+    the backstop the old SET implementation silently disabled.
+    """
+    if not match_ids:
+        return 0
+    try:
+        return int(await redis.zrem(Q.SEEN_MATCHES_ZSET, *match_ids))
+    except Exception:  # noqa: BLE001 - TTL is the backstop
+        _log.warning("ingestion.dedup_release_failed", count=len(match_ids))
+        return 0
 
 
 async def _is_priority(redis: Any, participant_puuids: list[str]) -> bool:
@@ -203,7 +239,9 @@ async def _enqueue(
         _queue_name=queue,
         _job_id=f"{Q.PROCESS_MATCH_TASK}:{riot_match_id}",
     )
-    _log.info("ingestion.enqueued", matchId=riot_match_id, queue=queue, priority=priority)
+    # DEBUG: per-match, high-volume, same reasoning as processor.py's demoted
+    # per-match logs — this fires once per discovered id.
+    _log.debug("ingestion.enqueued", matchId=riot_match_id, queue=queue, priority=priority)
 
 
 # ---------------------------------------------------------------------------
@@ -250,12 +288,17 @@ async def poll_riot(ctx: dict[str, Any]) -> dict[str, int]:
     for mid in fresh:
         verdict = Q.evaluate_match_filters(Q.MatchMeta(riot_match_id=mid))
         if not verdict.eligible:
-            _log.info("ingestion.filtered", matchId=mid, reason=verdict.reason)
+            _log.debug("ingestion.filtered", matchId=mid, reason=verdict.reason)
             continue
         # Participant puuids are unknown at id-only stage -> standard lane; the
         # processor can still re-route via the Top-1000 set if needed.
         priority = await _is_priority(redis, participant_puuids=[])
-        await _enqueue(redis, mid, priority=priority)
+        try:
+            await _enqueue(redis, mid, priority=priority)
+        except Exception:  # noqa: BLE001 - claimed but never queued; give it back
+            _log.warning("ingestion.enqueue_failed", matchId=mid)
+            await _release_seen(redis, [mid])
+            continue
         enqueued += 1
 
     result = {
@@ -268,4 +311,4 @@ async def poll_riot(ctx: dict[str, Any]) -> dict[str, int]:
     return result
 
 
-__all__ = ["poll_riot"]
+__all__ = ["poll_riot", "_dedup_new", "_release_seen"]

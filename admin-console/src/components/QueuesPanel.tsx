@@ -9,10 +9,10 @@ interface Props {
 }
 
 function queueTone(name: string): string {
-  if (name.includes("dlq")) return "#ff5c5c";
-  if (name.includes("priority")) return "#4cc2ff";
-  if (name.includes("standard")) return "#3ddc84";
-  return "#8b97a7";
+  if (name.includes("dlq")) return "var(--red)";
+  if (name.includes("priority")) return "var(--cyan)";
+  if (name.includes("standard")) return "var(--green)";
+  return "var(--faint)";
 }
 
 export function QueuesPanel({ queues, history }: Props) {
@@ -22,29 +22,24 @@ export function QueuesPanel({ queues, history }: Props) {
     <section className="panel">
       <div className="panel-head">
         <h2>Filas &amp; profundidade</h2>
-        <span className="panel-note">arq + listas de sweep · histórico ao vivo</span>
+        <span className="panel-note">filas arq (padrão/prioritária) + DLQ · histórico ao vivo</span>
       </div>
 
       <div className="trend-row">
         <div className="trend">
           <div className="trend-k">Backlog total</div>
           <div className="trend-v tnum">{fmtInt(last(history.backlog))}</div>
-          <Sparkline data={history.backlog} color="#4cc2ff" />
+          <Sparkline data={history.backlog} color="var(--cyan)" />
         </div>
         <div className="trend">
           <div className="trend-k">Filas arq</div>
           <div className="trend-v tnum">{fmtInt(last(history.arqQueues))}</div>
-          <Sparkline data={history.arqQueues} color="#3ddc84" />
-        </div>
-        <div className="trend">
-          <div className="trend-k">Pendentes sweep</div>
-          <div className="trend-v tnum">{fmtInt(last(history.sweepPending))}</div>
-          <Sparkline data={history.sweepPending} color="#ffb020" />
+          <Sparkline data={history.arqQueues} color="var(--green)" />
         </div>
         <div className="trend">
           <div className="trend-k">DLQ</div>
           <div className="trend-v tnum">{fmtInt(last(history.dlq))}</div>
-          <Sparkline data={history.dlq} color="#ff5c5c" />
+          <Sparkline data={history.dlq} color="var(--red)" />
         </div>
       </div>
 

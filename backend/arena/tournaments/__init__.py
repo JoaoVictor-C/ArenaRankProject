@@ -3,8 +3,9 @@
 First-class persisted subsystem over the normalized schema (``tournaments`` /
 ``tournament_teams`` / ``tournament_matches``). The scoring source of truth is the
 pure :func:`~arena.tournaments.scoring.compute_standings`; standings are recomputed
-on every result submission. Read paths fall back to the DTO sample (``t001``/
-``t002``) when the table is empty.
+on every result submission. Read paths return an honest empty state / 404 when
+nothing is provisioned yet — no DTO-sample fallback (tournaments are
+operator-created and must never be presented as real events).
 
 Public surface:
 

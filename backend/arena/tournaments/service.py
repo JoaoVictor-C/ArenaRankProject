@@ -5,8 +5,9 @@ Backed by three tables (``tournaments`` / ``tournament_teams`` /
 ``tournament_matches``); the scoring source of truth is the pure
 :func:`arena.tournaments.scoring.compute_standings`.
 
-Read paths fall back to the DTO sample (``t001``/``t002``) when the table is
-empty or the requested id is a known sample id (contract §5).
+Read paths return an honest empty state (list) or 404 (detail) when nothing
+is provisioned yet — tournaments are operator-created, so there is no
+DTO-sample fallback; they must never be presented as real events.
 
 Concurrency: every mutation that touches team/match state runs inside one
 transaction and locks the tournament's rows with ``SELECT … FOR UPDATE`` so
