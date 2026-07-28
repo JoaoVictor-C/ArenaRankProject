@@ -142,6 +142,22 @@ async def _push_claimed(redis: Any, queue_name: str, match_ids: list[str]) -> in
     return queued
 
 
+def _sweep_since() -> int | None:
+    """Epoch-second floor for discovery match-id calls, or ``None`` (unbounded).
+
+    Mirrors ``backfill.py::_backfill_since`` — anything older than
+    ``settings.match_min_started_at_ms`` is guaranteed to be dropped by
+    ``match_pipeline.before_cutoff`` once fetched, so asking Riot for those ids
+    only burns API budget and inflates queue depth with entries that will only
+    ever no-op. Passing this as Riot's own ``startTime`` filter keeps them out
+    of the list in the first place. ``0`` means the cutoff is disabled (per
+    ``match_min_started_at_ms``'s own docstring) — return ``None``, not ``0``,
+    so callers don't accidentally pass a literal epoch-0 bound.
+    """
+    cutoff_ms = settings.match_min_started_at_ms
+    return cutoff_ms // 1000 if cutoff_ms > 0 else None
+
+
 async def _fetch_and_enqueue(
     redis: Any, puuids: list[str], queue_name: str, *, skip_dedup: bool = False
 ) -> tuple[int, int]:
@@ -158,6 +174,8 @@ async def _fetch_and_enqueue(
     if client is None:
         return 0, 0
 
+    since = _sweep_since()
+
     # One call per LIVE Arena queue id (match-v5 filters a single queue per
     # call). Only queues in rotation can produce new matches — polling retired
     # ids (1700/1710: zero post-cutoff matches) was pure budget waste. The
@@ -172,7 +190,10 @@ async def _fetch_and_enqueue(
         async with sem:
             try:
                 return await client.list_match_ids(
-                    puuid, count=settings.sweep_matches_per_player, queue=queue_id
+                    puuid,
+                    count=settings.sweep_matches_per_player,
+                    queue=queue_id,
+                    start_time=since,
                 )
             except Exception:  # noqa: BLE001
                 _log.warning("sweep.list_failed", puuid=puuid[:8], queue=queue_id)

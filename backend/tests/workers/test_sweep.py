@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from arena.core.config import settings
 from arena.workers import queues as Q
-from arena.workers.sweep import sweep_tick
+from arena.workers.sweep import _sweep_since, sweep_tick
 
 
 # ---------------------------------------------------------------------------
@@ -136,3 +136,69 @@ async def test_sweep_dedup(fake_redis, monkeypatch):
 
     # Only the 3 ids from the first tick were ever enqueued.
     assert _standard_job_ids(fake_redis) == {"m1", "m2", "m3"}
+
+
+def test_sweep_since_converts_ms_cutoff_to_epoch_seconds(monkeypatch):
+    monkeypatch.setattr(settings, "match_min_started_at_ms", 1_784_246_400_000)
+    assert _sweep_since() == 1_784_246_400_000 // 1000
+
+
+def test_sweep_since_none_when_cutoff_disabled(monkeypatch):
+    monkeypatch.setattr(settings, "match_min_started_at_ms", 0)
+    assert _sweep_since() is None
+
+
+async def test_sweep_passes_cutoff_as_start_time(fake_redis, monkeypatch):
+    """Discovery must ask Riot itself to exclude pre-cutoff matches (via
+    start_time) rather than fetching them only to have match_pipeline's
+    before_cutoff silently drop them after burning a queue slot + API call."""
+    _patch_sweep(monkeypatch)
+    monkeypatch.setattr(settings, "match_min_started_at_ms", 1_784_246_400_000)
+    # Isolate _fetch_and_enqueue's calls from _deep_sample's unrelated
+    # rotation-detection call, which always passes its own non-None start_time.
+    monkeypatch.setattr(settings, "deep_sample_per_tick", 0)
+
+    seen_start_times: list[int | None] = []
+
+    class _CapturingRiotClient(_FakeRiotClient):
+        async def list_match_ids(  # type: ignore[override]
+            self, puuid: str, *, start: int = 0, count: int = 10,
+            queue: int | None = None, start_time: int | None = None,
+        ) -> list[str]:
+            seen_start_times.append(start_time)
+            return list(_FAKE_MATCH_IDS)
+
+    monkeypatch.setattr("arena.workers.sweep.get_riot_client", lambda: _CapturingRiotClient())
+
+    result = await sweep_tick({"redis": fake_redis})
+
+    assert result["status"] == "ok"
+    assert seen_start_times  # at least one call was made
+    assert all(st == 1_784_246_400_000 // 1000 for st in seen_start_times)
+
+
+async def test_sweep_start_time_none_when_cutoff_disabled(fake_redis, monkeypatch):
+    """match_min_started_at_ms == 0 disables the cutoff -> start_time stays None."""
+    _patch_sweep(monkeypatch)
+    monkeypatch.setattr(settings, "match_min_started_at_ms", 0)
+    # Isolate _fetch_and_enqueue's calls from _deep_sample's unrelated
+    # rotation-detection call, which always passes its own non-None start_time.
+    monkeypatch.setattr(settings, "deep_sample_per_tick", 0)
+
+    seen_start_times: list[int | None] = []
+
+    class _CapturingRiotClient(_FakeRiotClient):
+        async def list_match_ids(  # type: ignore[override]
+            self, puuid: str, *, start: int = 0, count: int = 10,
+            queue: int | None = None, start_time: int | None = None,
+        ) -> list[str]:
+            seen_start_times.append(start_time)
+            return list(_FAKE_MATCH_IDS)
+
+    monkeypatch.setattr("arena.workers.sweep.get_riot_client", lambda: _CapturingRiotClient())
+
+    result = await sweep_tick({"redis": fake_redis})
+
+    assert result["status"] == "ok"
+    assert seen_start_times
+    assert all(st is None for st in seen_start_times)
