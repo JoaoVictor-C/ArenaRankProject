@@ -27,13 +27,14 @@ from __future__ import annotations
 
 import enum
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 from typing import Any
 
 from sqlalchemy import (
     BigInteger,
     Boolean,
     Computed,
+    Date,
     Enum,
     Float,
     ForeignKey,
@@ -41,6 +42,7 @@ from sqlalchemy import (
     Integer,
     Numeric,
     PrimaryKeyConstraint,
+    SmallInteger,
     String,
     UniqueConstraint,
     text,
@@ -76,6 +78,24 @@ class Severity(enum.Enum):
 class RegistrationSource(enum.Enum):
     auto = "auto"
     manual = "manual"
+
+
+class IngestMode(enum.Enum):
+    """Como uma temporada trata partidas recém-descobertas.
+
+    ``catching_up`` — não avalia nada: as partidas vão para ``match_backlog`` e
+    depois são drenadas em ordem cronológica estrita. É o modo de um refill (DB
+    vazio, janela de temporada retroativa), em que a descoberta chega em ordem
+    essencialmente arbitrária e avaliar na chegada produziria um ladder que
+    reflete ordem de chegada, não ordem de jogo.
+
+    ``live`` — regime normal: avalia na chegada. Partidas atrasadas ainda
+    acontecem (um jogador descoberto hoje pode ter jogado há 15 dias) e são
+    tratadas pelo ``replay_floor`` + replay incremental, não por este modo.
+    """
+
+    catching_up = "catching_up"
+    live = "live"
 
 
 class TournamentStatus(enum.Enum):
@@ -361,6 +381,20 @@ class MatchParticipant(Base):
     party_id: Mapped[str | None] = mapped_column(String(36))
     # AppliedModifiers snapshot from the rating-engine.
     modifiers: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    # RESTORE POINT: o PlayerState deste jogador IMEDIATAMENTE ANTES desta
+    # partida (ver services/rating_service.py::state_before_to_json). É o que
+    # torna possível o replay incremental "a partir de T": para reprocessar em
+    # ordem cronológica a partir de um instante, é preciso restaurar mu/sigma de
+    # cada jogador naquele ponto, e isso NÃO era recuperável — ``cr_snapshots``
+    # é carimbado com o relógio de PROCESSAMENTO (não com played_at, logo
+    # inútil como índice temporal quando o processamento saiu de ordem), e
+    # ``cr_before`` sozinho não inverte cr = (mu - 3*sigma)*scale + offset (uma
+    # equação, duas incógnitas). Com played_at já denormalizado aqui, cada linha
+    # vira um ponto de restauração completo.
+    #
+    # NULL nas linhas anteriores à migração 0014: o replay incremental se recusa
+    # a atravessar um NULL e exige um rerate de temporada inteira primeiro.
+    state_before: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
 
     match: Mapped[Match] = relationship(
         back_populates="participants",
@@ -587,6 +621,179 @@ class CrSnapshotRecent(Base):
 
 
 # ---------------------------------------------------------------------------
+# champion_daily_stats  (B1/B2 — per-champion daily rollup). Placement-derived,
+# season-scoped. Tabela PLANA replicável (entra na publicação ``arena_read``):
+# o read path na réplica lê o rollup em vez de reagregar ``match_participants``
+# a cada request na t3.micro — é a fonte da tierlist ``/champions``, do delta 7d
+# e das séries de trend. Escrita: cron ``champion_daily_maintenance`` (recompute
+# dos dias recentes) + backfill one-shot na migração. Deriva de
+# ``match_participants`` (played_at denormalizado) — NÃO precisa de ingestão
+# nova. ToS: placement-derived, nunca winrate de augment/item.
+# ---------------------------------------------------------------------------
+
+
+class ChampionDailyStat(Base):
+    __tablename__ = "champion_daily_stats"
+    # Multi-row upsert do cron: sem RETURNING per-row (mantém o flush batchado).
+    __mapper_args__ = {"eager_defaults": False}
+
+    snapshot_date: Mapped[date] = mapped_column(Date)
+    season_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True))
+    champion_id: Mapped[int] = mapped_column(Integer)
+    games: Mapped[int] = mapped_column(Integer)  # participações elegíveis no dia
+    top4: Mapped[int] = mapped_column(Integer)  # placement <= 4 (top-half do contrato)
+    first_place: Mapped[int] = mapped_column(Integer)  # placement == 1
+    placement_sum: Mapped[int] = mapped_column(Integer)  # p/ colocação média do dia
+
+    __table_args__ = (
+        # (season, champion) lidera: a query de trend filtra por campeão dentro
+        # da temporada e faz range no dia.
+        PrimaryKeyConstraint(
+            "season_id", "champion_id", "snapshot_date", name="pk_champion_daily_stats"
+        ),
+        # Totais diários (pick-rate), a janela do delta 7d e o SUM da tierlist
+        # agrupam por dia sobre todos os campeões da temporada.
+        Index("ix_champion_daily_stats_season_date", "season_id", "snapshot_date"),
+    )
+
+
+# ---------------------------------------------------------------------------
+# match_backlog — área de espera das partidas descobertas durante um refill.
+#
+# Guarda a partida JÁ PARSEADA (``ParsedArenaMatch``), não o payload cru da
+# match-v5: ~2,5 kB contra ~75 kB por partida (≈180 MB em vez de ≈5 GB numa
+# temporada de 71k), e evita re-buscar na Riot ao drenar — o cache de payload
+# vive só 24 h (riot/cache.py), curto demais para uma janela de 20 dias.
+#
+# ``played_at`` é extraído de ``gameStartTimestamp`` no momento do parse, então a
+# ordenação cronológica é possível SEM tocar no payload de novo.
+# ---------------------------------------------------------------------------
+
+
+class MatchBacklog(Base):
+    __tablename__ = "match_backlog"
+    __mapper_args__ = {"eager_defaults": False}
+
+    riot_match_id: Mapped[str] = mapped_column(String(32), primary_key=True)
+    season_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True))
+    # De ParsedArenaMatch.started_at_ms — hora de JOGO, nunca a de processamento.
+    played_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True))
+    parsed: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    discovered_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True), server_default=text("now()"), nullable=False
+    )
+
+    __table_args__ = (
+        # A drenagem lê exatamente nesta ordem: (temporada, played_at asc).
+        Index("ix_match_backlog_season_played", "season_id", "played_at"),
+    )
+
+
+# ---------------------------------------------------------------------------
+# season_ingest_state — o modo de ingestão de uma temporada + o que o console
+# mostra durante um refill. Uma linha por temporada.
+# ---------------------------------------------------------------------------
+
+
+class SeasonIngestState(Base):
+    __tablename__ = "season_ingest_state"
+    __mapper_args__ = {"eager_defaults": False}
+
+    season_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True)
+    mode: Mapped[IngestMode] = mapped_column(
+        _pg_enum(IngestMode, "ingest_mode"), server_default=text("'live'")
+    )
+    # Piso do replay incremental: o played_at MAIS ANTIGO avaliado fora de ordem
+    # desde o último replay. NULL = nada pendente. Não dispara por partida (um
+    # jogador novo traz partidas velhas o tempo todo e isso seria thrashing);
+    # um cron consome quando as filas esvaziam.
+    replay_floor: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True))
+    # Progresso do bootstrap (só telemetria de console).
+    frontier_pending: Mapped[int] = mapped_column(Integer, server_default=text("0"))
+    frontier_done: Mapped[int] = mapped_column(Integer, server_default=text("0"))
+    saturated_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True))
+    # Estimativa de cobertura da última amostragem do audit (0..100), e quando.
+    coverage_pct: Mapped[float | None] = mapped_column(Float)
+    coverage_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True))
+    updated_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True), server_default=text("now()"), onupdate=text("now()")
+    )
+
+
+# ---------------------------------------------------------------------------
+# champion_combo_stats — sinergias (duplas/trios) materializadas.
+#
+# As rotas /champions/synergy* faziam self-join de 2 ou 3 vias sobre
+# match_participants a cada request: medido na temporada com 1,2M participações,
+# 8,0 s / 63,5M buffers / ~285 MB em temp para duplas e 19,1 s / ~530 MB para
+# trios — PIOR que o scan que fazia o OOM killer derrubar a api na t3.micro, e
+# fora do circuit breaker do Caddy. Este rollup é cumulativo por TEMPORADA (não
+# por dia como champion_daily_stats: 308k trios distintos × N dias explodiria a
+# tabela; agregado por temporada são ~21k linhas com o piso de escrita).
+#
+# ``c2 = 0`` marca "ausente" numa dupla — champion ids são positivos, e um
+# sentinela mantém a PK simples e NOT NULL (uma coluna anulável não entra em PK).
+# ToS: placement-derived, nunca winrate de augment/item.
+# ---------------------------------------------------------------------------
+
+
+class ChampionComboStat(Base):
+    __tablename__ = "champion_combo_stats"
+    __mapper_args__ = {"eager_defaults": False}
+
+    season_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True))
+    size: Mapped[int] = mapped_column(SmallInteger)  # 2 = dupla, 3 = trio
+    c0: Mapped[int] = mapped_column(Integer)  # combo ordenado por championId asc
+    c1: Mapped[int] = mapped_column(Integer)
+    c2: Mapped[int] = mapped_column(Integer, server_default=text("0"))  # 0 = ausente
+    games: Mapped[int] = mapped_column(Integer)
+    top4: Mapped[int] = mapped_column(Integer)  # placement <= 4 (top-half do contrato)
+    first_place: Mapped[int] = mapped_column(Integer)  # placement == 1
+    placement_sum: Mapped[int] = mapped_column(Integer)  # p/ colocação média
+
+    __table_args__ = (
+        PrimaryKeyConstraint("season_id", "size", "c0", "c1", "c2", name="pk_champion_combo_stats"),
+        # A leitura pega o topo por jogos dentro de (temporada, tamanho) antes do
+        # re-rank de Wilson em Python.
+        Index("ix_champion_combo_stats_season_size_games", "season_id", "size", "games"),
+    )
+
+
+# ---------------------------------------------------------------------------
+# season_record_cache — resultado materializado de ``/meta/records``.
+#
+# Os cinco records da temporada custavam um GROUP BY player_id sobre TODOS os
+# participants elegíveis (~127k jogadores materializados) + um sort sem índice
+# em cr_delta — a segunda rota que o OOM killer derrubava na t3.micro. Em vez de
+# um rollup por jogador (grande demais), cacheamos o RESULTADO: no máximo 5
+# linhas por temporada, uma por ``key``. Escrita: cron
+# ``season_records_maintenance``; leitura: um SELECT indexado. Tabela plana e
+# minúscula — entra na publicação ``arena_read``.
+# ---------------------------------------------------------------------------
+
+
+class SeasonRecordCache(Base):
+    __tablename__ = "season_record_cache"
+    __mapper_args__ = {"eager_defaults": False}
+
+    season_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True))
+    # streak | biggest_gain | most_today | first_rate | top4_rate (RawRecord.key)
+    key: Mapped[str] = mapped_column(String(32))
+    label: Mapped[str] = mapped_column(String(64))  # rótulo PT-BR já formatado
+    value: Mapped[str] = mapped_column(String(32))  # valor já formatado ("14", "+72", "42%")
+    # Detentor do record; o router hidrata nome/handle/avatar a partir daqui.
+    player_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True))
+    accent: Mapped[str] = mapped_column(String(32))  # dica de cor para a UI
+    computed_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True), server_default=text("now()"), nullable=False
+    )
+
+    __table_args__ = (
+        PrimaryKeyConstraint("season_id", "key", name="pk_season_record_cache"),
+    )
+
+
+# ---------------------------------------------------------------------------
 # Tournaments (api_contract_v1 §5) — first-class persisted subsystem.
 # ---------------------------------------------------------------------------
 
@@ -807,6 +1014,12 @@ __all__ = [
     "PlayerAchievement",
     "CrSnapshot",
     "CrSnapshotRecent",
+    "ChampionDailyStat",
+    "ChampionComboStat",
+    "SeasonRecordCache",
+    "IngestMode",
+    "MatchBacklog",
+    "SeasonIngestState",
     "Tournament",
     "TournamentTeam",
     "TournamentMatch",

@@ -18,6 +18,7 @@ export type View =
   | "players"
   | "roles"
   | "season"
+  | "refill"
   | "tournaments"
   | "activity";
 
@@ -59,6 +60,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { id: "players", label: "Busca de jogadores", icon: "person_search" },
       { id: "roles", label: "Papéis & permissões", icon: "admin_panel_settings" },
       { id: "season", label: "Temporada", icon: "calendar_month" },
+      { id: "refill", label: "Refill da temporada", icon: "restart_alt" },
       { id: "tournaments", label: "Campeonatos", icon: "emoji_events" },
       { id: "activity", label: "Feed de atividade", icon: "timeline" },
     ],
@@ -101,6 +103,11 @@ export const PAGE_META: Record<View, { title: string; desc: string }> = {
   dlq: {
     title: "Revisão de DLQ",
     desc: "Partidas que falharam após esgotar as tentativas de reprocessamento.",
+  },
+  refill: {
+    title: "Refill da temporada",
+    desc:
+      "Repovoar a janela da temporada e avaliar tudo em ordem cronológica.",
   },
   audit: {
     title: "Registro de auditoria",

@@ -12,6 +12,9 @@
 --   tournament_matches                        superfície /tournaments
 --   champion_build_ref                        /champions/{id}/build + /champions/build/top
 --   cr_snapshots_recent                       delta7d (espelho plano da T2.3)
+--   champion_daily_stats                      tierlist /champions + trend + delta7d (B1/B2)
+--   season_record_cache                       /meta/records materializado
+--   champion_combo_stats                      /champions/synergy* materializado
 --
 -- FICAM FORA (deliberado):
 --   cr_snapshots        hypertable/base histórica — não replica p/ vanilla; o
@@ -41,7 +44,10 @@ CREATE PUBLICATION arena_read
         tournament_teams,
         tournament_matches,
         champion_build_ref,
-        cr_snapshots_recent
+        cr_snapshots_recent,
+        champion_daily_stats,
+        season_record_cache,
+        champion_combo_stats
     WITH (publish_via_partition_root = true);
 
 -- Conferência rápida:

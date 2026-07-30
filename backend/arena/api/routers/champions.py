@@ -34,12 +34,18 @@ from arena.schemas import (
     ChampionBuildResponse,
     ChampionMainsResponse,
     ChampionSynergy,
+    ChampionSynergyGroup,
+    ChampionSynergyGroupResponse,
     ChampionSynergyResponse,
+    ChampionTrendPoint,
+    ChampionTrendResponse,
     ChampRow,
     ChampTier,
     ChampTierlistResponse,
     ChampTopPlayer,
     SynergyChampion,
+    SynergyTier,
+    SynergyTierlistResponse,
     TopBuildResponse,
 )
 from arena.schemas.champions import BuildTierKey
@@ -53,7 +59,9 @@ from arena.services.build_ref_service import (
 from arena.services.stats_service import (
     SYNERGY_MIN_GAMES,
     ChampionBestPlayer,
+    ChampionSynergyGroupRow,
     ChampionTierRow,
+    ChampionTrendPointView,
     StatsService,
 )
 
@@ -73,6 +81,9 @@ _TIER_CONFIG: list[tuple[ChampTierKey, str, str, float]] = [
 ]
 
 _VALID_METRICS = {"top4", "first", "avgplace", "pick", "ban"}
+
+# How many comps the synergy tierlist pulls before bucketing into S+..D bands.
+_SYNERGY_TIERLIST_LIMIT = 100
 
 
 async def _current_patch() -> str:
@@ -184,6 +195,12 @@ async def get_champions(
         session, [bp.player_id for bps in best.values() for bp in bps]
     )
 
+    # 7d top-half delta per champion (one batched scan of the daily rollup).
+    # Empty/0 before the rollup has history → the UI hides the arrow.
+    deltas = await stats.champion_winrate_delta7d(
+        session, season_id=season_id, champion_ids=[a.champion_id for a in agg]
+    )
+
     table: list[ChampRow] = []
     tiers_map: dict[ChampTierKey, ChampTier] = {}
     for pos, a in enumerate(agg):
@@ -196,7 +213,9 @@ async def get_champions(
             champion=c.avatar_for(name),
             champion_icon_url=c.champion_icon_url(a.champion_id),
             name=name,
-            role="",  # Arena has no fixed roles; ddragon role tags are not modeled
+            # Arena has no lane/role; this is the ddragon champion CLASS
+            # (Mago/Tanque/...) for the class-chip filter — empty if unknown.
+            role=c.champion_class(a.champion_id),
             games=a.games,
             top4=a.top4_rate,
             first=a.first_rate,
@@ -204,6 +223,7 @@ async def get_champions(
             pick_rate=a.pick_rate,
             ban_rate=0.0,  # Arena has no bans
             tier=key,
+            winrate_delta=deltas.get(a.champion_id, 0),
             top_player=_top_player_dto(champ_best[0], best_names) if champ_best else None,
         )
         table.append(row)
@@ -279,6 +299,111 @@ async def get_champion_synergy(
         sample_size=sum(r.games for r in rows),
         min_games=SYNERGY_MIN_GAMES,
         pairs=pairs,
+    )
+
+
+def _synergy_group(row: ChampionSynergyGroupRow) -> ChampionSynergyGroup:
+    """Display DTO for one synergy combo (duo/trio) — each member hydrated."""
+    return ChampionSynergyGroup(
+        champions=[_synergy_champion(cid) for cid in row.champions],
+        games=row.games,
+        win_rate=row.win_rate,
+        first_rate=row.first_rate,
+        avg_place=row.avg_place,
+    )
+
+
+@router.get(
+    "/champions/synergy/groups",
+    response_model=ChampionSynergyGroupResponse,
+    response_model_by_alias=True,
+    summary=(
+        "Sinergia de subteams (duplas ou trios) por winrate — rail do /winrate; "
+        "ToS: placement-derived"
+    ),
+)
+async def get_champion_synergy_groups(
+    session: Annotated[AsyncSession, Depends(c.get_db)],
+    format: Annotated[Format, Query()] = "3v3",
+    season: Annotated[int, Query(ge=1)] = 3,
+    size: Annotated[int, Query(ge=2, le=3, description="Tamanho do subteam: 2 dupla, 3 trio")] = 3,
+    limit: Annotated[int, Query(ge=1, le=100)] = 24,
+) -> ChampionSynergyGroupResponse:
+    season_id = await c.resolve_season_id(session, season)
+    if season_id is None:
+        return ChampionSynergyGroupResponse(
+            updated_at="",
+            season=season,
+            format=format,
+            size=size,
+            sample_size=0,
+            min_games=SYNERGY_MIN_GAMES,
+            groups=[],
+        )
+    rows = await StatsService().champion_synergies_n(
+        session, season_id=season_id, size=size, limit=limit
+    )
+    return ChampionSynergyGroupResponse(
+        updated_at=datetime.now(UTC).isoformat(),
+        season=season,
+        format=format,
+        size=size,
+        sample_size=sum(r.games for r in rows),
+        min_games=SYNERGY_MIN_GAMES,
+        groups=[_synergy_group(r) for r in rows],
+    )
+
+
+@router.get(
+    "/champions/synergy/tierlist",
+    response_model=SynergyTierlistResponse,
+    response_model_by_alias=True,
+    summary=(
+        "Tierlist de sinergias (duplas/trios) em bandas S+..D — página /sinergias; "
+        "ToS: placement-derived"
+    ),
+)
+async def get_champion_synergy_tierlist(
+    session: Annotated[AsyncSession, Depends(c.get_db)],
+    format: Annotated[Format, Query()] = "3v3",
+    season: Annotated[int, Query(ge=1)] = 3,
+    size: Annotated[int, Query(ge=2, le=3, description="Tamanho do subteam: 2 dupla, 3 trio")] = 3,
+) -> SynergyTierlistResponse:
+    season_id = await c.resolve_season_id(session, season)
+    if season_id is None:
+        return SynergyTierlistResponse(
+            updated_at="",
+            season=season,
+            format=format,
+            size=size,
+            sample_size=0,
+            min_games=SYNERGY_MIN_GAMES,
+            tiers=[],
+            table=[],
+        )
+    rows = await StatsService().champion_synergies_n(
+        session, season_id=season_id, size=size, limit=_SYNERGY_TIERLIST_LIMIT
+    )
+    groups = [_synergy_group(r) for r in rows]
+    total = len(groups)
+    tiers_map: dict[ChampTierKey, SynergyTier] = {}
+    for pos, grp in enumerate(groups):
+        key, label, color = _tier_for(pos, total)
+        tier = tiers_map.get(key)
+        if tier is None:
+            tier = SynergyTier(key=key, label=label, color=color, comps=[])
+            tiers_map[key] = tier
+        tier.comps.append(grp)
+    tiers = [tiers_map[cfg[0]] for cfg in _TIER_CONFIG if cfg[0] in tiers_map]
+    return SynergyTierlistResponse(
+        updated_at=datetime.now(UTC).isoformat(),
+        season=season,
+        format=format,
+        size=size,
+        sample_size=sum(r.games for r in rows),
+        min_games=SYNERGY_MIN_GAMES,
+        tiers=tiers,
+        table=groups,
     )
 
 
@@ -421,4 +546,44 @@ async def get_champion_mains(
         name=name,
         champion_icon_url=icon,
         players=[_top_player_dto(bp, names) for bp in rows],
+    )
+
+
+def _trend_point_dto(v: ChampionTrendPointView) -> ChampionTrendPoint:
+    return ChampionTrendPoint(
+        date=v.date, top4=v.top4, first=v.first, pick_rate=v.pick_rate, games=v.games
+    )
+
+
+@router.get(
+    "/champions/{champion_id}/trend",
+    response_model=ChampionTrendResponse,
+    response_model_by_alias=True,
+    summary=(
+        "Série diária de winrate/pick/top4 do campeão (rollup champion_daily_stats; "
+        "ToS: placement-derived)"
+    ),
+)
+async def get_champion_trend(
+    session: Annotated[AsyncSession, Depends(c.get_db)],
+    champion_id: int,
+    season: Annotated[int, Query(ge=1)] = 3,
+    days: Annotated[int, Query(ge=1, le=90)] = 30,
+) -> ChampionTrendResponse:
+    name = c.champion_name(champion_id) or str(champion_id)
+    icon = c.champion_icon_url(champion_id)
+    season_id = await c.resolve_season_id(session, season)
+    if season_id is None:
+        return ChampionTrendResponse(
+            champion_id=champion_id, name=name, champion_icon_url=icon, days=days, series=[]
+        )
+    points = await StatsService().champion_trend(
+        session, season_id=season_id, champion_id=champion_id, days=days
+    )
+    return ChampionTrendResponse(
+        champion_id=champion_id,
+        name=name,
+        champion_icon_url=icon,
+        days=days,
+        series=[_trend_point_dto(p) for p in points],
     )

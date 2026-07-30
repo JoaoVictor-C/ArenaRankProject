@@ -15,6 +15,14 @@ Wave-2 service layer and stays import-safe before those services exist:
 * :func:`cr_snapshot_maintenance` — maintain the ``cr_snapshots`` Timescale
   continuous aggregate / compression / retention (Trinity #4, proposal
   section 8.3): refresh the aggregate window and drop/compress aged chunks.
+* :func:`champion_daily_maintenance` — recompute the recent window of the
+  ``champion_daily_stats`` rollup. This rollup is what the ``/champions``
+  tierlist, the 7d winrate delta and the trend charts read INSTEAD of
+  re-aggregating ``match_participants`` per request; without this tick it only
+  ever holds the migration's one-shot backfill and goes stale immediately.
+* :func:`season_records_maintenance` — recompute ``season_record_cache``, the
+  materialized result behind ``/meta/records`` (same rationale: the live
+  computation groups every eligible participant in the season by player).
 * :func:`heartbeat_tick` — stamps a liveness timestamp every tick and, when it
   finds the PREVIOUS stamp older than ``settings.reconcile_gap_threshold_seconds``
   (i.e. this process was down or unable to tick for a while), opens a
@@ -37,6 +45,7 @@ from arq import cron
 from arena.core.config import settings
 from arena.core.logging import get_logger
 from arena.workers import queues as Q
+from arena.workers.bootstrap import bootstrap_tick
 
 _log = get_logger("arena.workers.scheduler")
 
@@ -145,6 +154,226 @@ async def cr_snapshot_maintenance(ctx: dict[str, Any]) -> dict[str, Any]:
     return result
 
 
+async def champion_daily_maintenance(ctx: dict[str, Any]) -> dict[str, Any]:
+    """Recompute the recent window of the ``champion_daily_stats`` rollup.
+
+    The rollup is the read path's source for the ``/champions`` tierlist, the 7d
+    winrate delta and the per-champion trend series — all of which used to
+    re-aggregate ``match_participants`` on every request until that stacked enough
+    memory to get the API container OOM-killed on the t3.micro replica. The
+    migration seeds history once; THIS tick is what keeps it current.
+
+    ``rebuild_champion_daily`` is delete-then-insert over the window, so re-running
+    is idempotent and a day's totals grow correctly as late matches land. The
+    window (``settings.champion_daily_window_days``) covers the sweep's catch-up
+    lag. Runs on the PRIMARY; the write replicates to the replica via ``arena_read``.
+
+    Best-effort: a DB blip logs and returns rather than killing the tick — the next
+    hour tries again.
+    """
+    try:
+        from datetime import UTC, datetime, timedelta
+
+        from arena.db.session import get_sessionmaker
+        from arena.services.stats_service import StatsService
+
+        season_id = await _current_season_id()
+        if season_id is None:
+            _log.info("scheduler.champion_daily.skipped", reason="no season")
+            return {"status": "skipped", "reason": "no season"}
+
+        since = (datetime.now(UTC) - timedelta(days=settings.champion_daily_window_days)).date()
+        async with get_sessionmaker()() as session:
+            rows = await StatsService().rebuild_champion_daily(
+                session, season_id=season_id, since=since
+            )
+            await session.commit()
+        _log.info(
+            "scheduler.champion_daily.done", rows=rows, since=since.isoformat(), season=season_id
+        )
+        return {"status": "ok", "rows": rows, "since": since.isoformat()}
+    except Exception:
+        _log.warning("scheduler.champion_daily.failed", exc_info=True)
+        return {"status": "error"}
+
+
+async def champion_combo_maintenance(ctx: dict[str, Any]) -> dict[str, Any]:
+    """Recompute ``champion_combo_stats`` — the materialized synergy rollup.
+
+    Backs ``/champions/synergy``, ``/champions/synergy/groups`` and
+    ``/champions/synergy/tierlist``. Those used to self-join
+    ``match_participants`` 2–3 ways per request: 8 s / ~285 MB of temp spill for
+    pairs, 19 s / ~530 MB for trios — worse than the scan that OOM-killed the API
+    container, and outside the Caddy breaker that shielded the other two routes.
+
+    The heaviest cron in the scheduler, and the only rollup that CANNOT be
+    windowed (it is cumulative per season, so a partial recompute yields wrong
+    totals). Hourly, off-peak minute, well away from the other maintenance ticks.
+
+    Best-effort, same contract as :func:`champion_daily_maintenance`.
+    """
+    try:
+        from arena.db.session import get_sessionmaker
+        from arena.services.stats_service import StatsService
+
+        season_id = await _current_season_id()
+        if season_id is None:
+            _log.info("scheduler.champion_combo.skipped", reason="no season")
+            return {"status": "skipped", "reason": "no season"}
+
+        async with get_sessionmaker()() as session:
+            rows = await StatsService().rebuild_champion_combos(session, season_id=season_id)
+            await session.commit()
+        _log.info("scheduler.champion_combo.done", rows=rows, season=season_id)
+        return {"status": "ok", "rows": rows}
+    except Exception:
+        _log.warning("scheduler.champion_combo.failed", exc_info=True)
+        return {"status": "error"}
+
+
+async def season_records_maintenance(ctx: dict[str, Any]) -> dict[str, Any]:
+    """Recompute ``season_record_cache`` — the materialized ``/meta/records``.
+
+    The live computation groups every eligible participant in the season by player
+    (~127k rows materialized) and sorts ``cr_delta`` without an index; it was the
+    second route the OOM killer took down. Hourly is the right cadence: the only
+    time-sensitive record is "Mais partidas hoje", and an hour of staleness on a
+    rotating highlight card is invisible.
+
+    Best-effort, same contract as :func:`champion_daily_maintenance`.
+    """
+    try:
+        from arena.db.session import get_sessionmaker
+        from arena.services.stats_service import StatsService
+
+        season_id = await _current_season_id()
+        if season_id is None:
+            _log.info("scheduler.season_records.skipped", reason="no season")
+            return {"status": "skipped", "reason": "no season"}
+
+        async with get_sessionmaker()() as session:
+            rows = await StatsService().rebuild_season_records(session, season_id=season_id)
+            await session.commit()
+        _log.info("scheduler.season_records.done", rows=rows, season=season_id)
+        return {"status": "ok", "rows": rows}
+    except Exception:
+        _log.warning("scheduler.season_records.failed", exc_info=True)
+        return {"status": "error"}
+
+
+async def backlog_drain_tick(ctx: dict[str, Any]) -> dict[str, Any]:
+    """Avalia o ``match_backlog`` da temporada em ordem cronológica estrita.
+
+    Só faz algo quando a temporada está em ``catching_up`` (refill). Serial por
+    construção — o paralelismo dos consumidores é exatamente o que destrói a
+    ordem que o backlog existe para garantir, então drenar em paralelo anularia
+    todo o mecanismo.
+
+    Ao esvaziar, a temporada NÃO vira ``live`` automaticamente: a saturação da
+    fronteira de descoberta é quem decide isso (ver ``workers/bootstrap.py``).
+    Um backlog vazio só significa "nada estacionado neste instante", e a
+    descoberta pode muito bem estar a meio caminho.
+    """
+    try:
+        from arena.db import models as db
+        from arena.db.session import get_sessionmaker
+        from arena.services import ingest_state, replay
+
+        season_id = await _current_season_id()
+        if season_id is None:
+            return {"status": "skipped", "reason": "no season"}
+
+        async with get_sessionmaker()() as session:
+            if await ingest_state.get_mode(session, season_id) is not db.IngestMode.catching_up:
+                return {"status": "skipped", "reason": "not catching up"}
+            result = await replay.drain_backlog(
+                session, season_id, redis=ctx.get("redis")
+            )
+        if result.get("drained"):
+            _log.info("scheduler.backlog_drain.done", **result)
+        return result
+    except Exception:
+        _log.warning("scheduler.backlog_drain.failed", exc_info=True)
+        return {"status": "error"}
+
+
+async def rating_replay_tick(ctx: dict[str, Any]) -> dict[str, Any]:
+    """Consome o ``replay_floor``: reavalia a cauda que chegou fora de ordem.
+
+    O piso é armado pelo caminho de escrita quando uma partida é avaliada com um
+    ``played_at`` anterior ao que a temporada já processou — coisa que acontece o
+    tempo todo, porque todo jogador recém-descoberto traz histórico antigo.
+    Reprocessar por partida seria thrashing permanente; por isso o piso acumula e
+    só é consumido aqui, e só quando as filas estão paradas: reprocessar enquanto
+    a ingestão ainda despeja passado apenas reabriria o piso em seguida.
+    """
+    try:
+        from arena.db.session import get_sessionmaker
+        from arena.services import ingest_state, replay
+        from arena.workers.ingestion import _combined_queue_depth
+
+        redis = ctx.get("redis")
+        if redis is not None and await _combined_queue_depth(redis) > 0:
+            return {"status": "skipped", "reason": "queues busy"}
+
+        season_id = await _current_season_id()
+        if season_id is None:
+            return {"status": "skipped", "reason": "no season"}
+
+        async with get_sessionmaker()() as session:
+            state = await ingest_state.get_state(session, season_id)
+            floor = state.replay_floor if state else None
+            if floor is None:
+                return {"status": "skipped", "reason": "no floor"}
+
+            try:
+                result = await replay.replay_from(session, season_id, since=floor)
+            except replay.MissingRestorePointError as exc:
+                # Linhas anteriores à migração 0014 não têm ponto de restauração,
+                # e isso não é reparável automaticamente. Deixa o piso armado e
+                # grita: o conserto é um rerate de temporada inteira, decisão de
+                # operador (é destrutivo), não de cron.
+                _log.error(
+                    "scheduler.replay.needs_full_rerate",
+                    seasonId=season_id,
+                    floor=floor.isoformat(),
+                    reason=str(exc),
+                )
+                return {"status": "blocked", "reason": "missing restore point"}
+
+            if result.get("status") == "ok":
+                await ingest_state.clear_replay_floor(session, season_id)
+            await session.commit()
+
+        _log.info("scheduler.replay.done", seasonId=season_id, **result)
+        return result
+    except Exception:
+        _log.warning("scheduler.replay.failed", exc_info=True)
+        return {"status": "error"}
+
+
+async def _current_season_id() -> str | None:
+    """The current season's id, or ``None`` when no season exists yet.
+
+    "Corrente" = the season with the most recent ``starts_at`` — the same
+    resolution :func:`_purge_cr_snapshots_recent` and the read path use. Kept in
+    one place so the maintenance crons and the purge can never disagree about
+    which season they're operating on.
+    """
+    from sqlalchemy import select
+
+    from arena.db import models as m
+    from arena.db.session import get_sessionmaker
+
+    async with get_sessionmaker()() as session:
+        row = (
+            await session.execute(
+                select(m.Season.id).order_by(m.Season.starts_at.desc()).limit(1)
+            )
+        ).scalar_one_or_none()
+    return str(row) if row is not None else None
+
+
 async def heartbeat_tick(ctx: dict[str, Any]) -> dict[str, Any]:
     """Stamp liveness + detect an outage gap on restart (proposal §13.3 gap).
 
@@ -237,6 +466,25 @@ CRON_JOBS = [
     cron(cache_warm, minute=set(range(2, 60, 5)), run_at_startup=True),
     # cr_snapshot continuous-aggregate maintenance — hourly at :07.
     cron(cr_snapshot_maintenance, minute={7}, run_at_startup=False),
+    # champion_daily_stats rollup — every 15 minutes, offset off the :07 snapshot
+    # tick. Frequent because it backs the /champions tierlist: a stale rollup is a
+    # stale tierlist, and the window recompute is cheap (a few recent days).
+    cron(champion_daily_maintenance, minute={3, 18, 33, 48}, run_at_startup=True),
+    # season_record_cache — hourly at :22. Only "Mais partidas hoje" is remotely
+    # time-sensitive, and this is the more expensive of the two rebuilds.
+    cron(season_records_maintenance, minute={22}, run_at_startup=True),
+    # champion_combo_stats — hourly at :41. The heaviest tick (full-season
+    # recompute of a 2- and 3-way self-join); parked away from every other job.
+    cron(champion_combo_maintenance, minute={41}, run_at_startup=True),
+    # Drenagem do match_backlog — de minuto em minuto durante um refill. Só faz
+    # algo em ``catching_up``, e é serial de propósito.
+    cron(backlog_drain_tick, minute=set(range(0, 60)), run_at_startup=True),
+    # Medição da fronteira do refill — de minuto em minuto, também só em
+    # ``catching_up``. É quem declara saturação e devolve a temporada a ``live``.
+    cron(bootstrap_tick, minute=set(range(0, 60)), run_at_startup=False),
+    # Replay incremental — de meia em meia hora, e só com as filas paradas.
+    # Consome o replay_floor armado por chegadas fora de ordem.
+    cron(rating_replay_tick, minute={14, 44}, run_at_startup=False),
     # Outage-gap heartbeat — every minute, AND at startup so a restart detects
     # the gap immediately instead of waiting up to a minute.
     cron(heartbeat_tick, minute=set(range(0, 60)), run_at_startup=True),
@@ -248,6 +496,12 @@ __all__ = [
     "leaderboard_refresh",
     "cache_warm",
     "cr_snapshot_maintenance",
+    "champion_daily_maintenance",
+    "champion_combo_maintenance",
+    "season_records_maintenance",
+    "backlog_drain_tick",
+    "bootstrap_tick",
+    "rating_replay_tick",
     "heartbeat_tick",
     "CRON_JOBS",
 ]

@@ -20,14 +20,32 @@ from __future__ import annotations
 import math
 from collections.abc import Iterable
 from dataclasses import dataclass
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 
 from typing import Any
 
-from sqlalchemy import Float, FromClause, Integer, Select, and_, case, cast, func, select
+from sqlalchemy import (
+    Date,
+    Float,
+    FromClause,
+    Integer,
+    Select,
+    and_,
+    case,
+    cast,
+    column,
+    delete,
+    func,
+    insert,
+    literal,
+    select,
+    true,
+    values,
+)
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
+from arena.core.config import settings
 from arena.db import models as m
 from arena.schemas import PlayerTag
 
@@ -79,6 +97,19 @@ def _wilson_lower_bound(successes: int, games: int, *, z: float = _WILSON_Z) -> 
     center = p + z2 / (2 * games)
     margin = z * math.sqrt((p * (1 - p) + z2 / (4 * games)) / games)
     return (center - margin) / denom
+
+
+def _delta_pp(recent_top4: int, recent_games: int, prior_top4: int, prior_games: int) -> int:
+    """Signed percentage-point change of the top-half rate: recent 7d vs prior 7d.
+
+    Returns 0 when either window is empty (no basis for comparison) so a champion
+    that only just appeared shows no misleading swing. Both rates are rounded the
+    same way the tierlist rounds ``top4_rate`` so the delta reconciles with it.
+    """
+    if recent_games <= 0 or prior_games <= 0:
+        return 0
+    return round(100 * recent_top4 / recent_games) - round(100 * prior_top4 / prior_games)
+
 
 # -- player tags (contract PlayerTag; labels/icons mirror the design mock) -----
 # Window over which delta7d is measured and the "Em alta" (hot) tag fires.
@@ -228,6 +259,34 @@ class ChampionSynergyRow:
 
 
 @dataclass(slots=True)
+class ChampionSynergyGroupRow:
+    """A champion subteam (duo/trio) that shared a team, aggregated over the season.
+
+    The N-champion generalization of :class:`ChampionSynergyRow`: ``champions`` is
+    the combo ordered by championId asc (2 = duo, 3 = trio). All members share the
+    subteam placement, so ``win_rate`` is the combo's top-half rate. ToS: never
+    augment/item winrate.
+    """
+
+    champions: tuple[int, ...]
+    games: int
+    win_rate: int  # 0..100 — top-half (placement <= 4) finishes / games
+    first_rate: int  # 0..100 — 1st-place finishes / games
+    avg_place: float
+
+
+@dataclass(slots=True)
+class ChampionTrendPointView:
+    """One day of a champion's trend, from the ``champion_daily_stats`` rollup."""
+
+    date: str  # ISO date "2026-07-20"
+    top4: int  # 0..100 — top-half rate that day
+    first: int  # 0..100 — 1st-place rate that day
+    pick_rate: float  # 0..100 — share of the day's champion-games
+    games: int
+
+
+@dataclass(slots=True)
 class RawRecord:
     """One season-highlight record before display hydration (router adds name/avatar)."""
 
@@ -236,6 +295,12 @@ class RawRecord:
     value: str  # formatted value ("14", "+72", "42%")
     player_id: str  # record holder (hydrated to name/handle/avatar by the router)
     accent: str  # UI accent color hint
+
+
+#: Display order of the season records. ``_compute_season_records`` emits them in
+#: this order; reading them back out of ``season_record_cache`` (an unordered set
+#: of rows) re-imposes it so the rail's rotation doesn't shuffle between ticks.
+_RECORD_ORDER = ("streak", "biggest_gain", "most_today", "first_rate", "top4_rate")
 
 
 class StatsService:
@@ -284,6 +349,36 @@ class StatsService:
             )
         return out
 
+    @staticmethod
+    def _tier_rows(
+        rows: Iterable[Any], *, first_col: str = "firsts", place_col: str = "place_sum"
+    ) -> list[ChampionTierRow]:
+        """Shared projection for both tierlist sources — identical arithmetic.
+
+        ``champion_tierlist`` (rollup) and ``_champion_tierlist_live`` (raw scan)
+        must produce byte-identical rows; keeping the rounding in ONE place is what
+        makes that guarantee mechanical rather than a promise. ``pick_rate`` is each
+        champion's share of the floor-qualified champion-games.
+        """
+        materialized = list(rows)
+        total_games = sum(int(r.games or 0) for r in materialized) or 1
+        out: list[ChampionTierRow] = []
+        for r in materialized:
+            g = int(r.games or 0)
+            if g <= 0:
+                continue
+            out.append(
+                ChampionTierRow(
+                    champion_id=int(r.champion_id),
+                    games=g,
+                    first_rate=round(100 * int(getattr(r, first_col) or 0) / g),
+                    top4_rate=round(100 * int(r.top4 or 0) / g),
+                    avg_place=round(int(getattr(r, place_col) or 0) / g, 2),
+                    pick_rate=round(100 * g / total_games, 1),
+                )
+            )
+        return out
+
     async def champion_tierlist(
         self,
         session: AsyncSession,
@@ -293,15 +388,60 @@ class StatsService:
     ) -> list[ChampionTierRow]:
         """Global per-champion aggregate for the season (tierlist source).
 
-        Aggregated from ``match_participants`` (the placement source of truth) so
-        ``first_rate`` is a TRUE first-place rate (placement == 1) — ``champion_stats``
-        conflates ``wins`` with ``top_half`` (both increment on a top-half finish),
-        so it cannot distinguish 1st place. Joins ``matches`` for season scoping
-        (participants carry no season_id; the season's declared dates need not match
-        played_at, so we scope by ``matches.season_id``, not a date window). Only
-        ``eligible`` participants count (AFK/frozen excluded, mirroring the rating
-        write). A champion needs ``>= min_games`` to surface. ``pick_rate`` is the
-        champion's share of all eligible champion-games. ToS: placement-derived only.
+        Reads the ``champion_daily_stats`` rollup: one indexed scan of a small flat
+        table, summed per champion. This USED to scan ``match_participants``
+        directly (see :meth:`_champion_tierlist_live`) — that query is what stacked
+        per-request aggregation memory until the OOM killer took the API container
+        on the t3.micro replica and forced the Caddy 503 on ``/champions``. The
+        rollup carries ``first_place``, which is why it can replace the raw scan
+        where ``champion_stats`` cannot (that table has no first-place counter — see
+        :meth:`_first_rate`).
+
+        There is deliberately NO fallback to the live scan when the rollup is empty:
+        that fallback would fire exactly on a cold replica and reintroduce the
+        outage. An empty rollup yields an empty tierlist (an honest empty state the
+        router already renders) until ``champion_daily_maintenance`` first runs.
+
+        A champion needs ``>= min_games`` season-wide to surface. ToS:
+        placement-derived only.
+        """
+        cds = m.ChampionDailyStat.__table__
+        games = func.sum(cds.c.games)
+        stmt = (
+            select(
+                cds.c.champion_id.label("champion_id"),
+                games.label("games"),
+                func.sum(cds.c.first_place).label("firsts"),
+                func.sum(cds.c.top4).label("top4"),
+                func.sum(cds.c.placement_sum).label("place_sum"),
+            )
+            .where(cds.c.season_id == season_id)
+            .group_by(cds.c.champion_id)
+            .having(games >= min_games)
+        )
+        return self._tier_rows((await session.execute(stmt)).all())
+
+    async def _champion_tierlist_live(
+        self,
+        session: AsyncSession,
+        *,
+        season_id: str,
+        min_games: int = 3,
+    ) -> list[ChampionTierRow]:
+        """The pre-rollup tierlist scan — the ground truth the rollup must reproduce.
+
+        **Never call this from a request handler.** It is the query that OOM-killed
+        the API container on the replica (see :meth:`champion_tierlist`). It stays
+        here as the parity oracle: the test suite asserts it agrees with the
+        rollup-backed method row for row, which is the only real proof the
+        materialization is correct.
+
+        Aggregated from ``match_participants`` (the placement source of truth).
+        Joins ``matches`` for season scoping (participants carry no season_id; the
+        season's declared dates need not match played_at, so we scope by
+        ``matches.season_id``, not a date window). Only ``eligible`` participants
+        count (AFK/frozen excluded, mirroring the rating write) — the same predicate
+        ``rebuild_champion_daily`` applies.
         """
         mp = m.MatchParticipant
         games = func.count()
@@ -322,24 +462,7 @@ class StatsService:
             .group_by(mp.champion_id)
             .having(games >= min_games)
         )
-        rows = (await session.execute(stmt)).all()
-        total_games = sum(int(r.games or 0) for r in rows) or 1
-        out: list[ChampionTierRow] = []
-        for r in rows:
-            g = int(r.games or 0)
-            if g <= 0:
-                continue
-            out.append(
-                ChampionTierRow(
-                    champion_id=int(r.champion_id),
-                    games=g,
-                    first_rate=round(100 * int(r.firsts or 0) / g),
-                    top4_rate=round(100 * int(r.top4 or 0) / g),
-                    avg_place=round(int(r.place_sum or 0) / g, 2),
-                    pick_rate=round(100 * g / total_games, 1),
-                )
-            )
-        return out
+        return self._tier_rows((await session.execute(stmt)).all())
 
     async def champion_best_players(
         self,
@@ -352,51 +475,79 @@ class StatsService:
     ) -> dict[int, list[ChampionBestPlayer]]:
         """The busiest ``per_champion`` reference mains per champion, in ONE query.
 
-        Reads the pre-aggregated ``champion_stats`` table via the champion-first
-        index (``ix_champion_stats_champion_season_games``): rows are ranked within
-        each champion by games (tie-break: more top-half finishes) and the top
-        ``per_champion`` are kept. When ``champion_ids`` is given the scan is
-        narrowed to those champions (RANK is partitioned by champion, so narrowing
-        never changes any champion's own ranking). ``winrate`` is the top-half
-        ("win") rate. Placement-derived only (ToS): no augment/item winrate.
+        Reads the pre-aggregated ``champion_stats`` table through the champion-first
+        index (``ix_champion_stats_champion_season_games``) as a LATERAL top-N per
+        champion: for each requested champion the index is walked and stopped after
+        ``per_champion`` rows. ``winrate`` is the top-half ("win") rate.
+        Placement-derived only (ToS): no augment/item winrate.
+
+        The obvious formulation — ``row_number() OVER (PARTITION BY champion_id)``
+        filtered to ``rn <= per_champion`` — is a trap at this table's size. The
+        window has to materialize EVERY (player, champion) row for the season before
+        the rank filter applies: measured on the live season that is 988k rows and
+        946k shared buffers (~7.4 GB of buffer traffic) to return 173 rows, 851 ms
+        with everything already cached. Peak sort memory stays small, so it is not
+        an OOM the way the old participants scan was — but on the read replica
+        (128 MB shared_buffers) those buffers are disk reads, not hits. The LATERAL
+        form asks the index for exactly what it needs: ~1.4k buffers, ~5 ms.
+
+        ``champion_ids`` is therefore effectively required for the cheap path; when
+        it is omitted the champion list is taken from the ``champion_daily_stats``
+        rollup (the same set the tierlist surfaces) rather than by scanning
+        ``champion_stats`` for distinct ids.
         """
         cs = m.ChampionStat.__table__
-        avg_place = (
-            cast(cs.c.total_placement_sum, Float) / func.nullif(cs.c.matches_played, 0)
-        ).label("avg_place")
-        rn = (
-            func.row_number()
-            .over(
-                partition_by=cs.c.champion_id,
-                order_by=(cs.c.matches_played.desc(), cs.c.top_half.desc()),
-            )
-            .label("rn")
-        )
-        conds = [cs.c.season_id == season_id, cs.c.matches_played >= min_games]
-        champ_set = {int(c) for c in champion_ids} if champion_ids is not None else None
-        if champ_set is not None:
+        cds = m.ChampionDailyStat.__table__
+
+        champs_sq: FromClause
+        if champion_ids is not None:
+            champ_set = {int(c) for c in champion_ids}
             if not champ_set:
                 return {}
-            conds.append(cs.c.champion_id.in_(champ_set))
-        ranked = (
+            # VALUES rather than unnest(): an untyped array bind makes PG raise
+            # "function unnest(unknown) is not unique", and VALUES needs no cast.
+            champs_sq = values(
+                column("champion_id", Integer), name="c"
+            ).data([(c,) for c in sorted(champ_set)])
+        else:
+            champs_sq = (
+                select(cds.c.champion_id.label("champion_id"))
+                .where(cds.c.season_id == season_id)
+                .distinct()
+                .subquery("c")
+            )
+
+        top = (
             select(
-                cs.c.champion_id.label("champion_id"),
                 cs.c.player_id.label("player_id"),
                 cs.c.matches_played.label("games"),
                 cs.c.top_half.label("top_half"),
-                avg_place,
-                rn,
+                (
+                    cast(cs.c.total_placement_sum, Float)
+                    / func.nullif(cs.c.matches_played, 0)
+                ).label("avg_place"),
             )
-            .where(*conds)
-            .subquery()
+            .where(
+                cs.c.season_id == season_id,
+                cs.c.champion_id == champs_sq.c.champion_id,
+                cs.c.matches_played >= min_games,
+            )
+            # player_id closes the tie: without it two mains with identical
+            # (games, top_half) order arbitrarily and the champion's displayed
+            # reference main can flip between requests.
+            .order_by(
+                cs.c.matches_played.desc(), cs.c.top_half.desc(), cs.c.player_id.asc()
+            )
+            .limit(per_champion)
+            .lateral("top")
         )
         stmt = select(
-            ranked.c.champion_id,
-            ranked.c.player_id,
-            ranked.c.games,
-            ranked.c.top_half,
-            ranked.c.avg_place,
-        ).where(ranked.c.rn <= per_champion)
+            champs_sq.c.champion_id,
+            top.c.player_id,
+            top.c.games,
+            top.c.top_half,
+            top.c.avg_place,
+        ).select_from(champs_sq.join(top, true()))
         rows = await session.execute(stmt)
         out: dict[int, list[ChampionBestPlayer]] = {}
         for champion_id, pid, games, top_half, avg_p in rows.all():
@@ -424,14 +575,46 @@ class StatsService:
     ) -> list[ChampionSynergyRow]:
         """Top champion pairs that shared an Arena subteam, by Wilson lower bound.
 
+        Thin pair-shaped view over :meth:`champion_synergies_n` (``size=2``), which
+        reads the ``champion_combo_stats`` rollup. Kept as its own method because
+        ``/champions/synergy`` is an older route with a pair-specific DTO
+        (``champion_a``/``champion_b``) that predates the N-ary generalization.
+        """
+        groups = await self.champion_synergies_n(
+            session, season_id=season_id, size=2, min_games=min_games, limit=limit
+        )
+        return [
+            ChampionSynergyRow(
+                champion_a=g.champions[0],
+                champion_b=g.champions[1],
+                games=g.games,
+                win_rate=g.win_rate,
+                first_rate=g.first_rate,
+                avg_place=g.avg_place,
+            )
+            for g in groups
+        ]
+
+    async def _champion_synergies_live(
+        self,
+        session: AsyncSession,
+        *,
+        season_id: str,
+        min_games: int = SYNERGY_MIN_GAMES,
+        limit: int = 40,
+    ) -> list[ChampionSynergyRow]:
+        """The pre-rollup pair scan — parity oracle only, never a request path.
+
         Self-joins ``match_participants`` on ``(match_id, team_id)`` with
         ``a.champion_id < b.champion_id`` to form each unordered pair once. Both
         members share the subteam's placement, so ``a.placement`` measures the pair.
         Season-scoped via a ``matches`` join; only ``eligible`` participants count
-        (mirrors the rating write). A pair needs ``>= min_games`` to surface; the
-        qualified pool is then ranked by the Wilson score lower bound of the
-        top-half rate (then games), so a perfect run over a handful of games never
-        outranks a solid rate over a real sample. Placement-derived only (ToS).
+        (mirrors the rating write) — the same predicate
+        :meth:`rebuild_champion_combos` applies.
+
+        **Never call this from a handler.** Measured on the live season: 8.0 s,
+        63.5M shared buffers, ~285 MB spilled to temp. See
+        :meth:`champion_synergies_n` for why that mattered.
         """
         a = aliased(m.MatchParticipant)
         b = aliased(m.MatchParticipant)
@@ -491,6 +674,390 @@ class StatsService:
             )
         return out
 
+    async def champion_synergies_n(
+        self,
+        session: AsyncSession,
+        *,
+        season_id: str,
+        size: int = 2,
+        min_games: int = SYNERGY_MIN_GAMES,
+        limit: int = 40,
+    ) -> list[ChampionSynergyGroupRow]:
+        """Top champion subteams of ``size`` members, by Wilson lower bound.
+
+        Reads the ``champion_combo_stats`` rollup through
+        ``ix_champion_combo_stats_season_size_games``. This USED to self-join
+        ``match_participants`` ``size`` times per request (see
+        :meth:`_champion_synergies_n_live`) — measured on the live season that was
+        8.0 s / 63.5M buffers / ~285 MB of temp spill for pairs and 19.1 s /
+        ~530 MB for trios, i.e. WORSE than the participants scan that got the API
+        container OOM-killed, and it sat outside the Caddy breaker that was
+        protecting the other two routes.
+
+        A combo needs ``>= min_games`` to surface; the floor-qualified pool is then
+        ranked by the Wilson lower bound of the top-half rate (then games), so a
+        perfect run over a handful of games never outranks a solid rate over a real
+        sample. ``size`` is clamped to 2..3 (Arena teams are 2 or 3).
+
+        The rollup carries its own WRITE floor (``settings.synergy_combo_min_games``)
+        which drops the long tail no read can reach. Asking for ``min_games`` BELOW
+        that floor cannot be satisfied from the rollup — the rows simply are not
+        there — so it is clamped up, and the caller gets a consistent (if stricter)
+        answer rather than a silently truncated one. Empty until
+        ``champion_combo_maintenance`` first runs; as with the tierlist there is
+        deliberately no fallback to the live self-join. Placement-derived (ToS).
+        """
+        size = max(2, min(size, 3))
+        floor = max(int(min_games), settings.synergy_combo_min_games)
+        ccs = m.ChampionComboStat.__table__
+        stmt = (
+            select(
+                ccs.c.c0, ccs.c.c1, ccs.c.c2, ccs.c.games, ccs.c.top4,
+                ccs.c.first_place, ccs.c.placement_sum,
+            )
+            .where(
+                ccs.c.season_id == season_id,
+                ccs.c.size == size,
+                ccs.c.games >= floor,
+            )
+            .order_by(ccs.c.games.desc())
+            .limit(_SYNERGY_POOL)
+        )
+        rows = (await session.execute(stmt)).all()
+        ranked = sorted(
+            (r for r in rows if int(r.games or 0) > 0),
+            key=lambda r: (
+                -_wilson_lower_bound(int(r.top4 or 0), int(r.games or 0)),
+                -int(r.games or 0),
+            ),
+        )
+        out: list[ChampionSynergyGroupRow] = []
+        for r in ranked[:limit]:
+            g = int(r.games or 0)
+            champs = (int(r.c0), int(r.c1)) if size == 2 else (int(r.c0), int(r.c1), int(r.c2))
+            out.append(
+                ChampionSynergyGroupRow(
+                    champions=champs,
+                    games=g,
+                    win_rate=round(100 * int(r.top4 or 0) / g),
+                    first_rate=round(100 * int(r.first_place or 0) / g),
+                    avg_place=round(int(r.placement_sum or 0) / g, 2),
+                )
+            )
+        return out
+
+    async def rebuild_champion_combos(
+        self, session: AsyncSession, *, season_id: str, min_games: int | None = None
+    ) -> int:
+        """Recompute the whole season's synergy rollup (both sizes). Cron-only.
+
+        Delete-then-insert for the season, so re-running converges and a combo that
+        stops qualifying disappears. Unlike :meth:`rebuild_champion_daily` this
+        CANNOT be windowed: the rollup is cumulative per season, so a partial
+        recompute would produce wrong totals. That makes it the expensive tick —
+        hourly, not every 15 minutes.
+
+        ``min_games`` is the WRITE floor (default ``settings.synergy_combo_min_games``):
+        the long tail is dropped because no read can reach it (the read floor,
+        ``SYNERGY_MIN_GAMES``, is far higher). On the live season it takes trios
+        from ~309k rows to ~21k. Returns rows written. The caller commits.
+        """
+        floor = settings.synergy_combo_min_games if min_games is None else min_games
+        ccs = m.ChampionComboStat
+        await session.execute(delete(ccs).where(ccs.season_id == season_id))
+
+        written = 0
+        for size in (2, 3):
+            parts = [aliased(m.MatchParticipant) for _ in range(size)]
+            anchor = parts[0]
+            games = func.count()
+            # c2 sentinel for pairs: 0 = absent (champion ids are positive), which
+            # keeps the PK NOT NULL — a nullable column cannot sit in a PK.
+            cols: list[Any] = [p.champion_id for p in parts]
+            if size == 2:
+                cols.append(literal(0))
+            src = select(
+                m.Match.season_id.label("season_id"),
+                literal(size).label("size"),
+                cols[0].label("c0"),
+                cols[1].label("c1"),
+                cols[2].label("c2"),
+                games.label("games"),
+                func.sum(case((anchor.placement <= _TOP4_THRESHOLD, 1), else_=0)).label("top4"),
+                func.sum(case((anchor.placement == 1, 1), else_=0)).label("first_place"),
+                func.sum(anchor.placement).label("placement_sum"),
+            ).select_from(anchor)
+            for i in range(1, size):
+                prev, cur = parts[i - 1], parts[i]
+                src = src.join(
+                    cur,
+                    and_(
+                        cur.match_id == anchor.match_id,
+                        cur.team_id == anchor.team_id,
+                        prev.champion_id < cur.champion_id,
+                    ),
+                )
+            src = (
+                src.join(m.Match, m.Match.id == anchor.match_id)
+                .where(
+                    m.Match.season_id == season_id,
+                    *[p.eligible.is_(True) for p in parts],
+                    *[p.played_at >= _EPOCH for p in parts],
+                )
+                .group_by(m.Match.season_id, *[p.champion_id for p in parts])
+                .having(games >= floor)
+            )
+            result = await session.execute(
+                insert(ccs).from_select(
+                    [
+                        "season_id", "size", "c0", "c1", "c2",
+                        "games", "top4", "first_place", "placement_sum",
+                    ],
+                    src,
+                )
+            )
+            written += int(getattr(result, "rowcount", 0) or 0)
+        return written
+
+    async def _champion_synergies_n_live(
+        self,
+        session: AsyncSession,
+        *,
+        season_id: str,
+        size: int = 2,
+        min_games: int = SYNERGY_MIN_GAMES,
+        limit: int = 40,
+    ) -> list[ChampionSynergyGroupRow]:
+        """The pre-rollup self-join — parity oracle only, never a request path.
+
+        Self-joins ``match_participants`` ``size`` times on ``(match_id, team_id)``
+        with a strictly increasing ``champion_id`` chain (``c0 < c1 < ... <
+        c{size-1}``), so each unordered combo forms exactly once. All members share
+        the subteam's placement, so the anchor participant measures the combo.
+
+        **Never call this from a handler** — this is the 8–19 s, hundreds-of-MB-of-
+        temp-spill query :meth:`champion_synergies_n` was materialized to avoid. It
+        stays as the oracle the test suite diffs the rollup against.
+        """
+        size = max(2, min(size, 3))
+        parts = [aliased(m.MatchParticipant) for _ in range(size)]
+        anchor = parts[0]
+        games = func.count()
+        top4 = func.sum(case((anchor.placement <= _TOP4_THRESHOLD, 1), else_=0))
+        stmt = select(
+            *[p.champion_id.label(f"c{i}") for i, p in enumerate(parts)],
+            games.label("games"),
+            top4.label("top4"),
+            func.sum(case((anchor.placement == 1, 1), else_=0)).label("firsts"),
+            func.sum(anchor.placement).label("place_sum"),
+        ).select_from(anchor)
+        # Chain the remaining members: same subteam, strictly increasing champ id.
+        for i in range(1, size):
+            prev, cur = parts[i - 1], parts[i]
+            stmt = stmt.join(
+                cur,
+                and_(
+                    cur.match_id == anchor.match_id,
+                    cur.team_id == anchor.team_id,
+                    prev.champion_id < cur.champion_id,
+                ),
+            )
+        stmt = (
+            stmt.join(m.Match, m.Match.id == anchor.match_id)
+            .where(
+                m.Match.season_id == season_id,
+                *[p.eligible.is_(True) for p in parts],
+                *[p.played_at >= _EPOCH for p in parts],
+            )
+            .group_by(*[p.champion_id for p in parts])
+            .having(games >= min_games)
+            .order_by(games.desc())
+            .limit(_SYNERGY_POOL)
+        )
+        rows = (await session.execute(stmt)).all()
+        ranked = sorted(
+            (r for r in rows if int(r.games or 0) > 0),
+            key=lambda r: (
+                -_wilson_lower_bound(int(r.top4 or 0), int(r.games or 0)),
+                -int(r.games or 0),
+            ),
+        )
+        out: list[ChampionSynergyGroupRow] = []
+        for r in ranked[:limit]:
+            g = int(r.games or 0)
+            champs = tuple(int(getattr(r, f"c{i}")) for i in range(size))
+            out.append(
+                ChampionSynergyGroupRow(
+                    champions=champs,
+                    games=g,
+                    win_rate=round(100 * int(r.top4 or 0) / g),
+                    first_rate=round(100 * int(r.firsts or 0) / g),
+                    avg_place=round(int(r.place_sum or 0) / g, 2),
+                )
+            )
+        return out
+
+    # -- champion daily rollup (B1/B2: tierlist + trend charts + 7d delta) -----
+
+    async def rebuild_champion_daily(
+        self, session: AsyncSession, *, season_id: str, since: date
+    ) -> int:
+        """Recompute + replace the per-champion daily rollup for days ``>= since``.
+
+        Aggregates eligible ``match_participants`` by ``(played_at::date,
+        champion)`` for the season and writes ``champion_daily_stats``. Delete-then-
+        insert over the recent window makes it idempotent: re-running as late
+        matches land keeps a day accurate (a day's aggregate grows as matches
+        arrive). The caller commits. Returns rows inserted. Placement-derived (ToS).
+
+        The ``eligible`` predicate here MUST match
+        :meth:`_champion_tierlist_live`'s — that equality is what makes the
+        rollup-backed tierlist exact rather than approximate.
+        """
+        mp = m.MatchParticipant
+        since_dt = datetime(since.year, since.month, since.day, tzinfo=UTC)
+        # UTC-explicit day so the cron and the migration backfill bucket a match
+        # to the SAME date regardless of the DB session timezone.
+        day = cast(func.timezone("UTC", mp.played_at), Date)
+        src = (
+            select(
+                day.label("snapshot_date"),
+                m.Match.season_id.label("season_id"),
+                mp.champion_id.label("champion_id"),
+                func.count().label("games"),
+                func.sum(case((mp.placement <= _TOP4_THRESHOLD, 1), else_=0)).label("top4"),
+                func.sum(case((mp.placement == 1, 1), else_=0)).label("first_place"),
+                func.sum(mp.placement).label("placement_sum"),
+            )
+            .join(m.Match, m.Match.id == mp.match_id)
+            .where(
+                m.Match.season_id == season_id,
+                mp.eligible.is_(True),
+                mp.played_at >= since_dt,
+            )
+            .group_by(day, m.Match.season_id, mp.champion_id)
+        )
+        cds = m.ChampionDailyStat
+        await session.execute(
+            delete(cds).where(cds.season_id == season_id, cds.snapshot_date >= since)
+        )
+        result = await session.execute(
+            insert(cds).from_select(
+                [
+                    "snapshot_date",
+                    "season_id",
+                    "champion_id",
+                    "games",
+                    "top4",
+                    "first_place",
+                    "placement_sum",
+                ],
+                src,
+            )
+        )
+        return int(getattr(result, "rowcount", 0) or 0)
+
+    async def champion_trend(
+        self, session: AsyncSession, *, season_id: str, champion_id: int, days: int = 30
+    ) -> list[ChampionTrendPointView]:
+        """A champion's daily top-half / 1st / pick rate over the last ``days``.
+
+        Reads the ``champion_daily_stats`` rollup (cheap indexed scan) instead of
+        re-aggregating raw participants. Pick-rate = the champion's daily games
+        over the day's total champion-games (a second grouped read). Empty before
+        the rollup has history for this champion. Placement-derived (ToS).
+        """
+        cds = m.ChampionDailyStat.__table__
+        cutoff = (datetime.now(UTC) - timedelta(days=days)).date()
+        champ_rows = (
+            await session.execute(
+                select(
+                    cds.c.snapshot_date,
+                    cds.c.games,
+                    cds.c.top4,
+                    cds.c.first_place,
+                )
+                .where(
+                    cds.c.season_id == season_id,
+                    cds.c.champion_id == champion_id,
+                    cds.c.snapshot_date >= cutoff,
+                )
+                .order_by(cds.c.snapshot_date.asc())
+            )
+        ).all()
+        if not champ_rows:
+            return []
+        totals = {
+            r.snapshot_date: int(r.total or 0)
+            for r in (
+                await session.execute(
+                    select(cds.c.snapshot_date, func.sum(cds.c.games).label("total"))
+                    .where(cds.c.season_id == season_id, cds.c.snapshot_date >= cutoff)
+                    .group_by(cds.c.snapshot_date)
+                )
+            ).all()
+        }
+        out: list[ChampionTrendPointView] = []
+        for r in champ_rows:
+            g = int(r.games or 0)
+            if g <= 0:
+                continue
+            total = totals.get(r.snapshot_date, 0)
+            out.append(
+                ChampionTrendPointView(
+                    date=r.snapshot_date.isoformat(),
+                    top4=round(100 * int(r.top4 or 0) / g),
+                    first=round(100 * int(r.first_place or 0) / g),
+                    pick_rate=round(100 * g / total, 1) if total > 0 else 0.0,
+                    games=g,
+                )
+            )
+        return out
+
+    async def champion_winrate_delta7d(
+        self,
+        session: AsyncSession,
+        *,
+        season_id: str,
+        champion_ids: Iterable[int] | None = None,
+    ) -> dict[int, int]:
+        """Per-champion top-half delta (pp): last 7d vs the prior 7d, batched.
+
+        One grouped scan over the 14-day window of ``champion_daily_stats`` keyed
+        by champion (no N+1). Absent champions (or ones missing either window)
+        default to 0 via :func:`_delta_pp`. Feeds ``ChampRow.winrateDelta`` on the
+        ``/champions`` tierlist. Placement-derived (ToS).
+        """
+        cds = m.ChampionDailyStat.__table__
+        today = datetime.now(UTC).date()
+        d7 = today - timedelta(days=7)
+        d14 = today - timedelta(days=14)
+        in_recent = cds.c.snapshot_date >= d7
+        in_prior = and_(cds.c.snapshot_date >= d14, cds.c.snapshot_date < d7)
+        conds = [cds.c.season_id == season_id, cds.c.snapshot_date >= d14]
+        if champion_ids is not None:
+            ids = {int(x) for x in champion_ids}
+            if not ids:
+                return {}
+            conds.append(cds.c.champion_id.in_(ids))
+        stmt = (
+            select(
+                cds.c.champion_id.label("champion_id"),
+                func.sum(case((in_recent, cds.c.top4), else_=0)).label("rt"),
+                func.sum(case((in_recent, cds.c.games), else_=0)).label("rg"),
+                func.sum(case((in_prior, cds.c.top4), else_=0)).label("pt"),
+                func.sum(case((in_prior, cds.c.games), else_=0)).label("pg"),
+            )
+            .where(*conds)
+            .group_by(cds.c.champion_id)
+        )
+        out: dict[int, int] = {}
+        for r in (await session.execute(stmt)).all():
+            out[int(r.champion_id)] = _delta_pp(
+                int(r.rt or 0), int(r.rg or 0), int(r.pt or 0), int(r.pg or 0)
+            )
+        return out
+
     async def season_activity(
         self, session: AsyncSession, *, season_id: str, days: int = 10
     ) -> list[tuple[str, int]]:
@@ -517,9 +1084,44 @@ class StatsService:
         return out
 
     async def season_records(
+        self, session: AsyncSession, *, season_id: str
+    ) -> list[RawRecord]:
+        """Season highlight records, read from the ``season_record_cache`` table.
+
+        A plain indexed read of at most 5 rows. This USED to compute the records
+        inline (see :meth:`_compute_season_records`) — a GROUP BY over every
+        eligible participant in the season, materializing ~127k players, plus an
+        unindexed sort on ``cr_delta``. That was the second route the OOM killer
+        took down on the t3.micro replica, and the reason ``/meta/records`` sits
+        behind a Caddy 503 today.
+
+        Empty until ``season_records_maintenance`` first runs — an honest empty
+        state the router already renders. As with the champion tierlist, there is
+        deliberately no fallback to the live computation.
+        """
+        src = m.SeasonRecordCache.__table__
+        rows = (
+            await session.execute(
+                select(
+                    src.c.key, src.c.label, src.c.value, src.c.player_id, src.c.accent
+                ).where(src.c.season_id == season_id)
+            )
+        ).all()
+        by_key = {
+            r.key: RawRecord(r.key, r.label, r.value, str(r.player_id), r.accent) for r in rows
+        }
+        # Stable display order, independent of however the rows came back.
+        return [by_key[k] for k in _RECORD_ORDER if k in by_key]
+
+    async def _compute_season_records(
         self, session: AsyncSession, *, season_id: str, min_games: int = 5
     ) -> list[RawRecord]:
-        """Season highlight records (rail rotating card), placement-derived + real.
+        """Compute the season highlight records from scratch — cron-only.
+
+        **Never call this from a request handler.** It is the expensive
+        computation :meth:`season_records` was materialized to avoid; the
+        ``season_records_maintenance`` cron runs it on the primary and writes the
+        result to ``season_record_cache``.
 
         Each record names the record-holder's ``player_id`` (the router hydrates the
         display name/avatar). Records with no qualifying data are omitted. ToS: only
@@ -606,6 +1208,37 @@ class StatsService:
                           str(best_top4.player_id), "var(--primary-bright)")
             )
         return out
+
+    async def rebuild_season_records(
+        self, session: AsyncSession, *, season_id: str
+    ) -> int:
+        """Recompute the season records and replace the cached rows. Cron-only.
+
+        Delete-then-insert over the season's (at most 5) rows, mirroring
+        :meth:`rebuild_champion_daily`'s idempotency: re-running always converges
+        on the current truth, and a record that stops qualifying disappears rather
+        than lingering. The caller commits. Returns rows written.
+        """
+        records = await self._compute_season_records(session, season_id=season_id)
+        src = m.SeasonRecordCache
+        await session.execute(delete(src).where(src.season_id == season_id))
+        if not records:
+            return 0
+        await session.execute(
+            insert(src),
+            [
+                {
+                    "season_id": season_id,
+                    "key": r.key,
+                    "label": r.label,
+                    "value": r.value,
+                    "player_id": r.player_id,
+                    "accent": r.accent,
+                }
+                for r in records
+            ],
+        )
+        return len(records)
 
     @staticmethod
     def _first_rate(cs: m.ChampionStat) -> int:

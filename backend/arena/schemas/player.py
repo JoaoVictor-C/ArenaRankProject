@@ -80,6 +80,9 @@ class ChampStat(ArenaModel):
     name: str
     # ddragon (v1.1): real champion-square icon URL; ``None`` → gradient fallback.
     champion_icon_url: str | None = None
+    # ddragon (v1.2): numeric championId + splash-art URL for the profile cover.
+    champion_id: int | None = None
+    champion_splash_url: str | None = None
     games: int
     first_rate: int  # % first place
     top4: int  # % top-4

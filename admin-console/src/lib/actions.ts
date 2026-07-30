@@ -81,3 +81,31 @@ export const reviewIntegrity = (
     `/admin/integrity/${encodeURIComponent(eventId)}/review`,
     { override },
   );
+
+/* ---- Refill de temporada (/admin/ingest) ----------------------------------
+   Durante um refill a temporada fica em `catching_up`: a descoberta continua,
+   mas nada é avaliado na chegada — as partidas ficam estacionadas e são
+   avaliadas depois em ordem cronológica estrita. Ver backend
+   arena/services/replay.py. */
+
+export interface IngestStatus {
+  seasonId: string;
+  mode: "catching_up" | "live";
+  staged: number;
+  oldestStagedAt: string | null;
+  frontierPending: number;
+  frontierDone: number;
+  saturatedAt: string | null;
+  coveragePct: number | null;
+  coverageAt: string | null;
+  replayFloor: string | null;
+}
+
+export const fetchIngestStatus = (conn: Conn, signal?: AbortSignal): Promise<IngestStatus> =>
+  apiGet<IngestStatus>(conn, "/admin/ingest", signal);
+
+export const startRefill = (conn: Conn): Promise<IngestStatus> =>
+  apiSend<IngestStatus>(conn, "POST", "/admin/ingest/bootstrap");
+
+export const stopRefill = (conn: Conn): Promise<IngestStatus> =>
+  apiSend<IngestStatus>(conn, "POST", "/admin/ingest/stop");

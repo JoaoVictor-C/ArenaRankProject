@@ -305,6 +305,8 @@ async def get_player(
             champion=c.avatar_for(f"{pid}:{v.champion_id}"),
             name=c.champion_name(v.champion_id),
             champion_icon_url=c.champion_icon_url(v.champion_id),
+            champion_id=v.champion_id,
+            champion_splash_url=c.champion_splash_url(v.champion_id),
             games=v.games,
             first_rate=v.first_rate,
             top4=v.top_half_rate,

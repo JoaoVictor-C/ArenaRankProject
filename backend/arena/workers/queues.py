@@ -103,6 +103,18 @@ def ingest_cursor_key(puuid: str) -> str:
     return f"arena:ingest_cursor:{puuid}"
 
 
+#: Marca d'água por temporada: o MAIOR ``played_at`` (epoch ms) já avaliado. Uma
+#: partida que chega abaixo dela foi avaliada FORA DE ORDEM, e o motor é
+#: dependente de ordem — é o sinal que arma o ``replay_floor``.
+#:
+#: Vive no Redis, não no banco: é lido e escrito em toda partida do caminho de
+#: escrita, e é puramente uma dica. Perdê-lo (flush/restart) só significa não
+#: detectar atraso até a marca reconstruir; a auditoria de cobertura periódica é
+#: a rede de segurança.
+def ingest_hwm_key(season_id: str) -> str:
+    return f"arena:ingest_hwm:{season_id}"
+
+
 # ---------------------------------------------------------------------------
 # Sweep pipeline keys (SweepWorker / PrioritySweepWorker)
 # ---------------------------------------------------------------------------
@@ -318,6 +330,7 @@ __all__ = [
     "match_lock_key",
     "player_lock_key",
     "ingest_cursor_key",
+    "ingest_hwm_key",
     "SWEEP_CURSOR_PUUID_KEY",
     "PRIORITY_SWEEP_CURSOR_KEY",
     "BACKFILL_PENDING_LIST",

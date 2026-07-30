@@ -305,6 +305,57 @@ class Settings(BaseSettings):
         "than sweep_fetch_concurrency: history import is background work and "
         "must not crowd the live sweep out of the Riot token bucket.")
 
+    # --- Refill / ordem cronológica ------------------------------------------
+    bootstrap_seed_riot_ids: str = Field(
+        default="",
+        description="CSV de Riot IDs (\"Nome#TAG\") que semeiam a descoberta num "
+        "refill. Com players vazio NÃO existe puuid, e a Riot não tem endpoint "
+        "de 'todas as partidas da região' — todo id de partida é alcançado "
+        "através de um puuid que já conhecemos, então sem semente nada começa. "
+        "A expansão viral (cada lobby processado registra até 16 jogadores, cada "
+        "um disparando backfill de histórico) faz o resto.")
+    bootstrap_seed_region: str = Field(
+        default="americas",
+        description="Rota regional usada para resolver os Riot IDs de semente.")
+    ingest_state_ttl_seconds: int = Field(
+        default=30,
+        description="TTL do cache em processo do modo de ingestão. O gate roda "
+        "no caminho de escrita de TODA partida; sem cache seria um SELECT por "
+        "partida para um valor que muda ~2x por temporada.")
+    out_of_order_tolerance_ms: int = Field(
+        default=15 * 60 * 1000,
+        description="Quanto uma partida pode chegar 'atrás' da marca d'água da "
+        "temporada sem contar como fora de ordem. Partidas quase simultâneas "
+        "terminam em ordem arbitrária por natureza, e tratar esse jitter como "
+        "atraso armaria o replay o tempo todo sem mudar praticamente nada no "
+        "ladder. 15 min cobre a duração de uma partida com folga.")
+    replay_min_idle_seconds: int = Field(
+        default=300,
+        description="Quanto tempo as filas precisam ficar vazias antes de o "
+        "replay incremental rodar. Reprocessar enquanto a ingestão ainda "
+        "despeja partidas antigas só reabriria o piso logo em seguida.")
+    replay_max_matches_per_tick: int = Field(
+        default=20_000,
+        description="Teto de partidas reprocessadas por tick de replay. Um piso "
+        "muito antigo vira vários ticks em vez de uma transação gigante.")
+
+    # --- Read-path rollups (champion_daily_stats / season_record_cache) ------
+    champion_daily_window_days: int = Field(
+        default=3,
+        description="How many recent days champion_daily_maintenance recomputes "
+        "each tick. Delete-then-insert over this window, so it must be wide "
+        "enough to cover the sweep's catch-up lag (a match discovered late still "
+        "lands inside the window and grows its day's totals). Widening it costs "
+        "a proportionally bigger aggregate per tick; days older than the window "
+        "are frozen at whatever the migration backfill or an earlier tick wrote.")
+    synergy_combo_min_games: int = Field(
+        default=3,
+        description="WRITE floor for champion_combo_stats: combos with fewer "
+        "shared subteam-games are never stored. Drops the tail no read can reach "
+        "(309k trios -> ~21k on the live season). MUST stay strictly below the "
+        "READ floor SYNERGY_MIN_GAMES (15, stats_service) — above it, the synergy "
+        "routes would silently lose combos they are entitled to show.")
+
     # --- Live-queue sweep + session re-arm + rotation-detection sample ------
     arena_live_queue_ids: str = Field(
         default="1740,1750",

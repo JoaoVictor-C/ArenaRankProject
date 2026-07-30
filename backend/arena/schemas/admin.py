@@ -181,3 +181,27 @@ class PlayerModerationResult(ArenaModel):
     shadowbanned: bool
     restricted: bool
     message: str
+
+
+# ---- Refill de temporada — arena/api/routers/admin_ingest.py ----
+
+
+class IngestStatus(ArenaModel):
+    """Estado do refill de uma temporada (console de operação).
+
+    ``mode`` é ``catching_up`` durante um refill — descoberta continua, mas nada
+    é avaliado na chegada: as partidas ficam em ``match_backlog`` e são avaliadas
+    depois em ordem cronológica estrita. ``live`` é o regime normal.
+    """
+
+    season_id: str
+    mode: str  # catching_up | live
+    staged: int  # partidas estacionadas aguardando avaliação ordenada
+    oldest_staged_at: str | None = None  # ISO; o começo da fila cronológica
+    frontier_pending: int = 0  # puuids aguardando import de histórico
+    frontier_done: int = 0  # jogadores já conhecidos
+    saturated_at: str | None = None  # quando a descoberta parou de crescer
+    coverage_pct: float | None = None  # estimativa da última amostragem do audit
+    coverage_at: str | None = None
+    # Piso do replay incremental: há cauda fora de ordem esperando reprocessamento.
+    replay_floor: str | None = None

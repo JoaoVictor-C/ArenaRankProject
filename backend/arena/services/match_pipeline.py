@@ -56,8 +56,14 @@ from arena.integrity.fingerprint import (
 )
 from arena.integrity.params import DEFAULT_INTEGRITY_PARAMS, IntegrityParams
 from arena.integrity.types import MatchSnapshot, ParticipantSnapshot
-from arena.riot.arena import NotAnArenaMatch, ParsedArenaMatch, parse_arena_match
+from arena.riot.arena import (
+    NotAnArenaMatch,
+    ParsedArenaMatch,
+    parse_arena_match,
+    parsed_to_json,
+)
 from arena.rating import PlayerState
+from arena.services import ingest_state
 from arena.services.locks import RedisLockManager
 from arena.services.protocols import (
     IntegrityEvaluator,
@@ -66,6 +72,7 @@ from arena.services.protocols import (
     RawParticipant,
 )
 from arena.services.rating_service import ProcessOutcome, RatingService
+from arena.workers import queues as Q
 from arena.workers.backfill import enqueue_backfill
 
 _log = get_logger("arena.services.match_pipeline")
@@ -201,6 +208,37 @@ def played_at_iso(parsed: ParsedArenaMatch) -> str:
     return datetime.now(UTC).isoformat()
 
 
+def played_at_dt(parsed: ParsedArenaMatch) -> datetime:
+    """Real match start as an aware datetime (same fallback as :func:`played_at_iso`)."""
+    if parsed.started_at_ms > 0:
+        return datetime.fromtimestamp(parsed.started_at_ms / 1000, UTC)
+    return datetime.now(UTC)
+
+
+async def stage_match(
+    session: AsyncSession, season_id: str, parsed: ParsedArenaMatch
+) -> bool:
+    """Estaciona a partida parseada em ``match_backlog``. True se era nova.
+
+    Idempotente por ``riot_match_id``: a mesma partida é descoberta por vários
+    jogadores do mesmo lobby, e um refill re-executa sem parar. Guarda o parse
+    (~2,5 kB) em vez do payload cru (~75 kB) — e assim a drenagem não volta à
+    Riot, cujo cache de payload dura só 24 h.
+    """
+    stmt = (
+        pg_insert(m.MatchBacklog)
+        .values(
+            riot_match_id=parsed.match_id,
+            season_id=season_id,
+            played_at=played_at_dt(parsed),
+            parsed=parsed_to_json(parsed),
+        )
+        .on_conflict_do_nothing(index_elements=[m.MatchBacklog.riot_match_id])
+    )
+    result = await session.execute(stmt)
+    return bool(getattr(result, "rowcount", 0) or 0)
+
+
 def before_cutoff(started_at_ms: int, cutoff_ms: int) -> bool:
     """True when the launch-window cutoff must drop this match.
 
@@ -257,13 +295,25 @@ async def resolve_active_season_id(session: AsyncSession) -> str:
     if hit is not None and hit[0] > now:
         return hit[1]
 
+    # ORDER BY starts_at DESC: com mais de uma temporada ACTIVE (config errada,
+    # ou uma temporada de teste no banco de dev) um LIMIT 1 sem ordenação escolhe
+    # arbitrariamente, e a escolha fica CACHEADA — ou seja, uma rajada inteira de
+    # ingestão pode ir para a temporada errada de forma não determinística.
+    # Mesma resolução de "a corrente" que o scheduler usa.
     season = (
         await session.execute(
-            select(m.Season).where(m.Season.status == m.SeasonStatus.ACTIVE).limit(1)
+            select(m.Season)
+            .where(m.Season.status == m.SeasonStatus.ACTIVE)
+            .order_by(m.Season.starts_at.desc())
+            .limit(1)
         )
     ).scalar_one_or_none()
     if season is None:
-        season = (await session.execute(select(m.Season).limit(1))).scalar_one_or_none()
+        season = (
+            await session.execute(
+                select(m.Season).order_by(m.Season.starts_at.desc()).limit(1)
+            )
+        ).scalar_one_or_none()
     if season is None:
         raise NoActiveSeasonError("no season configured")
     season_id = str(season.id)
@@ -456,9 +506,53 @@ class WorkerRatingService:
             )
             return {"matchId": riot_match_id, "status": "filtered", "reason": "incomplete_teams"}
 
+        return await self.process_parsed(parsed, redis=redis)
+
+    async def process_parsed(
+        self,
+        parsed: ParsedArenaMatch,
+        *,
+        redis: Any,
+        allow_stage: bool = True,
+    ) -> dict[str, Any]:
+        """Caminho de escrita a partir de uma partida JÁ PARSEADA.
+
+        Extraído de :meth:`process_match` para o drenador do ``match_backlog``
+        poder reusar EXATAMENTE este caminho em vez de abrir um segundo caminho
+        de escrita — registro, integridade, rating e persistência têm de ser
+        idênticos aos da ingestão ao vivo, senão o backlog deixa de ser "adiar" e
+        vira "processar diferente".
+
+        ``allow_stage=False`` é o que o drenador usa: ele já está drenando o
+        backlog, então re-estacionar seria um laço infinito.
+        """
+        riot_match_id = parsed.match_id
         factory = get_sessionmaker()
         async with factory() as session:
             season_id = await resolve_active_season_id(session)
+
+            # CATCH-UP GATE. Num refill a descoberta chega em ordem
+            # essencialmente arbitrária (a Riot lista ids do mais novo para o
+            # mais antigo; os consumidores rodam 10–20 em paralelo) e o motor de
+            # rating é dependente de ordem — avaliar na chegada produziria um
+            # ladder que reflete ordem de CHEGADA, não de JOGO. Enquanto a
+            # temporada está em ``catching_up`` a partida é ESTACIONADA e
+            # avaliada depois, em ordem cronológica estrita, pelo drenador.
+            #
+            # Fica aqui de propósito: depois de parse/cutoff/subteams (já sabemos
+            # played_at e que a partida é ratável) e ANTES de qualquer escrita —
+            # nada de players/matches é criado por uma partida estacionada.
+            if (
+                allow_stage
+                and await ingest_state.get_mode(session, season_id) is m.IngestMode.catching_up
+            ):
+                staged = await stage_match(session, season_id, parsed)
+                await session.commit()
+                _log.info(
+                    "pipeline.staged", matchId=riot_match_id, seasonId=season_id, new=staged
+                )
+                return {"matchId": riot_match_id, "status": "staged"}
+
             registered = await register_players(session, parsed)
             id_map = registered.id_map
             participants, ineligible = build_raw_participants(parsed, lambda pu: id_map[pu])
@@ -481,7 +575,55 @@ class WorkerRatingService:
         # fails an already-persisted match.
         await enqueue_backfill(redis, registered.new_puuids)
 
+        # Detecção de chegada FORA DE ORDEM. Em ``live`` avaliamos na chegada, e
+        # partidas antigas continuam aparecendo (um jogador descoberto hoje pode
+        # ter jogado há 15 dias — é justamente o que o backfill de histórico
+        # traz). Só ARMAMOS o piso aqui; o replay é um cron, porque reprocessar
+        # por partida seria thrashing permanente.
+        if outcome.status == "processed":
+            await _note_if_out_of_order(redis, season_id, played_at_dt(parsed))
+
         return _summary(riot_match_id, raw.match_id, outcome)
+
+
+async def _note_if_out_of_order(redis: Any, season_id: str, played_at: datetime) -> None:
+    """Compara com a marca d'água da temporada e arma ``replay_floor`` se atrasou.
+
+    Best-effort de ponta a ponta: a partida JÁ foi persistida e avaliada, então
+    nada aqui pode derrubá-la. Se o Redis estiver fora, apenas não detectamos o
+    atraso — a auditoria de cobertura periódica é a rede de segurança.
+    """
+    if redis is None:
+        return
+    played_ms = int(played_at.timestamp() * 1000)
+    try:
+        raw_hwm = await redis.get(Q.ingest_hwm_key(season_id))
+        hwm = int(raw_hwm) if raw_hwm is not None else 0
+        if played_ms > hwm:
+            # Avança a marca. Sem CAS de propósito: dois workers concorrentes
+            # podem embaralhar isso por alguns ms, e o custo é no máximo um
+            # replay a mais — barato perto de um SET condicional por partida.
+            await redis.set(Q.ingest_hwm_key(season_id), played_ms)
+            return
+        if hwm - played_ms < settings.out_of_order_tolerance_ms:
+            return  # jitter normal entre partidas quase simultâneas
+    except Exception:  # noqa: BLE001
+        _log.warning("pipeline.hwm_failed", seasonId=season_id, exc_info=True)
+        return
+
+    factory = get_sessionmaker()
+    try:
+        async with factory() as session:
+            await ingest_state.note_out_of_order(session, season_id, played_at)
+            await session.commit()
+        _log.info(
+            "pipeline.out_of_order",
+            seasonId=season_id,
+            playedAt=played_at.isoformat(),
+            behindMs=hwm - played_ms,
+        )
+    except Exception:  # noqa: BLE001
+        _log.warning("pipeline.replay_floor_failed", seasonId=season_id, exc_info=True)
 
 
 def get_rating_service() -> WorkerRatingService:

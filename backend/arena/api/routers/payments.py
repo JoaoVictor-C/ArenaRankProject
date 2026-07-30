@@ -113,4 +113,82 @@ async def create_test_charge(body: TestChargeRequest) -> TestChargeResponse:
     )
 
 
-__all__ = ["router"]
+# ─────────────────────────────────────────────────────────────────────────────
+# Doação pública para a premiação (vaquinha da Season) — NÃO admin-gated.
+# Cria um link de checkout InfinitePay para o valor doado. Criar o link não cobra
+# ninguém; a cobrança só ocorre se o doador concluir o PIX na página hospedada.
+# Limites defendem o endpoint público de valores absurdos. Persistência do total
+# arrecadado (tabela + webhook) é fatia 2 — por ora o front exibe o valor base.
+#
+# ATENÇÃO — esta é a ÚNICA rota pública do sistema que dispara uma chamada
+# externa a um provedor de pagamento. Sem gate e sem rate limit ela é abusável
+# como cunhadora de links (cada POST = uma chamada à InfinitePay em nome da
+# nossa conta). Colocar rate limit por IP antes de divulgar a rota.
+# ─────────────────────────────────────────────────────────────────────────────
+
+#: Faixa aceita para uma doação (centavos): R$1 a R$1.000.
+DONATION_MIN_CENTS = 100
+DONATION_MAX_CENTS = 100_000
+
+public_router = APIRouter(prefix="/payments", tags=["payments"])
+
+
+class DonationRequest(ArenaModel):
+    """Body de POST /payments/donation."""
+
+    amount_cents: int = Field(
+        ...,
+        ge=DONATION_MIN_CENTS,
+        le=DONATION_MAX_CENTS,
+        description="Valor da doação em centavos (R$1–R$1.000).",
+    )
+
+
+class DonationResponse(ArenaModel):
+    order_nsu: str
+    checkout_url: str
+    amount_cents: int
+
+
+@public_router.post(
+    "/donation",
+    response_model=DonationResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Criar link de doação para a premiação (InfinitePay)",
+)
+async def create_donation(body: DonationRequest) -> DonationResponse:
+    """Cria um link de checkout real para uma doação à premiação. Não persiste,
+    não cobra até o doador concluir o PIX na página hospedada."""
+    try:
+        client = InfinitePayClient.from_settings(settings)
+    except InfinitePayError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)
+        ) from exc
+
+    order_nsu = f"arena-doa-{uuid.uuid4().hex[:16]}"
+    redirect_url = (
+        f"{settings.public_base_url.rstrip('/')}/leaderboard?doacao=ok&order={order_nsu}"
+    )
+    items = entry_items(body.amount_cents, "Doação — Premiação Season I ArenaRank")
+
+    try:
+        data = await client.create_link(
+            order_nsu=order_nsu,
+            items=items,
+            redirect_url=redirect_url,
+        )
+    except InfinitePayError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY, detail=f"InfinitePay: {exc}"
+        ) from exc
+
+    _log.info("payments.donation", order_nsu=order_nsu, amount_cents=body.amount_cents)
+    return DonationResponse(
+        order_nsu=order_nsu,
+        checkout_url=data["url"],
+        amount_cents=body.amount_cents,
+    )
+
+
+__all__ = ["router", "public_router"]

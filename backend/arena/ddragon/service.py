@@ -71,6 +71,12 @@ FALLBACK_VERSION = "16.14.1"
 # is unreachable — keeps names/icons real instead of degrading to numeric ids.
 STATIC_CATALOG_RESOURCE = "champions_static.json"
 
+# Bundled offline id→PT-BR class map (Mago/Tanque/Lutador/Suporte/Atirador/
+# Assassino), generated from ddragon championFull ``tags[0]``. Arena has no fixed
+# roles, so this is a champion-class taxonomy for the /winrate class chips — not
+# a lane/position. Regenerate with the champion catalog when the patch bumps.
+STATIC_CLASSES_RESOURCE = "champion_classes.json"
+
 _HTTP_TIMEOUT = 10.0
 
 
@@ -113,6 +119,36 @@ def _static_champion_map() -> ChampionMap:
                 "key": str(value.get("key", "")),
                 "name": str(value.get("name", "")),
             }
+    return result
+
+
+@lru_cache(maxsize=1)
+def _static_class_map() -> dict[int, str]:
+    """Bundled offline id→PT-BR class map (see ``STATIC_CLASSES_RESOURCE``).
+
+    Loaded once from package data. Returns ``{}`` if the resource is missing or
+    corrupt — callers degrade to an empty class (None-safe: the UI just omits the
+    chip filter for that champion).
+    """
+    try:
+        raw = (
+            resources.files("arena.ddragon")
+            .joinpath(STATIC_CLASSES_RESOURCE)
+            .read_text(encoding="utf-8")
+        )
+        data = json.loads(raw)
+    except (OSError, ValueError):  # pragma: no cover - packaging/corruption guard
+        return {}
+    if not isinstance(data, dict):
+        return {}
+    result: dict[int, str] = {}
+    for key, value in data.items():
+        try:
+            champ_id = int(key)
+        except (TypeError, ValueError):
+            continue
+        if isinstance(value, str):
+            result[champ_id] = value
     return result
 
 
@@ -328,12 +364,32 @@ class DDragonService:
         """Sync localized champion display name from the warmed cache (None-safe)."""
         return self.champion_meta_sync(champion_id).get("name", "")
 
+    def champion_class_sync(self, champion_id: int | None) -> str:
+        """Sync PT-BR champion class (Mago/Tanque/Lutador/...) or ``""`` if unknown.
+
+        Sourced from the bundled ``champion_classes.json`` (ddragon ``tags[0]``).
+        Arena has no fixed roles, so this is a class taxonomy for the class chips,
+        not a position. None-safe: an unknown id yields ``""`` (no chip filter)."""
+        if champion_id is None:
+            return ""
+        return _static_class_map().get(int(champion_id), "")
+
     def champion_icon_url_sync(self, champion_id: int | None) -> str | None:
         """Sync champion-square icon URL from the warmed cache, or ``None``."""
         key = self.champion_meta_sync(champion_id).get("key", "")
         if not key:
             return None
         return f"{DDRAGON_BASE}/cdn/{self.version_sync()}/img/champion/{key}.png"
+
+    def champion_splash_url_sync(self, champion_id: int | None) -> str | None:
+        """Sync champion loading-screen splash URL (1215×717) from the warmed
+        cache, or ``None``. Version-less path (ddragon serves splash/loading art
+        outside the ``/cdn/{version}`` tree). Base skin (``_0``); centered on the
+        subject via CSS on the client since ddragon has no pre-centered crop."""
+        key = self.champion_meta_sync(champion_id).get("key", "")
+        if not key:
+            return None
+        return f"{DDRAGON_BASE}/cdn/img/champion/splash/{key}_0.jpg"
 
     def profile_icon_url_sync(self, icon_id: int | None) -> str | None:
         """Sync summoner profile-icon URL from the warmed cache, or ``None``."""

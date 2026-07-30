@@ -132,6 +132,15 @@ except Exception:  # pragma: no cover - import-order / optional-dep tolerance
     _log.warning("api.router.admin_players_unavailable", exc_info=True)
 
 try:
+    from arena.api.routers.admin_ingest import router as _admin_ingest_router
+
+    # Controle/observação do refill de temporada. Cada rota carrega o próprio
+    # scope (telemetry:read para ler, season:write para mutar).
+    api_router.include_router(_admin_ingest_router)
+except Exception:  # pragma: no cover - import-order / optional-dep tolerance
+    _log.warning("api.router.admin_ingest_unavailable", exc_info=True)
+
+try:
     from arena.tournaments.router import router as _tournaments_router
 
     api_router.include_router(_tournaments_router)
@@ -139,10 +148,17 @@ except Exception:  # pragma: no cover - import-order / optional-dep tolerance
     _log.warning("api.router.tournaments_unavailable", exc_info=True)
 
 try:
-    from arena.api.routers.payments import router as _payments_router
+    from arena.api.routers.payments import (
+        public_router as _payments_public_router,
+        router as _payments_router,
+    )
 
-    # Router self-applies require_scope("tournaments:write") on every route.
+    # Admin router self-applies require_scope("tournaments:write") on every route.
     api_router.include_router(_payments_router)
+    # Doação pública (vaquinha da premiação) — deliberadamente SEM gate: é a
+    # rota que o front chama direto do browser. Ver o aviso de rate limit em
+    # routers/payments.py.
+    api_router.include_router(_payments_public_router)
 except Exception:  # pragma: no cover - import-order / optional-dep tolerance
     _log.warning("api.router.payments_unavailable", exc_info=True)
 

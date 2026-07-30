@@ -27,6 +27,7 @@ import { QueuesPanel } from "./components/QueuesPanel";
 import { RiotUsagePanel } from "./components/RiotUsagePanel";
 import { DailyMatchesPanel } from "./components/DailyMatchesPanel";
 import { HealthPanel } from "./components/HealthPanel";
+import { RefillPanel } from "./components/RefillPanel";
 import { RolesPermissionsPanel } from "./components/RolesPermissionsPanel";
 import { AuditLogPanel } from "./components/AuditLogPanel";
 import { ActivityFeed } from "./components/ActivityFeed";
@@ -226,6 +227,8 @@ export default function App() {
             {view === "season" && ov.overview && <SeasonCard season={ov.overview.season} />}
 
             {view === "tournaments" && <TournamentsPage conn={conn} />}
+
+            {view === "refill" && <RefillPanel conn={conn} />}
 
             {view === "audit" && audit.events && <AuditLogPanel events={audit.events} />}
             {view === "audit" && audit.error && (

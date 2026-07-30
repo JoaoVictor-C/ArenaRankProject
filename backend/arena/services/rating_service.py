@@ -33,7 +33,7 @@ from collections.abc import Callable, Iterable
 from contextlib import AbstractAsyncContextManager
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import uuid
 
@@ -94,9 +94,17 @@ class RatingService:
         integrity: IntegrityEvaluator,
         *,
         params: RatingParams = DEFAULT_PARAMS,
+        snapshot_at_played: bool = False,
     ) -> None:
         self._integrity = integrity
         self._params = params
+        # ``snapshot_at_played`` carimba ``cr_snapshots`` com o ``played_at`` da
+        # partida em vez do relógio de processamento. Ligado SÓ pelo replay: ao
+        # reprocessar meses de partidas numa rajada, o padrão (``now``) colapsa
+        # todos os snapshots no instante do replay e o delta7d do site vira lixo
+        # até acumular histórico novo. Na ingestão ao vivo os dois coincidem
+        # (played_at ≈ agora), então o padrão fica como estava.
+        self._snapshot_at_played = snapshot_at_played
 
     # -- public API --------------------------------------------------------
 
@@ -261,11 +269,20 @@ class RatingService:
         """
         now = datetime.now(UTC)
         played_at = _parse_iso(match.played_at)
+        snap_at = played_at if self._snapshot_at_played else now
         champion_by_player = {p.player_id: p.champion_id for p in match.participants}
         placement_by_player = {p.player_id: p.placement for p in match.participants}
         team_by_player = {p.player_id: p.team_id for p in match.participants}
         premade_by_player = {p.player_id: p.is_premade for p in match.participants}
         party_by_player = {p.player_id: p.party_id for p in match.participants}
+
+        # RESTORE POINTS — capturados AQUI, antes do laço abaixo mutar cada
+        # ``player_seasons`` in-place. Depois da primeira iteração ``states`` já
+        # carrega o estado POSTERIOR, e o snapshot seria inútil (ou pior:
+        # silenciosamente errado). Ver models.MatchParticipant.state_before.
+        state_before_by_player = {
+            pid: state_before_to_json(ps) for pid, ps in states.items()
+        }
 
         # Pre-load every champion_stats row this match will touch in ONE query
         # (was one SELECT per eligible player). The read-modify-write below then
@@ -296,7 +313,7 @@ class RatingService:
                 # 4) cr_snapshots (Timescale) — only for movement.
                 session.add(
                     m.CrSnapshot(
-                        snapshot_at=now,
+                        snapshot_at=snap_at,
                         player_id=pr.player_id,
                         season_id=match.season_id,
                         cr=ps.cr,
@@ -310,7 +327,7 @@ class RatingService:
                 # antigas fica no cron do scheduler.
                 session.add(
                     m.CrSnapshotRecent(
-                        snapshot_at=now,
+                        snapshot_at=snap_at,
                         player_id=pr.player_id,
                         season_id=match.season_id,
                         cr=ps.cr,
@@ -337,6 +354,7 @@ class RatingService:
                     is_premade=premade_by_player[pr.player_id],
                     party_id=party_by_player[pr.player_id],
                     modifiers=modifiers_json,
+                    state_before=state_before_by_player.get(pr.player_id),
                 )
             )
 
@@ -493,6 +511,63 @@ class RatingService:
 def _parse_iso(value: str) -> datetime:
     dt = datetime.fromisoformat(value.replace("Z", "+00:00"))
     return dt if dt.tzinfo else dt.replace(tzinfo=UTC)
+
+
+#: Chaves de ``match_participants.state_before``. Espelham 1:1 os campos
+#: INDEPENDENTES de :class:`arena.rating.types.PlayerState` — ``cr`` deriva de
+#: (mu, sigma) e ``is_provisional`` de ``placement_matches_remaining``, então
+#: guardá-los seria redundante e um convite a divergirem.
+_STATE_BEFORE_KEYS = (
+    "mu",
+    "sigma",
+    "current_streak",
+    "matches_played",
+    "placement_matches_remaining",
+    "peak_cr",
+)
+
+
+def state_before_to_json(ps: m.PlayerSeason) -> dict[str, object]:
+    """Snapshot do PlayerState de um jogador ANTES da partida corrente.
+
+    Tem de ser chamado antes de ``_persist`` mutar a linha ``player_seasons``
+    in-place. Ver o comentário em ``models.MatchParticipant.state_before`` para
+    o porquê deste ponto de restauração existir.
+    """
+    return {
+        "mu": ps.mu,
+        "sigma": ps.sigma,
+        "current_streak": ps.current_streak,
+        "matches_played": ps.matches_played,
+        "placement_matches_remaining": ps.placement_matches_remaining,
+        "peak_cr": ps.peak_cr,
+    }
+
+
+def apply_state_before(
+    ps: m.PlayerSeason, snapshot: dict[str, Any], *, params: RatingParams = DEFAULT_PARAMS
+) -> None:
+    """Restaura ``player_seasons`` a partir de um ``state_before`` — o inverso.
+
+    ``cr`` e ``is_provisional`` são RECALCULADOS a partir dos campos
+    independentes em vez de lidos, para a identidade
+    ``cr = (mu - 3*sigma)*scale + offset`` não poder ser violada por um snapshot
+    antigo. ``params`` tem de ser o MESMO do RatingService que vai reprocessar —
+    escala/offset diferentes produziriam um cr inconsistente com o mu/sigma
+    restaurado. Levanta ``KeyError`` se faltar chave: um snapshot truncado tem
+    de falhar alto, não restaurar estado pela metade.
+    """
+    missing = [k for k in _STATE_BEFORE_KEYS if k not in snapshot]
+    if missing:
+        raise KeyError(f"state_before incompleto, faltam {missing}")
+    ps.mu = float(snapshot["mu"])
+    ps.sigma = float(snapshot["sigma"])
+    ps.current_streak = int(snapshot["current_streak"])
+    ps.matches_played = int(snapshot["matches_played"])
+    ps.placement_matches_remaining = int(snapshot["placement_matches_remaining"])
+    ps.peak_cr = float(snapshot["peak_cr"])
+    ps.cr = params.base_offset + (ps.mu - 3.0 * ps.sigma) * params.scale_factor
+    ps.is_provisional = ps.placement_matches_remaining > 0
 
 
 def _modifiers_to_json(pr: PlayerRatingResult) -> dict[str, object]:

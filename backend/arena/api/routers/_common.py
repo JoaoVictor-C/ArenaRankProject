@@ -269,11 +269,29 @@ def champion_name(champion_id: int) -> str:
     return name or str(champion_id)
 
 
+def champion_class(champion_id: int) -> str:
+    """PT-BR champion class (Mago/Tanque/Lutador/Suporte/Atirador/Assassino).
+
+    Arena has no fixed roles; this is the ddragon class taxonomy (``tags[0]``)
+    used only by the class-chip filter. Empty string when the id is unknown.
+    """
+    from arena.ddragon import get_ddragon
+
+    return get_ddragon().champion_class_sync(champion_id)
+
+
 def champion_icon_url(champion_id: int) -> str | None:
     """Real ddragon champion-square icon URL, or ``None`` (→ gradient fallback)."""
     from arena.ddragon import get_ddragon
 
     return get_ddragon().champion_icon_url_sync(champion_id)
+
+
+def champion_splash_url(champion_id: int) -> str | None:
+    """Real ddragon champion splash-art URL, or ``None`` (→ no cover art)."""
+    from arena.ddragon import get_ddragon
+
+    return get_ddragon().champion_splash_url_sync(champion_id)
 
 
 def profile_icon_url(icon_id: int | None) -> str | None:
@@ -344,7 +362,9 @@ __all__ = [
     "map_modifiers",
     "avatar_for",
     "champion_name",
+    "champion_class",
     "champion_icon_url",
+    "champion_splash_url",
     "profile_icon_url",
     "split_riot_id",
     "compose_riot_id",

@@ -246,6 +246,7 @@ export interface ChampRow {
   rank: number;
   champion: AvatarColors;
   name: string;
+  /** Classe ddragon em PT-BR (Mago/Tanque/...) — Arena não tem lane/rota. Vazio se desconhecida. */
   role: string;
   top4: number;
   first: number;
@@ -253,6 +254,8 @@ export interface ChampRow {
   pickRate: number;
   banRate: number;
   tier: string;
+  /** Variação em pontos percentuais do top-half: últimos 7d vs os 7d anteriores. 0 = sem histórico. */
+  winrateDelta?: number;
 }
 
 /* ---------- 5. Tournaments ---------- */

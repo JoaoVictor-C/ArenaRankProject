@@ -234,3 +234,80 @@ def parse_arena_match(payload: dict[str, Any]) -> ParsedArenaMatch:
         started_at_ms=started_at_ms,
         subteams=ordered,
     )
+
+
+# ---------------------------------------------------------------------------
+# Codec de persistência (match_backlog)
+#
+# Um refill estaciona a partida JÁ PARSEADA em vez do payload cru da match-v5:
+# ~2,5 kB contra ~75 kB, e a drenagem não precisa voltar à Riot (o cache de
+# payload dura 24 h — curto demais para uma janela de 20 dias). O ida-e-volta
+# tem de ser EXATO: o que sai de ``parsed_from_json`` alimenta exatamente o
+# mesmo caminho de escrita que uma partida ao vivo.
+# ---------------------------------------------------------------------------
+
+
+def parsed_to_json(parsed: ParsedArenaMatch) -> dict[str, Any]:
+    """``ParsedArenaMatch`` -> dict JSON-serializável (coluna JSONB)."""
+    return {
+        "matchId": parsed.match_id,
+        "queueId": parsed.queue_id,
+        "mode": parsed.mode.value,
+        "gameDuration": parsed.game_duration,
+        "startedAtMs": parsed.started_at_ms,
+        "subteams": [
+            {
+                "subteamId": t.subteam_id,
+                "placement": t.placement,
+                "participants": [
+                    {
+                        "puuid": p.puuid,
+                        "gameName": p.riot_id_game_name,
+                        "tagLine": p.riot_id_tagline,
+                        "championId": p.champion_id,
+                        "placement": p.placement,
+                        "subteamId": p.subteam_id,
+                        "eligible": p.eligible_for_progression,
+                        "profileIcon": p.profile_icon,
+                        "timePlayed": p.time_played,
+                        "earlySurrender": p.game_ended_in_early_surrender,
+                    }
+                    for p in t.participants
+                ],
+            }
+            for t in parsed.subteams
+        ],
+    }
+
+
+def parsed_from_json(data: dict[str, Any]) -> ParsedArenaMatch:
+    """Inverso de :func:`parsed_to_json`. Preserva a ordem dos subteams."""
+    return ParsedArenaMatch(
+        match_id=str(data["matchId"]),
+        queue_id=int(data["queueId"]),
+        mode=ArenaMode(data["mode"]),
+        game_duration=int(data["gameDuration"]),
+        started_at_ms=int(data.get("startedAtMs", 0)),
+        subteams=[
+            ParsedSubteam(
+                subteam_id=int(t["subteamId"]),
+                placement=int(t["placement"]),
+                participants=[
+                    ParsedParticipant(
+                        puuid=str(p["puuid"]),
+                        riot_id_game_name=str(p.get("gameName", "")),
+                        riot_id_tagline=str(p.get("tagLine", "")),
+                        champion_id=int(p["championId"]),
+                        placement=int(p["placement"]),
+                        subteam_id=int(p["subteamId"]),
+                        eligible_for_progression=bool(p["eligible"]),
+                        profile_icon=int(p.get("profileIcon", 0)),
+                        time_played=int(p.get("timePlayed", 0)),
+                        game_ended_in_early_surrender=bool(p.get("earlySurrender", False)),
+                    )
+                    for p in t["participants"]
+                ],
+            )
+            for t in data["subteams"]
+        ],
+    )

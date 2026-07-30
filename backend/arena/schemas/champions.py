@@ -46,6 +46,10 @@ class ChampRow(ArenaModel):
     pick_rate: float
     ban_rate: float
     tier: str
+    # Variação (pontos percentuais) do top-half nos últimos 7d vs os 7d
+    # anteriores, do rollup ``champion_daily_stats``. 0 quando não há histórico
+    # (rollup vazio) → a UI esconde a seta. Duplo-sinal (seta+cor) no front.
+    winrate_delta: int = 0
     top_player: ChampTopPlayer | None = None  # reference main; None with no eligible games
 
 
@@ -96,6 +100,54 @@ class ChampionSynergyResponse(ArenaModel):
     pairs: list[ChampionSynergy] = Field(default_factory=list)
 
 
+class ChampionSynergyGroup(ArenaModel):
+    """A champion subteam (duo or trio) that shared an Arena team, placement-derived.
+
+    Generalizes :class:`ChampionSynergy` from a fixed pair to a ``size``-member
+    combo (2 = duo, 3 = trio — Arena teams are 2 or 3). All members share the
+    subteam placement, so ``win_rate`` is the combo's top-half rate. ToS: never
+    augment/item winrate.
+    """
+
+    champions: list[SynergyChampion]  # ordered by championId asc (combo key)
+    games: int
+    win_rate: int  # 0..100 — top-half finishes / games
+    first_rate: int  # 0..100 — 1st-place finishes / games
+    avg_place: float
+
+
+class ChampionSynergyGroupResponse(ArenaModel):
+    """Top champion subteams of a given ``size`` (the /winrate rail; duos or trios)."""
+
+    updated_at: str
+    season: int
+    format: str
+    size: int  # subteam size these groups describe (2 duo, 3 trio)
+    sample_size: int  # total subteam-games considered
+    min_games: int = 0  # sample floor per combo (UI states the criterion)
+    groups: list[ChampionSynergyGroup] = Field(default_factory=list)
+
+
+class SynergyTier(ArenaModel):
+    key: ChampTierKey
+    label: str
+    color: str
+    comps: list[ChampionSynergyGroup] = Field(default_factory=list)
+
+
+class SynergyTierlistResponse(ArenaModel):
+    """Synergy comps bucketed S+..D by relative rank — the /sinergias page."""
+
+    updated_at: str
+    season: int
+    format: str
+    size: int  # subteam size (2 duo, 3 trio)
+    sample_size: int
+    min_games: int = 0
+    tiers: list[SynergyTier] = Field(default_factory=list)  # S+, S, A, B, C, D
+    table: list[ChampionSynergyGroup] = Field(default_factory=list)  # same list, flat
+
+
 class ChampionMainsResponse(ArenaModel):
     """Top reference mains for one champion (detail panel)."""
 
@@ -103,6 +155,29 @@ class ChampionMainsResponse(ArenaModel):
     name: str
     champion_icon_url: str | None = None
     players: list[ChampTopPlayer] = Field(default_factory=list)
+
+
+class ChampionTrendPoint(ArenaModel):
+    """One day in a champion's trend (placement-derived; from champion_daily_stats)."""
+
+    date: str  # ISO date "2026-07-20"
+    top4: int  # 0..100 — top-half rate that day
+    first: int  # 0..100 — 1st-place rate that day
+    pick_rate: float  # 0..100 — share of the day's champion-games
+    games: int
+
+
+class ChampionTrendResponse(ArenaModel):
+    """A champion's winrate/pick/top4 over the last ``days`` (the champion page charts).
+
+    Empty ``series`` before the rollup has history for this champion → the UI
+    degrades the charts. Placement-derived only (ToS)."""
+
+    champion_id: int
+    name: str
+    champion_icon_url: str | None = None
+    days: int
+    series: list[ChampionTrendPoint] = Field(default_factory=list)
 
 
 # ---------------------------------------------------------------------------
