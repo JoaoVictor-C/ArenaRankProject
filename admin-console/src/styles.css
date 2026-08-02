@@ -2569,3 +2569,33 @@ button {
     transition-duration: 0.001ms !important;
   }
 }
+
+/* ── Selo de procedência da telemetria (SourceBadge) ──────────────────────
+   Num deploy dividido (API no EC2, workers no notebook) as caixas têm Redis
+   separados, e a API pública não enxerga filas/heartbeats. Antes disso o
+   console mostrava zeros convincentes; o selo diz de onde o número veio e há
+   quanto tempo, para "não sei" nunca mais parecer "está tudo zerado". */
+.src-badge {
+  font-size: 11px;
+  line-height: 1;
+  padding: 4px 8px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  white-space: nowrap;
+  letter-spacing: 0.02em;
+}
+.src-live {
+  color: var(--green, #4ade80);
+  border-color: color-mix(in srgb, var(--green, #4ade80) 35%, transparent);
+  background: color-mix(in srgb, var(--green, #4ade80) 12%, transparent);
+}
+.src-snapshot {
+  color: var(--cyan, #38bdf8);
+  border-color: color-mix(in srgb, var(--cyan, #38bdf8) 35%, transparent);
+  background: color-mix(in srgb, var(--cyan, #38bdf8) 12%, transparent);
+}
+.src-unavailable {
+  color: var(--red, #f87171);
+  border-color: color-mix(in srgb, var(--red, #f87171) 40%, transparent);
+  background: color-mix(in srgb, var(--red, #f87171) 12%, transparent);
+}

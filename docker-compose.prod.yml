@@ -1,41 +1,89 @@
-# arenarank — PRODUCTION stack (single t3.micro box).
+# arenarank — PRODUCTION, single box. Same shape as the local stack, but
+# production-configured: no embedded secrets, no dev conveniences.
 #
-# Database lives on AWS RDS (postgres 18, db.t3.micro), NOT in a container.
-# Frontend runs on AWS Amplify. This box runs only: redis + api + a trimmed
-# worker set. Secrets/config come from a sibling `.env` (never committed).
+# Postgres is EXTERNAL (AWS RDS) — DATABASE_URL comes from `.env`, never from
+# this file. The frontend is on Amplify and adminer is dev-only, so neither is
+# here. Everything else runs on this one box.
 #
-#   redis             cache / locks / arq queues / Riot token-bucket
-#   api               FastAPI (uvicorn) on :8000 -> RDS direct
-#   worker-sweep      arq SweepWorker (discovery: sweep/rearm/reconcile/backfill
-#                     cron ticks; enqueues process_match onto arena:standard /
-#                     arena:priority via enqueue_job)
-#   worker-standard   arq StandardWorker (continuous process_match consumer,
-#                     arena:standard — no cron, polls the queue forever)
-#   worker-priority   arq PriorityWorker (same, arena:priority — rearm_tick's
-#                     session re-polls land here even without a dedicated
-#                     priority-sweep service on this trimmed box)
-#   scheduler         arq SchedulerWorker (season/leaderboard/cache/snapshots)
+#   caddy             TLS origin for api.arenarank.lol (behind Cloudflare)
+#   redis             cache / locks / arq queues / Riot token bucket
+#   api               FastAPI (uvicorn) :8000, reached only through caddy
+#   worker-sweep      discovery: sweep/rearm/reconcile/backfill cron ticks
+#   worker-priority-sweep   Top-1000 sweep -> arena:priority
+#   worker-standard / worker-priority   continuous process_match consumers
+#   scheduler         season/leaderboard/cache/snapshots/rollups/replay
+#   admin-console     operator UI, static build + /api proxy  (profile: admin)
+#   migrate           one-shot: alembic upgrade head        (profile: ops)
+#   seed              one-shot: idempotent season seed      (profile: ops)
+#   audit-missing-matches   one-shot coverage audit         (profile: ops)
 #
-# Deliberately trimmed for 908 MB RAM: no local postgres (RDS), no PgBouncer
-# (app connects to RDS directly), no frontend (Amplify), no adminer, no
-# dedicated priority-sweep service (rearm_tick, hosted inside worker-sweep,
-# is this box's only priority-lane producer). Add PrioritySweepWorker back
-# when the box is resized.
+# Use this when ONE machine runs everything. If the API and the workers live on
+# separate machines, use the split pair instead — do NOT combine them with this
+# file, it would give you two schedulers:
+#   docker-compose.prod-ec2.yml     public API only
+#   docker-compose.prod-worker.yml  ingestion + maintenance
+#
+# Required in `.env` (never committed):
+#   DATABASE_URL   postgresql+asyncpg://USER:PASS@<rds-host>:5432/arena
+#   RIOT_API_KEY   ADMIN_API_KEY   CORS_ORIGINS   MATCH_MIN_STARTED_AT_MS
 #
 # Bring up:  docker compose -f docker-compose.prod.yml up -d --build
-# Migrate:   docker compose -f docker-compose.prod.yml run --rm api alembic upgrade head
-# Seed:      docker compose -f docker-compose.prod.yml run --rm api python -m arena.db.seed
+# Migrate:   docker compose -f docker-compose.prod.yml --profile ops run --rm migrate
+# Seed:      docker compose -f docker-compose.prod.yml --profile ops run --rm seed
 
 name: arenarank-prod
 
+x-build: &build
+  build:
+    context: ./backend
+    dockerfile: Dockerfile
+
+# Every backend process reads the SAME .env. Per-service `environment:` below
+# only sets what genuinely differs (service name, cache TTL, sweep sizing).
+# Anything that must AGREE across processes — the season cutoff, the Riot key,
+# the DB URL — lives in .env exactly once, so it cannot drift between the API
+# and the workers.
+x-env-file: &env-file
+  env_file: [.env]
+
+x-common-env: &common-env
+  REDIS_URL: redis://redis:6379/0
+
+# The image HEALTHCHECK curls :8000/healthz (the api role); workers run arq,
+# so leaving it enabled marks them permanently unhealthy.
+x-worker-svc: &worker-svc
+  <<: [*build, *env-file]
+  healthcheck:
+    disable: true
+  restart: unless-stopped
+  depends_on:
+    redis:
+      condition: service_healthy
+
+# Match payloads (~135 KB) only need to live in cache between fetch and rate.
+# The consumers are what fetch+cache them via get_match; a 10 min TTL stops 24 h
+# of payloads accumulating and blowing up Redis (this was the single biggest
+# memory consumer before it was tuned).
+x-consumer-env: &consumer-env
+  <<: *common-env
+  RIOT_MATCH_CACHE_TTL_SECONDS: "600"
+
 services:
+  # ------------------------------------------------------------------ #
+  # Redis — cache, locks, arq queues, Riot token bucket.
+  # volatile-lru so the disposable match cache (which has a TTL) is evicted
+  # under pressure while queues and locks (no TTL) survive. NEVER noeviction:
+  # a full Redis would start rejecting writes and stall the pipeline.
+  # ------------------------------------------------------------------ #
   redis:
     image: redis:7
-    # maxmemory 128mb + volatile-lru: a Redis mistura cache descartável (riot:match:*,
-    # TTL curto) com filas/locks (sem TTL). volatile-lru só evicta keys COM TTL quando
-    # cheia, então o cache é descartado sob pressão e as filas ficam intactas — NUNCA
-    # use noeviction aqui (rejeita escritas ao encher = pipeline morre).
-    command: ["redis-server", "--appendonly", "yes", "--maxmemory", "128mb", "--maxmemory-policy", "volatile-lru"]
+    command:
+      [
+        "redis-server",
+        "--appendonly", "yes",
+        "--maxmemory", "${REDIS_MAXMEMORY:-512mb}",
+        "--maxmemory-policy", "volatile-lru",
+      ]
     volumes:
       - redisdata:/data
     healthcheck:
@@ -45,19 +93,19 @@ services:
       retries: 10
     restart: unless-stopped
 
+  # ------------------------------------------------------------------ #
+  # API. --proxy-headers so uvicorn trusts caddy's X-Forwarded-* and records
+  # the real client IP (the audit trail stores source_ip). No published host
+  # port: reachable only through caddy, keeping :8000 off the public internet.
+  # ------------------------------------------------------------------ #
   api:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
+    <<: [*build, *env-file]
     command:
       ["uvicorn", "arena.api.app:app", "--host", "0.0.0.0", "--port", "8000",
        "--proxy-headers", "--forwarded-allow-ips", "*"]
-    env_file: [.env]
     environment:
+      <<: *common-env
       SERVICE_NAME: arenarank-api
-      REDIS_URL: redis://redis:6379/0
-    # No host port publish: the API is reached only via the caddy reverse proxy
-    # (which Cloudflare fronts). Keeps :8000 off the public internet.
     expose:
       - "8000"
     depends_on:
@@ -65,7 +113,12 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
-  # Reverse proxy / TLS origin for api.arenarank.lol (behind Cloudflare).
+  # ------------------------------------------------------------------ #
+  # Caddy — TLS origin behind Cloudflare. `tls internal` (see Caddyfile)
+  # because public ACME cannot validate here: the CF proxy intercepts the
+  # HTTP-01/TLS-ALPN challenges. CF SSL/TLS mode must be "Full" so the
+  # self-signed origin cert is accepted.
+  # ------------------------------------------------------------------ #
   caddy:
     image: caddy:2
     ports:
@@ -79,110 +132,121 @@ services:
       - api
     restart: unless-stopped
 
-  # Standard sweep: a rotating DB cursor pages tracked players in bounded batches
-  # and enqueues discovered match ids as process_match jobs (arena:standard /
-  # arena:priority via enqueue_job). This REPLACES the IngestionWorker
-  # (poll_riot), which pulled ALL tracked players every tick and timed out once
-  # the ladder grew past a few thousand players. The sweep is cursor-paged,
-  # tick-locked (no overlap) and backpressured, so it scales. Also hosts
-  # rearm_tick (session re-polls -> arena:priority) — this box's only
-  # priority-lane producer, since there is no dedicated priority-sweep service.
-  # The image HEALTHCHECK curls :8000/healthz (api role); workers run arq, not
-  # uvicorn, so disable it or they'd flap to "unhealthy".
+  # ------------------------------------------------------------------ #
+  # Discovery — a rotating DB cursor pages tracked players in bounded batches
+  # and enqueues match ids as process_match jobs. Cursor-paged, tick-locked
+  # (no overlap) and backpressured. Also hosts rearm / reconcile / history
+  # backfill ticks.
+  # ------------------------------------------------------------------ #
   worker-sweep:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
+    <<: *worker-svc
     command: ["arq", "arena.workers.main.SweepWorker", "--custom-log-dict", "arena.core.logging.ARQ_LOG_CONFIG"]
-    env_file: [.env]
     environment:
+      <<: *common-env
       SERVICE_NAME: arenarank-worker-sweep
-      REDIS_URL: redis://redis:6379/0
-      SWEEP_INTERVAL_MINUTES: "1"
-      SWEEP_BATCH_SIZE: "40"
-      SWEEP_MATCHES_PER_PLAYER: "10"
-    healthcheck:
-      disable: true
-    depends_on:
-      redis:
-        condition: service_healthy
-    restart: unless-stopped
+      SWEEP_INTERVAL_MINUTES: "${SWEEP_INTERVAL_MINUTES:-1}"
+      SWEEP_BATCH_SIZE: "${SWEEP_BATCH_SIZE:-40}"
+      SWEEP_MATCHES_PER_PLAYER: "${SWEEP_MATCHES_PER_PLAYER:-10}"
 
-  # Continuous process_match consumers — no cron, no idle window: each polls
-  # its arq queue forever (arena:standard / arena:priority) as soon as
-  # worker-sweep's enqueue_job lands a job. Replaces BulkProcessorWorker, which
-  # drained a Redis LIST on a timer with process_match called in-process
-  # against a hand-built fake arq ctx.
-  worker-standard:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    command: ["arq", "arena.workers.main.StandardWorker", "--custom-log-dict", "arena.core.logging.ARQ_LOG_CONFIG"]
-    env_file: [.env]
+  worker-priority-sweep:
+    <<: *worker-svc
+    command: ["arq", "arena.workers.main.PrioritySweepWorker", "--custom-log-dict", "arena.core.logging.ARQ_LOG_CONFIG"]
     environment:
+      <<: *common-env
+      SERVICE_NAME: arenarank-worker-priority-sweep
+
+  # ------------------------------------------------------------------ #
+  # Continuous process_match consumers — no cron, no idle window: each polls
+  # its arq queue forever (arena:standard / arena:priority).
+  # ------------------------------------------------------------------ #
+  worker-standard:
+    <<: *worker-svc
+    command: ["arq", "arena.workers.main.StandardWorker", "--custom-log-dict", "arena.core.logging.ARQ_LOG_CONFIG"]
+    environment:
+      <<: *consumer-env
       SERVICE_NAME: arenarank-worker-standard
-      REDIS_URL: redis://redis:6379/0
-      # Payloads de match (~135KB) só vivem no cache entre fetch→rate. Este
-      # processo é quem busca+cacheia via get_match; TTL 10min impede que se
-      # acumulem 24h e estourem o Redis (era o principal consumidor de memória).
-      RIOT_MATCH_CACHE_TTL_SECONDS: "600"
-    healthcheck:
-      disable: true
-    depends_on:
-      redis:
-        condition: service_healthy
-    restart: unless-stopped
 
   worker-priority:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
+    <<: *worker-svc
     command: ["arq", "arena.workers.main.PriorityWorker", "--custom-log-dict", "arena.core.logging.ARQ_LOG_CONFIG"]
-    env_file: [.env]
     environment:
+      <<: *consumer-env
       SERVICE_NAME: arenarank-worker-priority
-      REDIS_URL: redis://redis:6379/0
-      RIOT_MATCH_CACHE_TTL_SECONDS: "600"
-    healthcheck:
-      disable: true
-    depends_on:
-      redis:
-        condition: service_healthy
-    restart: unless-stopped
 
+  # ------------------------------------------------------------------ #
+  # Scheduler — EXACTLY ONE instance. Two would double-run season transitions
+  # and the chronological replay; it is the one pool that does not scale out.
+  # ------------------------------------------------------------------ #
   scheduler:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
+    <<: *worker-svc
     command: ["arq", "arena.workers.main.SchedulerWorker", "--custom-log-dict", "arena.core.logging.ARQ_LOG_CONFIG"]
-    env_file: [.env]
     environment:
+      <<: *common-env
       SERVICE_NAME: arenarank-scheduler
-      REDIS_URL: redis://redis:6379/0
+
+  # ------------------------------------------------------------------ #
+  # Admin console (profile: admin) — operator UI as a static build, served by
+  # its own caddy which also reverse-proxies /api to the `api` service.
+  #
+  # Same-origin by design: the console's "local" preset uses an empty base and
+  # a relative /api path, so proxying here needs no CORS entry and no absolute
+  # URL. Bound to 127.0.0.1 and NOT routed through the public caddy — reach it
+  # over an SSH tunnel, which is what provides the encryption:
+  #   ssh -L 5174:127.0.0.1:5174 <box>   then open http://127.0.0.1:5174
+  # ------------------------------------------------------------------ #
+  admin-console:
+    build:
+      context: ./admin-console
+      dockerfile: Dockerfile
+    profiles: ["admin"]
+    environment:
+      ADMIN_API_UPSTREAM: api:8000
+    ports:
+      - "127.0.0.1:${ADMIN_CONSOLE_PORT:-5174}:8080"
+    depends_on:
+      - api
+    restart: unless-stopped
+
+  # ------------------------------------------------------------------ #
+  # Ops one-shots (profile: ops) — never started by `up`.
+  #
+  # migrate uses whatever DATABASE_URL says. Point it at the DIRECT Postgres
+  # endpoint, never a transaction pooler: DDL and Timescale policy statements
+  # are not transaction-pool safe.
+  # ------------------------------------------------------------------ #
+  migrate:
+    <<: [*build, *env-file]
+    profiles: ["ops"]
+    command: ["alembic", "upgrade", "head"]
+    healthcheck:
+      disable: true
+    restart: "no"
+
+  seed:
+    <<: [*build, *env-file]
+    profiles: ["ops"]
+    command: ["python", "-m", "arena.db.seed"]
+    environment:
+      <<: *common-env
+      SERVICE_NAME: arenarank-seed
     healthcheck:
       disable: true
     depends_on:
       redis:
         condition: service_healthy
-    restart: unless-stopped
+    restart: "no"
 
-  # Audit — one-shot, READ-ONLY coverage check: walks every player, asks Riot
-  # for their match ids in the window, reports who has matches we never
-  # computed. Profile-gated so `docker compose up -d` never starts it; it
-  # competes for the same Riot token bucket as the sweep, so prefer running it
-  # off-peak and bound it with --max-api-calls.
-  #   docker compose -f docker-compose.prod.yml run --rm audit-missing-matches \
-  #     --since-days 14 --min-missing 10 --max-api-calls 20000 --json /out/audit.json
+  # Coverage audit — READ-ONLY. Competes for the same Riot token bucket as the
+  # sweep, so run it off-peak and bound it with --max-api-calls:
+  #   docker compose -f docker-compose.prod.yml --profile ops run --rm \
+  #     audit-missing-matches --since-days 14 --max-api-calls 20000 --json /out/a.json
   audit-missing-matches:
-    profiles: ["audit"]
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
+    <<: [*build, *env-file]
+    profiles: ["ops"]
     entrypoint: ["python", "-m", "scripts.audit_missing_matches"]
-    env_file: [.env]
     environment:
+      <<: *common-env
       SERVICE_NAME: arenarank-audit
-      REDIS_URL: redis://redis:6379/0
       PYTHONIOENCODING: utf-8
     volumes:
       - ./out:/out

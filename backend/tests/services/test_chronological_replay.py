@@ -76,7 +76,13 @@ class _World:
                 }
             )
         return {
-            "metadata": {"matchId": f"BR1_CHRONO{idx:04d}"},
+            # ID ÚNICO POR EXECUÇÃO. ``RatingService._already_processed`` procura
+            # por ``riot_match_id`` SEM escopo de temporada (proposital: cobre
+            # linhas de eras anteriores com id interno diferente), então um id
+            # fixo faz qualquer resíduo de uma execução anterior — em QUALQUER
+            # temporada — marcar a partida como já processada e o teste ingerir
+            # silenciosamente menos partidas do que pediu.
+            "metadata": {"matchId": f"BR1_CHRONO{self.season_id.hex[:10]}{idx:04d}"},
             "info": {
                 "queueId": 1700,
                 "gameDuration": 900,
@@ -154,12 +160,15 @@ class _World:
         await session.execute(text("DELETE FROM matches WHERE season_id=:s"), s)
         await session.execute(text("DELETE FROM match_backlog WHERE season_id=:s"), s)
         await session.execute(text("DELETE FROM season_ingest_state WHERE season_id=:s"), s)
-        # Só os jogadores DESTE mundo. Um `LIKE 'chrono-%'` apagaria também os de
-        # outros mundos, batia na FK de player_seasons deles, abortava a
-        # transação inteira — e a linha de `seasons` sobrevivia. Foi assim que
-        # 30 temporadas de teste vazias ficaram para trás.
-        for pid in self.players:
-            await session.execute(text("DELETE FROM players WHERE id=:p"), {"p": pid})
+        # Por PUUID, não por id: ``register_players`` cunha o id da linha ele
+        # mesmo, então os UUIDs de ``self.players`` nunca chegam a ser ids reais
+        # — apagar por eles não removia nada. E escopado a ESTE mundo: um
+        # `LIKE 'chrono-%'` apagaria os de outros mundos, batia na FK de
+        # player_seasons deles e abortava a transação inteira (era assim que
+        # temporadas de teste vazias ficavam para trás).
+        await session.execute(
+            text("DELETE FROM players WHERE puuid = ANY(:pp)"), {"pp": self.puuids}
+        )
         await session.execute(text("DELETE FROM seasons WHERE id=:s"), s)
         await session.commit()
 
@@ -213,13 +222,28 @@ async def _world() -> AsyncIterator[tuple[Any, _World]]:
             db_session.get_sessionmaker.cache_clear()
 
 
-async def _ingest(w: _World, payloads: list[dict]) -> None:
-    """Empurra payloads pelo caminho de escrita REAL, na ordem dada."""
+async def _ingest(w: _World, payloads: list[dict], *, expect_all: bool = True) -> None:
+    """Empurra payloads pelo caminho de escrita REAL, na ordem dada.
+
+    ``expect_all`` guarda contra um modo de falha que já aconteceu e é
+    INVISÍVEL: com ids de partida fixos, resíduo de uma execução anterior fazia
+    o guard de idempotência devolver ``already_processed`` e o teste ingeria 4
+    de 12 partidas — continuava "passando", só que exercitando um cenário muito
+    mais fraco do que anunciava. Se o roteiro não entrar inteiro, falhe alto.
+    """
     from arena.services.match_pipeline import WorkerRatingService
 
     svc = WorkerRatingService()
+    statuses: list[str] = []
     for p in payloads:
-        await svc.process_match(p["metadata"]["matchId"], p, redis=None)
+        result = await svc.process_match(p["metadata"]["matchId"], p, redis=None)
+        statuses.append(str(result.get("status")))
+    if expect_all:
+        processed = sum(1 for s in statuses if s == "processed")
+        assert processed == len(payloads), (
+            f"só {processed}/{len(payloads)} partidas entraram ({set(statuses)}) — "
+            "o teste estaria medindo um roteiro mais fraco do que pensa"
+        )
 
 
 async def _final_state(session: Any, w: _World) -> dict[str, tuple]:

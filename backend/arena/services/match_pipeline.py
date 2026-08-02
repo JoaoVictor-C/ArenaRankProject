@@ -273,6 +273,20 @@ def build_raw_participants(
                     champion_id=p.champion_id,
                     team_id=subteam.subteam_id,
                     placement=subteam.placement,
+                    augments=p.augments,
+                    items=p.items,
+                    kills=p.kills,
+                    deaths=p.deaths,
+                    assists=p.assists,
+                    damage_to_champions=p.damage_to_champions,
+                    gold_earned=p.gold_earned,
+                    champion_level=p.champion_level,
+                    damage_taken=p.damage_taken,
+                    total_heal=p.total_heal,
+                    damage_self_mitigated=p.damage_self_mitigated,
+                    largest_multi_kill=p.largest_multi_kill,
+                    killing_sprees=p.killing_sprees,
+                    time_spent_dead=p.time_spent_dead,
                 )
             )
     return participants, ineligible

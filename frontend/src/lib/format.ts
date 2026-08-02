@@ -72,10 +72,11 @@ export function winrateBand(wr: number): "gold" | "blue" | "green" | "low" {
   return "low"; // padrão (<75%)
 }
 
-/** "há 11 min", "há 2 h", "há 34 s" — tempo decorrido relativo, pt-BR. */
+/** "agora mesmo", "há 11 min", "há 2 h" — tempo decorrido relativo, pt-BR.
+ *  Abaixo de 1 min é "agora mesmo": "há 0 s" lê como bug, não como frescor. */
 export function timeAgo(iso: string, nowMs = Date.now()): string {
   const diff = Math.max(0, Math.floor((nowMs - new Date(iso).getTime()) / 1000));
-  if (diff < 60) return `há ${diff} s`;
+  if (diff < 60) return "agora mesmo";
   if (diff < 3600) return `há ${Math.floor(diff / 60)} min`;
   if (diff < 86400) return `há ${Math.floor(diff / 3600)} h`;
   return `há ${Math.floor(diff / 86400)} d`;

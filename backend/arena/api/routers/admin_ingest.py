@@ -14,11 +14,9 @@ temporada. Toda mutação é auditada.
 
 from __future__ import annotations
 
-from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 
-from arena.api.deps import get_redis
 from arena.api.rbac import record_audit, require_scope
 from arena.core.logging import get_logger
 from arena.schemas.admin import IngestStatus
@@ -99,6 +97,8 @@ async def get_ingest_status() -> IngestStatus:
         coverage_pct=state.coverage_pct if state else None,
         coverage_at=state.coverage_at.isoformat() if state and state.coverage_at else None,
         replay_floor=state.replay_floor.isoformat() if state and state.replay_floor else None,
+        seeded_at=state.seeded_at.isoformat() if state and state.seeded_at else None,
+        last_error=state.last_error if state else None,
     )
 
 
@@ -107,43 +107,40 @@ async def get_ingest_status() -> IngestStatus:
     response_model=IngestStatus,
     response_model_by_alias=True,
     status_code=status.HTTP_202_ACCEPTED,
-    summary="Iniciar refill: semeia a descoberta e para de avaliar na chegada",
+    summary="Pedir refill: para de avaliar na chegada (a caixa de workers semeia)",
     dependencies=[Depends(require_scope("season:write"))],
 )
-async def start_bootstrap_route(
-    request: Request,
-    redis: Annotated[Any, Depends(get_redis)],
-) -> IngestStatus:
-    """Coloca a temporada em ``catching_up`` e injeta as sementes configuradas.
+async def start_bootstrap_route(request: Request) -> IngestStatus:
+    """PEDE um refill: marca a temporada como ``catching_up``. Só banco.
+
+    Não resolve semente nem enfileira nada aqui. Semear exige a chave da Riot
+    (para virar "Nome#TAG" em puuid) e o Redis das FILAS (para o backfill cair
+    onde algum worker consuma) — e no deploy dividido esta API não tem nenhum
+    dos dois; a própria .env.example diz que a chave "NOT needed by the
+    EC2/API box". Enquanto a rota tentava semear, o botão era inutilizável a
+    partir do EC2 mesmo com as sementes configuradas.
+
+    Quem semeia é o ``bootstrap_tick`` da caixa de workers, no minuto seguinte.
+    Se faltar semente lá, a falha volta em ``lastError`` no GET desta rota — e
+    não como um 400 aqui, porque esta caixa não tem como saber.
 
     A partir daqui as partidas descobertas são ESTACIONADAS em vez de avaliadas;
     o drenador as avalia depois em ordem cronológica estrita. A temporada volta
     sozinha para ``live`` quando a fronteira satura e o backlog esvazia.
     """
     try:
-        from arena.workers.bootstrap import start_bootstrap
+        from arena.workers.bootstrap import request_bootstrap
     except Exception as exc:  # pragma: no cover
         raise _unavailable("o bootstrap") from exc
 
     season_id = await _season_id()
-    result = await start_bootstrap(redis, season_id)
+    result = await request_bootstrap(season_id)
     if result.get("status") != "ok":
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=(
-                "Nenhuma semente configurada ou resolvível "
-                "(defina BOOTSTRAP_SEED_RIOT_IDS)."
-                if result.get("reason") in {"no seeds configured", "no seed resolved"}
-                else "Falha ao iniciar o refill."
-            ),
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Falha ao registrar o pedido de refill.",
         )
-    await record_audit(
-        request,
-        action="ingest.bootstrap_started",
-        target=season_id,
-        seeds=result.get("seeds"),
-        queued=result.get("queued"),
-    )
+    await record_audit(request, action="ingest.bootstrap_requested", target=season_id)
     return await get_ingest_status()
 
 

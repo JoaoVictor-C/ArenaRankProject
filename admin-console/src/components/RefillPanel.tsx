@@ -132,6 +132,20 @@ export function RefillPanel({ conn }: Props) {
         </div>
       </div>
 
+      {status?.lastError && (
+        <div className="state-block state-error">
+          Falha ao semear na caixa de workers: {status.lastError}
+        </div>
+      )}
+
+      {status?.mode === "catching_up" && !status?.seededAt && !status?.lastError && (
+        <div className="state-block">
+          Refill pedido — aguardando a caixa de workers semear. Ela resolve os
+          Riot IDs e enfileira o histórico; esta API não tem chave da Riot nem a
+          fila, por isso a semeadura acontece lá.
+        </div>
+      )}
+
       {status?.replayFloor && (
         <div className="state-block">
           Há cauda fora de ordem desde <strong>{relative(status.replayFloor)}</strong>. O

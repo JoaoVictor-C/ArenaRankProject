@@ -7,6 +7,15 @@ function jsonOk(): Response {
   return { ok: true, status: 200, statusText: "OK", json: async () => ({}) } as unknown as Response;
 }
 
+function jsonResponse(status: number, body: unknown): Response {
+  return {
+    ok: status >= 200 && status < 300,
+    status,
+    statusText: status === 422 ? "Unprocessable Entity" : "OK",
+    json: async () => body,
+  } as unknown as Response;
+}
+
 describe("api — chave de admin", () => {
   beforeEach(() => clearAdminKey());
   afterEach(() => clearAdminKey());
@@ -38,5 +47,22 @@ describe("api — chave de admin", () => {
       "secret",
     );
     expect((fetchMock.mock.calls[2][1] as RequestInit).headers).not.toHaveProperty("X-Admin-Key");
+  });
+});
+
+describe("api — leaderboard OTP", () => {
+  it("cai para 20 jogadores quando o backend ainda rejeita limit=100", async () => {
+    const payload = { championId: 50, name: "Swain", players: [] };
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse(422, { detail: "limit must be <= 20" }))
+      .mockResolvedValueOnce(jsonResponse(200, payload));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await api.championOtps(50);
+
+    expect(fetchMock.mock.calls[0][0]).toContain("/champions/50/mains?limit=100");
+    expect(fetchMock.mock.calls[1][0]).toContain("/champions/50/mains?limit=20");
+    expect(result).toEqual({ ...payload, limit: 20, truncated: true });
   });
 });

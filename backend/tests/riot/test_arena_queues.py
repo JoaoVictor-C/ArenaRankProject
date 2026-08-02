@@ -51,3 +51,48 @@ def test_parse_1740_trios_match_is_complete() -> None:
     assert parsed.mode is ArenaMode.TRIOS
     assert parsed.is_complete
     assert len(parsed.subteams) == 6
+
+
+def test_parse_combat_telemetry_fields() -> None:
+    """Combat primitives extracted verbatim from the Riot payload — field names
+    confirmed against a real live match-v5 payload (see the combat-telemetry
+    plan). Defaults to 0, never None, when a field is absent from the payload."""
+    payload = _trios_payload(1750)
+    first = payload["info"]["participants"][0]
+    first.update(
+        {
+            "kills": 7,
+            "deaths": 2,
+            "assists": 11,
+            "totalDamageDealtToChampions": 18770,
+            "goldEarned": 7206,
+            "champLevel": 13,
+            "totalDamageTaken": 20008,
+            "totalHeal": 4961,
+            "damageSelfMitigated": 19843,
+            "largestMultiKill": 2,
+            "killingSprees": 1,
+            "totalTimeSpentDead": 243,
+        }
+    )
+    parsed = parse_arena_match(payload)
+    p = parsed.subteams[0].participants[0]
+    assert p.kills == 7
+    assert p.deaths == 2
+    assert p.assists == 11
+    assert p.damage_to_champions == 18770
+    assert p.gold_earned == 7206
+    assert p.champion_level == 13
+    assert p.damage_taken == 20008
+    assert p.total_heal == 4961
+    assert p.damage_self_mitigated == 19843
+    assert p.largest_multi_kill == 2
+    assert p.killing_sprees == 1
+    assert p.time_spent_dead == 243
+
+    # No combat fields in the payload (the base fixture) -> 0, not None/missing.
+    other = parsed.subteams[0].participants[1]
+    assert other.kills == 0
+    assert other.deaths == 0
+    assert other.assists == 0
+    assert other.damage_to_champions == 0

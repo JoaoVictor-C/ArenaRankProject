@@ -4,53 +4,203 @@
    Modelo op.gg/dpm.lol/deeplol. Profundidade tonal + fio, sem sombra.
    ============================================================ */
 
-/* ---------- Banner de identidade + CR ---------- */
+body:has(.profile-dossier) {
+  overflow-x: clip;
+}
+
+.profile-dossier {
+  position: relative;
+  min-width: 0;
+  overflow-x: clip;
+  background:
+    radial-gradient(circle at 72% 1%, rgba(117, 74, 171, 0.09), transparent 28rem),
+    radial-gradient(circle at 12% 30%, rgba(34, 158, 173, 0.055), transparent 24rem);
+}
+
+/* O motor legado ainda declara o estado inicial de `.breadcrumb`, `.panel` e
+   `.form-row` no CSS global, embora seu JS respeite `[data-gsap-scope]`. Esta
+   fronteira completa a transferência de propriedade: o estado padrão fica
+   visível e o GSAP aplica seu próprio `from` apenas enquanto anima. */
+html.ar-anim:not(.ar-anim-off)
+  .profile-dossier
+  :where(.breadcrumb, .panel, .form-row) {
+  opacity: 1;
+  transform: none;
+  filter: none;
+}
+
+/* ---------- Banner "Pôster do Gladiador" ---------- */
 .pf-banner {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 28px;
-  align-items: center;
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  min-height: 190px;
   border: 1px solid var(--line);
   border-radius: var(--r-lg);
+  /* Sem capa: fica o palco tonal (fio de ouro no topo, sutil). */
   background:
     linear-gradient(180deg, rgba(47, 155, 214, 0.1), rgba(10, 10, 12, 0) 62%),
     var(--surface);
-  padding: 22px 26px;
   margin-bottom: 14px;
 }
+.pf-banner.has-art {
+}
 
-.pfb-id {
+/* Camada de arte: splash do campeão mais jogado. */
+.pfb-art {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 72% 24%;
+}
+
+/* Scrim: escurece esquerda + base p/ o texto; a arte respira no alto-direita.
+   Só existe quando há capa (sem capa, o palco tonal já basta). */
+.pfb-scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+}
+.pf-banner.has-art .pfb-scrim {
+  background:
+    linear-gradient(
+      90deg,
+      rgba(11, 12, 15, 0.97) 0%,
+      rgba(11, 12, 15, 0.86) 34%,
+      rgba(11, 12, 15, 0.6) 72%,
+      rgba(11, 12, 15, 0.5) 100%
+    ),
+    linear-gradient(0deg, rgba(8, 9, 11, 0.94) 2%, rgba(8, 9, 11, 0.1) 62%);
+}
+.pf-banner:not(.has-art) .pfb-scrim {
+  display: none;
+}
+
+.pfb-inner {
+  position: relative;
+  z-index: 2;
   display: flex;
+  flex-direction: column;
+  justify-content: space-between;
   gap: 18px;
+  min-height: 190px;
+  padding: 20px 24px;
+  box-sizing: border-box;
+}
+.pfb-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+/* Grade de identidade: o avatar e o nick dividem a MESMA linha, então centram
+   um contra o outro qualquer que seja a altura de cada um. Os metadados caem
+   na linha de baixo, na coluna do texto. Antes isto era um flex que centrava o
+   bloco inteiro (nick + meta + ações) contra o avatar — o que empurrava o nick
+   para bem acima do centro do avatar. */
+.pfb-id {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  column-gap: 18px;
   align-items: center;
   min-width: 0;
 }
-.pfb-id .pavatar {
-  width: 76px;
-  height: 76px;
-  flex-shrink: 0;
+.pf-banner .pavatar {
+  grid-column: 1;
+  grid-row: 1;
+  outline: 2px solid rgba(217, 178, 95, 0.5);
+  outline-offset: 2px;
 }
+/* O invólucro some da formatação para que nick e meta virem itens da grade. */
 .pfb-idtxt {
-  min-width: 0;
+  display: contents;
+}
+.pfb-name-cube {
+  grid-column: 2;
+  grid-row: 1;
+}
+.pfb-meta {
+  grid-column: 2;
+  grid-row: 2;
+}
+.pfb-name-cube {
+  --pfb-marker-size: 10px;
+  position: relative;
+  display: inline-flex;
+  max-width: 100%;
+  padding-block: 8px;
+  padding-right: 10px;
+  transform-origin: left center;
+  isolation: isolate;
 }
 .pfb-name {
   display: flex;
   align-items: baseline;
   gap: 10px;
   flex-wrap: wrap;
-  font: 800 22px/1.05 "Plus Jakarta Sans";
+  font: 800 26px/1.05 "Plus Jakarta Sans";
+  letter-spacing: -0.01em;
   margin: 0;
+  text-wrap: balance;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.6);
+}
+/* A placa carrega as cores do campeão mais jogado. A mistura sobe para 72%
+   (era 42%) e o véu escuro afina, então a cor lê como cor — não como cinza
+   tingido. O piso escuro permanece porque a placa recebe cores arbitrárias de
+   campeão e o nick é branco: sem ele, um campeão de tom claro derruba o
+   contraste do texto. */
+.pfb-name-cube__plate {
+  max-width: 100%;
+  padding: 10px 14px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.14), rgba(8, 9, 11, 0.3)),
+    linear-gradient(
+      145deg,
+      color-mix(in srgb, var(--c1) 72%, #1b1f27),
+      color-mix(in srgb, var(--c2) 72%, #10131a)
+    );
+  border: 1px solid rgba(236, 199, 122, 0.5);
+  border-radius: var(--r-md);
+  text-shadow: none;
+}
+.pfb-name-cube__plate > span:first-child {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+/* Os marcadores percorrem exatamente a extensão do nick — não da placa, que
+   também abraça a tagline. As duas medidas vêm do JS (useGsapNameMarkers), que
+   remede em resize; sem elas o marcador simplesmente repousa na borda. */
+.pfb-name-cube__marker {
+  position: absolute;
+  left: calc(var(--pfb-nick-x, 0px) + var(--pfb-nick-w, 0px));
+  margin-left: calc(var(--pfb-marker-size) * -1);
+  z-index: 2;
+  width: var(--pfb-marker-size);
+  height: var(--pfb-marker-size);
+  border-radius: 0;
+  background: var(--gold-bright);
+  pointer-events: none;
+}
+.pfb-name-cube__marker.is-top {
+  top: 0;
+}
+.pfb-name-cube__marker.is-bottom {
+  bottom: 0;
 }
 .pfb-name .pfb-tag {
   font: 500 14px/1 "Plus Jakarta Sans";
-  color: var(--text-faint);
+  color: var(--text-dim);
 }
 .pfb-meta {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
   gap: 8px;
-  margin-top: 11px;
+  margin-top: 12px;
 }
 .pfb-region {
   display: inline-flex;
@@ -60,46 +210,88 @@
   letter-spacing: 0.04em;
   color: var(--text-dim);
 }
+/* Bandeira do Brasil simplificada (verde + losango amarelo + círculo azul) —
+   a versão antiga era só uma barra verde/amarela sem losango nem círculo,
+   irreconhecível como a bandeira. */
 .flag-br {
   width: 22px;
   height: 15px;
   border-radius: 2px;
-  background: linear-gradient(180deg, #2e9e4f 0 50%, #f5d300 50% 100%);
+  background: #009c3b;
   display: inline-block;
   flex-shrink: 0;
+  position: relative;
+  overflow: hidden;
 }
+.flag-br::before {
+  content: "";
+  position: absolute;
+  inset: 2px 3px;
+  background: #ffdf00;
+  clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+}
+.flag-br::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #002776;
+  transform: translate(-50%, -50%);
+}
+.profile-mock-badge {
+  border-color: rgba(76, 182, 236, 0.38);
+  background: rgba(47, 155, 214, 0.14);
+  color: var(--primary-bright);
+}
+/* Ancorada no canto inferior direito do banner: é ação secundária e não deve
+   dividir a coluna de identidade com o nick. Absoluta porque o strip de stats
+   é curto e deixa esse canto livre; no breakpoint estreito ela volta ao fluxo. */
 .pfb-actions {
+  position: absolute;
+  right: 24px;
+  bottom: 20px;
+  z-index: 3;
   display: flex;
   gap: 10px;
-  margin-top: 15px;
 }
 .pfb-actions .btn {
   padding: 8px 14px;
   font-size: 13px;
 }
+.pfb-share {
+  max-width: min(100%, 270px);
+}
+.pfb-share > span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* Botões legíveis sobre a arte (fundo translúcido, não decorativo). */
+.pf-banner.has-art .pfb-actions .btn.ghost {
+  background: rgba(11, 12, 15, 0.5);
+  border-color: rgba(255, 255, 255, 0.16);
+}
+.pf-banner.has-art .pfb-actions .btn.ghost:hover {
+  background: rgba(11, 12, 15, 0.68);
+}
 
-/* CR + rank (coluna direita do banner) */
+/* PDL — âncora de ouro (alto-direita) */
 .pfb-cr {
-  border-left: 1px solid var(--line);
-  padding-left: 28px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
-}
-.pfb-cr-main {
-  display: flex;
-  align-items: center;
-  gap: 14px;
+  align-items: flex-end;
+  text-align: right;
+  gap: 7px;
+  flex-shrink: 0;
 }
 .pfb-cr-num {
   font: 800 48px/0.9 "Plus Jakarta Sans";
   letter-spacing: -0.02em;
   color: var(--gold-bright);
-}
-.pfb-cr-side {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+  text-shadow: 0 2px 16px rgba(0, 0, 0, 0.6);
 }
 .pfb-cr-lbl {
   font: 700 10px/1.2 "Plus Jakarta Sans";
@@ -107,24 +299,40 @@
   color: var(--text-dim);
   text-transform: uppercase;
 }
-.pfb-cr-tier {
-  font: 700 14px/1 "Plus Jakarta Sans";
-  color: var(--gold);
-  letter-spacing: 0.01em;
+.pfb-cr-sub {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 2px;
 }
+.pfb-cr-sub > b,
+.pfb-cr-sub > .delta {
+  font: 800 15px/1 "Plus Jakarta Sans";
+}
+
+/* Strip editorial de stats (base) */
 .pfb-kvs {
-  display: grid;
-  grid-template-columns: repeat(3, auto);
-  gap: 14px 24px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 0;
 }
 .pfb-kv {
   display: flex;
   flex-direction: column;
   gap: 6px;
+  padding: 0 20px;
+}
+.pfb-kv:first-child {
+  padding-left: 0;
+}
+.pfb-kv:not(:last-child) {
+  border-right: 1px solid rgba(255, 255, 255, 0.1);
 }
 .pfb-kv > b,
 .pfb-kv > .delta {
   font: 800 17px/1 "Plus Jakarta Sans";
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.5);
 }
 .pfb-kv > span {
   font: 600 9px/1 "Plus Jakarta Sans";
@@ -132,7 +340,19 @@
   color: var(--text-dim);
   text-transform: uppercase;
 }
-
+/* Crédito do campeão-capa — amarra a arte ao significado (OTP). */
+.pfb-kv-champ > b {
+  font: 800 14px/1.1 "Plus Jakarta Sans";
+  color: var(--gold-bright);
+  max-width: 15ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pfb-kv-champ > span {
+  text-transform: none;
+  letter-spacing: 0.02em;
+}
 /* ---------- Faixa de forma recente ---------- */
 .pf-form {
   display: flex;
@@ -168,17 +388,23 @@
 /* ---------- Corpo: cards laterais | histórico ---------- */
 .pf-body {
   display: grid;
-  grid-template-columns: 320px minmax(0, 1fr);
-  gap: 20px;
+  grid-template-columns: minmax(286px, 300px) minmax(0, 1fr);
+  grid-template-areas: "side main";
+  gap: 16px;
   align-items: start;
 }
 .pf-side {
+  grid-area: side;
   display: flex;
   flex-direction: column;
   gap: 16px;
   min-width: 0;
 }
 .pf-main-col {
+  grid-area: main;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
   min-width: 0;
 }
 
@@ -230,7 +456,6 @@
   color: var(--text-dim);
   font: 700 12px/1 "Plus Jakarta Sans";
   cursor: pointer;
-  transition: color 0.15s ease, border-color 0.15s ease;
 }
 .card-more:hover {
   color: var(--text);
@@ -265,7 +490,9 @@
 }
 .mt-btn[data-active="true"] {
   background: var(--primary);
-  color: #fff;
+  /* ink escuro sobre o azul da marca (mesmo padrão do CTA do AdminGate): #fff dava
+     3.1:1 (reprova AA); este par rende ~6:1 sem escurecer o token --primary global. */
+  color: #07101f;
 }
 .mt-n {
   font-style: normal;
@@ -273,28 +500,103 @@
   opacity: 0.75;
 }
 
-/* trend card */
+/* trend card — gráfico de PDL com eixos, escala e marcadores */
+.trend-wrap {
+  width: 100%;
+}
 .card .trend-chart {
   width: 100%;
-  height: 88px;
   display: block;
+  overflow: visible;
+}
+.trend-line {
+  fill: none;
+  stroke: var(--gold);
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+.trend-grid {
+  stroke: var(--line);
+  stroke-width: 1;
+  shape-rendering: crispEdges;
+}
+.trend-ylabel,
+.trend-xlabel {
+  fill: var(--text-faint);
+  font: 600 9px/1 "ui-monospace", "SF Mono", Menlo, monospace;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+}
+.trend-curlabel {
+  fill: var(--gold-bright);
+  font: 800 11px/1 "ui-monospace", "SF Mono", Menlo, monospace;
+  font-variant-numeric: tabular-nums;
+}
+.trend-cur {
+  fill: var(--gold);
+  stroke: #0e0e10;
+  stroke-width: 2;
+}
+.trend-peak {
+  fill: none;
+  stroke: var(--gold);
+  stroke-width: 1.5;
+  opacity: 0.7;
 }
 
-/* performance card */
+/* desempenho recente — leitura principal, não card lateral */
+.recent-performance {
+  padding: 18px 20px 16px;
+  overflow: hidden;
+}
+.perf-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 15px;
+}
+.perf-head h2 {
+  margin: 5px 0 0;
+  font: 800 19px/1.1 "Plus Jakarta Sans";
+  letter-spacing: -0.01em;
+}
+.perf-kicker {
+  display: block;
+  color: var(--text-faint);
+  font: 700 10px/1 "Plus Jakarta Sans";
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+.perf-sample {
+  color: var(--text-dim);
+  font: 600 11px/1 "Plus Jakarta Sans";
+  white-space: nowrap;
+}
+.perf-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(230px, 0.42fr);
+  gap: 20px;
+  align-items: stretch;
+}
 .perf-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
 }
 .perf-cell {
-  background: var(--surface-2);
-  border: 1px solid var(--line);
-  border-radius: var(--r-sm);
-  padding: 11px 12px;
+  min-width: 0;
+  padding: 15px 12px;
+}
+.perf-cell:not(:first-child) {
+  border-left: 1px solid var(--line);
 }
 .perf-cell b {
   display: block;
-  font: 800 18px/1 "Plus Jakarta Sans";
+  font: 800 19px/1 "Plus Jakarta Sans";
 }
 .perf-cell span {
   display: block;
@@ -305,16 +607,15 @@
   text-transform: uppercase;
 }
 .perf-cell.skel {
-  height: 54px;
-  border-color: transparent;
-  background: linear-gradient(100deg, var(--surface-2) 40%, var(--surface-3) 50%, var(--surface-2) 60%);
-  background-size: 200% 100%;
-  animation: hist-shimmer 1.2s ease-in-out infinite;
+  min-height: 58px;
+  background: var(--surface-2);
 }
 .perf-dist {
   display: flex;
   gap: 6px;
-  margin-top: 16px;
+  min-width: 0;
+  padding-left: 20px;
+  border-left: 1px solid var(--line);
 }
 .pd-col {
   flex: 1;
@@ -325,7 +626,7 @@
   min-width: 0;
 }
 .pd-bar-wrap {
-  height: 58px;
+  height: 62px;
   width: 100%;
   display: flex;
   align-items: flex-end;
@@ -337,7 +638,6 @@
   width: 100%;
   border-radius: 3px 3px 0 0;
   min-height: 2px;
-  transition: height 0.4s cubic-bezier(0.22, 1, 0.36, 1);
 }
 .pd-x {
   font: 600 9px/1 "Plus Jakarta Sans";
@@ -511,6 +811,10 @@
   white-space: nowrap;
 }
 
+.hist-main {
+  min-width: 0;
+}
+
 .hist-filterbar {
   display: flex;
   flex-direction: column;
@@ -533,7 +837,6 @@
   color: var(--text-faint);
   font: 700 12px/1 "Plus Jakarta Sans";
   cursor: pointer;
-  transition: color 0.15s ease;
 }
 .hfb-clear:hover {
   color: var(--text);
@@ -567,7 +870,6 @@
   cursor: pointer;
   line-height: 0;
   opacity: 0.62;
-  transition: opacity 0.15s ease, border-color 0.15s ease;
 }
 .cf-icon:hover {
   opacity: 1;
@@ -581,47 +883,210 @@
   outline-offset: 1px;
 }
 
-/* Linha de partida — tom do badge de colocação + tint sutil (sem faixa lateral). */
+.hist-day + .hist-day {
+  margin-top: 18px;
+}
+.hist-day-head {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  min-height: 30px;
+  margin-bottom: 8px;
+  padding: 0 4px 7px;
+  border-bottom: 1px solid var(--line);
+}
+.hist-day-head time {
+  color: var(--text);
+  font: 800 12px/1 "Plus Jakarta Sans";
+  letter-spacing: 0.06em;
+}
+.hist-day-head span {
+  color: var(--text-faint);
+  font: 600 10px/1 "Plus Jakarta Sans";
+}
+.hist-day-head b {
+  font: 800 11px/1 "Plus Jakarta Sans";
+  white-space: nowrap;
+}
+.hist-day-list {
+  min-width: 0;
+}
+
+/* Match Lab — telemetria de Arena em palco preto, tipografia creme e sinal
+   elétrico funcional. Os tokens ficam locais ao perfil. */
+/* `--focus` (0..1) é escrito por useScrollFocusBand a partir da distância até
+   um ponto invisível no centro da viewport. A linha que está na posição de
+   leitura acende; as demais recuam. Sem JS o valor cai no 0 do fallback e a
+   borda fica exatamente como era antes. */
+/* Palco metálico claro, no mesmo princípio do season-card do rail: a chapa é
+   clara e TODA a tinta interna é escura. Os tokens abaixo são a rampa de tinta
+   — trocar o valor aqui vira a linha inteira, sem caçar seletor por seletor. */
 .hist-row {
-  border: 1px solid var(--line);
-  border-radius: var(--r-md);
-  margin-bottom: 10px;
+  --match-accent: #777d82;
+  --match-cream: #f3f1e8;
+  --match-dim: #a5aaa6;
+  --match-green: #0ae448;
+  /* Rampa da chapa — metal ESCURO, não papel. A chapa clara do season-card
+     funciona porque é um card só, destacado num rail escuro; repetida em até
+     cem linhas ela vira parede de luz. Aqui o material se mantém (gradiente
+     diagonal + gleam + irisado) na faixa escura da página. Empurre os três
+     stops juntos para clarear ou escurecer. */
+  --plate-hi: #23262c;
+  --plate-mid: #141619;
+  --plate-lo: #1c1f24;
+  --plate-gleam: 0.05;
+  /* Espessura do anel — o original era 1px. Ajuste só aqui: o anel inteiro
+     deriva deste valor. Sem borda no elemento, senão o anel é pintado por
+     dentro dela e a partir de ~2px passa a ler como moldura solta em vez da
+     aresta da linha. */
+  --hist-ring: 3px;
+  position: relative;
+  margin-bottom: 12px;
   overflow: hidden;
-  background: var(--surface);
+  border: 0;
+  border-radius: 14px;
+  background:
+    linear-gradient(
+      114deg,
+      transparent 34%,
+      rgba(255, 255, 255, var(--plate-gleam)) 48%,
+      transparent 62%
+    ),
+    linear-gradient(140deg, var(--plate-hi) 0%, var(--plate-mid) 52%, var(--plate-lo) 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  color: var(--match-cream);
+}
+/* Camada irisada: blobs borrados tingidos pela COLOCAÇÃO da partida, então
+   1º lugar irisa em ouro, top-metade em verde e derrota em vermelho — sem
+   inventar um segundo vocabulário de cor.
+   A deriva vem do scroll, não de um loop ocioso: `--focus` já mede a distância
+   até o ponto central, e o projeto proíbe `animation` dentro do escopo GSAP.
+   Assim o brilho responde ao leitor e custa zero parado. */
+.hist-row::after {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  inset: -22%;
+  pointer-events: none;
+  background:
+    radial-gradient(
+      27% 25% at 17% 19%,
+      color-mix(in srgb, var(--match-accent) 58%, transparent),
+      transparent 70%
+    ),
+    radial-gradient(
+      31% 29% at 83% 25%,
+      color-mix(in srgb, var(--match-accent) 78%, #07080a),
+      transparent 70%
+    ),
+    radial-gradient(
+      34% 32% at 72% 90%,
+      color-mix(in srgb, var(--match-accent) 44%, transparent),
+      transparent 72%
+    ),
+    radial-gradient(
+      25% 25% at 26% 87%,
+      color-mix(in srgb, var(--match-accent) 56%, #07080a),
+      transparent 72%
+    );
+  filter: blur(9px) saturate(1.12);
+  /* Piso quase zero: fora do foco a cor da colocação some, e o card volta a ser
+     só a chapa. O pico permanece onde estava. */
+  opacity: calc(0.04 + var(--focus, 0) * 0.88);
+  transform: translate3d(calc(var(--focus, 0) * 2.5%), calc(var(--focus, 0) * -1.5%), 0)
+    scale(calc(1.02 + var(--focus, 0) * 0.05));
+}
+/* Anel de 1px pintado como degradê: mascarar o miolo é o único jeito de ter
+   borda em gradiente que respeita o raio dos cantos. */
+/* Acima do conteúdo (z-index 2): é a aresta da linha, e a camada irisada
+   passaria por cima dele se os dois ficassem no mesmo nível. */
+.hist-row::before {
+  content: "";
+  position: absolute;
+  z-index: 2;
+  inset: 0;
+  padding: var(--hist-ring);
+  border-radius: inherit;
+  /* O anel também recua: a base fora do foco encosta na chapa, então a aresta
+     fica só insinuada. Antes ela era um cinza fixo (#34383a) que ignorava o
+     foco — a 3px isso mantinha toda linha da lista acesa. */
+  background: linear-gradient(
+    160deg,
+    color-mix(in srgb, var(--match-accent) calc(var(--focus, 0) * 76%), #1f2329),
+    color-mix(in srgb, var(--match-accent) calc(var(--focus, 0) * 22%), #1a1d22) 46%,
+    color-mix(in srgb, #000 calc(var(--focus, 0) * 26%), #17191e)
+  );
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+.hist-row > * {
+  position: relative;
+  z-index: 1;
 }
 .hist-row.first {
-  background: linear-gradient(rgba(217, 178, 95, 0.05), rgba(217, 178, 95, 0.05)), var(--surface);
+  --match-accent: #d9b25f;
 }
-.hist-row.top {
-  background: linear-gradient(rgba(70, 192, 132, 0.04), rgba(70, 192, 132, 0.04)), var(--surface);
+.hist-row.win {
+  --match-accent: #0ae448;
 }
-.hist-row.low {
-  background: linear-gradient(rgba(226, 87, 79, 0.035), rgba(226, 87, 79, 0.035)), var(--surface);
+.hist-row.loss {
+  --match-accent: #ff665d;
+}
+.hist-row.flat {
+  --match-accent: #a3a8ac;
+}
+
+.hist-row.first .hr-place .place {
+  background: var(--place-1);
+  color: #0c0c0e;
+}
+.hist-row.win .hr-place .place {
+  background: var(--green);
+  color: #0c0c0e;
+}
+.hist-row.loss .hr-place .place {
+  background: var(--place-low);
+  color: #fff;
+}
+.hist-row.flat .hr-place .place {
+  background: #8a9099;
+  color: #0c0c0e;
 }
 
 .hist-row-main {
   display: grid;
-  grid-template-columns: 60px minmax(160px, 1.4fr) 1fr 158px 120px 32px;
-  gap: 16px;
+  grid-template-columns:
+    56px minmax(142px, 1fr) minmax(182px, 0.88fr)
+    142px 104px 24px;
+  grid-template-areas:
+    "place champ combat cr when caret"
+    "kit kit kit kit kit kit";
+  gap: 14px 16px;
   align-items: center;
   width: 100%;
-  padding: 14px 18px;
+  padding: 14px 16px 12px;
   cursor: pointer;
   background: none;
   border: none;
-  color: var(--text);
+  color: inherit;
   text-align: left;
   font: inherit;
 }
 .hist-row-main:hover {
-  background: rgba(255, 255, 255, 0.025);
+  background: rgba(243, 241, 232, 0.025);
 }
 .hist-row-main:focus-visible {
-  outline: 2px solid var(--primary);
-  outline-offset: -2px;
+  outline: 2px solid var(--match-green);
+  outline-offset: -3px;
 }
 
 .hr-place {
+  grid-area: place;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -634,13 +1099,14 @@
   border-radius: 7px;
 }
 .hr-place .of {
-  font: 600 9px/1 "Plus Jakarta Sans";
+  font: 700 9px/1 ui-monospace, "SF Mono", Menlo, monospace;
   letter-spacing: 0.06em;
-  color: var(--text-faint);
+  color: #858b87;
   text-transform: uppercase;
 }
 
 .hr-champ {
+  grid-area: champ;
   display: flex;
   align-items: center;
   gap: 12px;
@@ -651,45 +1117,120 @@
 }
 .hr-champ-txt b {
   display: block;
-  font: 700 15px/1.2 "Plus Jakarta Sans";
+  color: var(--match-cream);
+  font: 750 16px/1.15 "Plus Jakarta Sans";
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .hr-champ-txt small {
   display: block;
-  font: 600 11px/1 "Plus Jakarta Sans";
-  color: var(--text-faint);
   margin-top: 5px;
-  letter-spacing: 0.03em;
+  color: #969c98;
+  font: 600 11px/1.2 "Plus Jakarta Sans";
 }
 
-.hr-mods {
-  display: flex;
-  gap: 6px;
-  justify-content: flex-end;
+.hr-combat {
+  grid-area: combat;
+  min-width: 0;
 }
-.hm-dot {
+.match-telemetry {
+  display: grid;
+  grid-template-columns: auto auto;
+  gap: 5px 11px;
+  align-items: baseline;
+  color: var(--match-dim);
+  font: 650 10px/1 ui-monospace, "SF Mono", Menlo, monospace;
+}
+.match-telemetry b {
+  grid-column: 1 / -1;
+  color: var(--match-cream);
+  font-size: 15px;
+}
+.match-telemetry span {
+  white-space: nowrap;
+}
+
+.hr-kit {
+  grid-area: kit;
+  min-width: 0;
+  padding-top: 11px;
+  border-top: 1px solid #252829;
+}
+.match-loadout {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+.match-loadout-group {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+}
+.match-loadout-label {
+  flex: 0 0 auto;
+  color: #8f9591;
+  font: 750 10px/1 "Plus Jakarta Sans";
+}
+.match-loadout-slots {
+  display: flex;
+  gap: 4px;
+  min-width: 0;
+}
+.match-loadout-icon {
+  position: relative;
+  display: inline-grid;
+  flex: 0 0 auto;
+  place-items: center;
+  width: 29px;
+  height: 29px;
+  overflow: hidden;
+  border: 1px solid #3a3e3f;
+  border-radius: 7px;
+  background: #161819;
+}
+.match-loadout-icon.is-augment[data-rarity="prismatic"] {
+  border-color: #a36df0;
+}
+.match-loadout-icon.is-augment[data-rarity="gold"] {
+  border-color: #c99b42;
+}
+.match-loadout-icon.is-augment[data-rarity="silver"] {
+  border-color: #8d9ca5;
+}
+.match-loadout-icon img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.match-loadout-fallback {
+  color: var(--match-dim);
+  font: 800 10px/1 ui-monospace, "SF Mono", Menlo, monospace;
+}
+.match-ingestion {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  width: 26px;
-  height: 26px;
-  border-radius: 50%;
-  background: var(--surface-2);
-  border: 1px solid var(--line);
+  min-height: 24px;
+  color: #919793;
+  font: 600 10px/1.25 "Plus Jakarta Sans";
 }
-.hm-dot .mi {
-  font-size: 14px;
-}
-.hm-dot.up {
-  color: var(--green);
-}
-.hm-dot.down {
-  color: var(--red);
+.match-mock-flag {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  min-height: 22px;
+  padding: 0 8px;
+  border: 1px solid rgba(10, 228, 72, 0.32);
+  border-radius: 999px;
+  color: #9fffb8;
+  font: 750 9px/1 "Plus Jakarta Sans";
 }
 
 .hr-cr {
+  grid-area: cr;
   text-align: right;
 }
 .hr-cr b {
@@ -698,125 +1239,314 @@
 }
 .hr-cr small {
   display: block;
-  font: 600 11px/1 "Plus Jakarta Sans";
-  color: var(--text-faint);
-  margin-top: 6px;
+  margin-top: 5px;
+  color: #8f9591;
+  font: 650 10px/1 ui-monospace, "SF Mono", Menlo, monospace;
 }
 
 .hr-when {
+  grid-area: when;
   text-align: right;
 }
 .hr-when b {
   display: block;
-  font: 600 12px/1 "Plus Jakarta Sans";
-  color: var(--text-dim);
+  color: #c0c4c0;
+  font: 650 11px/1 "Plus Jakarta Sans";
 }
 .hr-when small {
   display: block;
-  font: 500 11px/1 "Plus Jakarta Sans";
-  color: var(--text-faint);
   margin-top: 6px;
+  color: #858b87;
+  font: 600 10px/1 ui-monospace, "SF Mono", Menlo, monospace;
 }
 
 .hr-caret {
+  grid-area: caret;
   display: flex;
   justify-content: center;
-  color: var(--text-faint);
+  color: var(--match-accent);
   font-size: 18px;
-  transition: transform 0.2s ease;
 }
 .hist-row[data-open="true"] .hr-caret {
   transform: rotate(180deg);
 }
 
-/* Detalhe expandido — animação por grid-rows (0fr → 1fr). */
+/* CSS fornece estados finais utilizáveis; GSAP mede e interpola entre eles. */
 .hist-detail {
-  display: grid;
-  grid-template-rows: 0fr;
-  transition: grid-template-rows 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+  position: relative;
+  height: 0;
+  overflow: hidden;
+  visibility: hidden;
+  isolation: isolate;
+  background: linear-gradient(
+    140deg,
+    #080909 0%,
+    color-mix(in srgb, var(--match-accent) 7%, #111313) 52%,
+    #080909 100%
+  );
+}
+.hist-detail::before {
+  content: "";
+  position: absolute;
+  inset: -22%;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(
+      27% 25% at 17% 19%,
+      color-mix(in srgb, var(--match-accent) 25%, transparent),
+      transparent 70%
+    ),
+    radial-gradient(
+      31% 29% at 83% 25%,
+      color-mix(in srgb, var(--match-accent) 19%, transparent),
+      transparent 70%
+    ),
+    radial-gradient(
+      34% 32% at 72% 90%,
+      color-mix(in srgb, var(--match-accent) 22%, transparent),
+      transparent 72%
+    ),
+    radial-gradient(
+      25% 25% at 26% 87%,
+      color-mix(in srgb, var(--match-accent) 16%, transparent),
+      transparent 72%
+    );
+  filter: blur(9px) saturate(1.12);
+  animation: hist-detail-metal-shift 15s ease-in-out infinite alternate;
+}
+.hist-detail::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    114deg,
+    transparent 34%,
+    rgba(255, 255, 255, 0.18) 48%,
+    transparent 62%
+  );
+  mix-blend-mode: soft-light;
 }
 .hist-row[data-open="true"] .hist-detail {
-  grid-template-rows: 1fr;
+  height: auto;
+  visibility: visible;
 }
 .hist-detail-inner {
-  overflow: hidden;
+  position: relative;
+  z-index: 1;
   min-height: 0;
-  padding: 0 18px;
+  padding: 24px 22px 18px;
+  border-top: 1px solid #2a2d2d;
 }
-.hd-label {
-  font: 700 11px/1 "Plus Jakarta Sans";
-  letter-spacing: 0.08em;
-  color: var(--text-faint);
-  text-transform: uppercase;
-  margin: 4px 0 12px;
+@keyframes hist-detail-metal-shift {
+  from {
+    transform: translate3d(-2%, -1%, 0) scale(1.02) rotate(-1deg);
+  }
+  to {
+    transform: translate3d(2%, 2%, 0) scale(1.07) rotate(1.5deg);
+  }
 }
-.hist-detail-inner .mod-foot {
-  margin-bottom: 16px;
+@media (prefers-reduced-motion: reduce) {
+  .hist-detail::before {
+    animation: none;
+  }
 }
 
-.mod-grid {
+.match-detail-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-height: 110px;
+  color: var(--match-dim);
+  font: 650 13px/1.35 "Plus Jakarta Sans";
+}
+.match-detail-state.is-error {
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  color: #ffaaa5;
+}
+.match-detail-state.is-error > .mi {
+  font-size: 24px;
+}
+.match-detail-state.is-error div {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 0 28px;
-  background: rgba(0, 0, 0, 0.35);
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  padding: 8px 20px;
+  gap: 4px;
+  min-width: min(100%, 260px);
 }
-.mod-row {
+.match-detail-state.is-error span {
+  color: #bbb1ae;
+  font-size: 11px;
+}
+
+.match-lab {
+  min-width: 0;
+}
+.match-lab-head {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: space-between;
-  gap: 14px;
-  padding: 11px 0;
-  border-bottom: 1px solid var(--line);
+  gap: 22px;
+  margin-bottom: 22px;
 }
-.mod-row:nth-last-child(1),
-.mod-row:nth-last-child(2) {
-  border-bottom: none;
+.match-lab-kicker {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--match-green);
+  font: 750 10px/1 "Plus Jakarta Sans";
 }
-.mod-row .ml {
+.match-lab-head h3 {
+  max-width: 12ch;
+  margin: 0;
+  color: var(--match-cream);
+  font: 400 clamp(30px, 4vw, 46px)/0.92 "Anton", sans-serif;
+  letter-spacing: -0.015em;
+  text-wrap: balance;
+}
+.match-lab-meta {
   display: flex;
   align-items: center;
-  gap: 9px;
-  font: 600 13px/1.3 "Plus Jakarta Sans";
-  color: var(--text-dim);
+  justify-content: flex-end;
+  gap: 8px 14px;
+  flex-wrap: wrap;
+  color: #a2a8a4;
+  font: 650 10px/1 ui-monospace, "SF Mono", Menlo, monospace;
 }
-.mod-row .ml .ic {
-  width: 20px;
-  text-align: center;
-  color: var(--text-faint);
+
+.match-team-list {
+  border-top: 1px solid #333637;
 }
-.mod-row .mv {
-  font: 800 14px/1 "Plus Jakarta Sans";
+.match-team {
+  border-bottom: 1px solid #303333;
+}
+.match-team.is-profile-team {
+  background: rgba(10, 228, 72, 0.035);
+}
+.match-team-head {
+  display: grid;
+  grid-template-columns: minmax(130px, 1fr) auto auto;
+  gap: 16px;
+  align-items: center;
+  min-height: 56px;
+  padding: 10px 12px;
+  background: #111313;
+}
+.match-team.is-profile-team .match-team-head {
+  background: rgba(10, 228, 72, 0.08);
+}
+.match-team-place {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+.match-team-place b {
+  color: var(--match-accent);
+  font: 800 18px/1 ui-monospace, "SF Mono", Menlo, monospace;
+}
+.match-team-place small {
+  color: #a7aca8;
+  font: 650 11px/1 "Plus Jakarta Sans";
+}
+.match-team-total,
+.match-team-damage {
+  color: #c9cdc9;
+  font-size: 11px;
+}
+
+.match-player {
+  display: grid;
+  grid-template-columns:
+    minmax(190px, 1.1fr) minmax(165px, 0.82fr)
+    minmax(100px, 0.5fr) minmax(300px, 1.6fr);
+  gap: 16px;
+  align-items: center;
+  min-width: 0;
+  padding: 12px;
+  border-top: 1px solid #222525;
+}
+.match-player.is-profile {
+  background: rgba(10, 228, 72, 0.045);
+}
+.match-player-id {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.match-player-id > span {
+  display: block;
+  min-width: 0;
+}
+.match-player-id b {
+  display: block;
+  overflow: hidden;
+  color: var(--match-cream);
+  font: 750 12px/1.2 "Plus Jakarta Sans";
+  text-overflow: ellipsis;
   white-space: nowrap;
+}
+.match-player-id small {
+  display: block;
+  margin-top: 4px;
+  overflow: hidden;
+  color: #969c98;
+  font: 600 9px/1.15 "Plus Jakarta Sans";
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.match-player-damage {
+  display: grid;
+  gap: 3px;
+}
+.match-player-damage b {
+  color: var(--match-cream);
+  font: 800 14px/1 ui-monospace, "SF Mono", Menlo, monospace;
+}
+.match-player-damage span,
+.match-player-damage small {
+  color: #919793;
+  font: 600 9px/1.1 "Plus Jakarta Sans";
+}
+.match-player .match-loadout {
+  display: grid;
+  gap: 6px;
+}
+.match-player .match-loadout-icon {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+}
+.match-player .match-mock-flag {
+  display: none;
+}
+
+.hist-detail-inner .mod-foot {
+  margin-top: 6px;
+  margin-bottom: 0;
+  padding-top: 14px;
+  border-top: 1px solid #242727;
 }
 .mod-foot {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
-  margin-top: 14px;
+  justify-content: space-between;
   gap: 14px;
   flex-wrap: wrap;
 }
+.mod-foot > span {
+  color: #898f8b;
+  font: 600 10px/1.4 "Plus Jakarta Sans";
+}
 
-/* Skeleton de carregamento (shimmer) */
+/* Skeleton de carregamento — o pulso é aplicado pelo loop GSAP da rota. */
 .hist-skel-row {
   height: 70px;
   border-radius: var(--r-md);
   border: 1px solid var(--line);
   margin-bottom: 10px;
-  background: linear-gradient(100deg, var(--surface) 40%, var(--surface-2) 50%, var(--surface) 60%);
-  background-size: 200% 100%;
-  animation: hist-shimmer 1.2s ease-in-out infinite;
-}
-@keyframes hist-shimmer {
-  from {
-    background-position: 200% 0;
-  }
-  to {
-    background-position: -200% 0;
-  }
+  background: var(--surface-2);
 }
 
 /* Estado vazio */
@@ -847,35 +1577,63 @@
 @media (max-width: 1080px) {
   .pf-body {
     grid-template-columns: 1fr;
+    grid-template-areas:
+      "main"
+      "side";
   }
   /* histórico primeiro (estrela), cards laterais depois */
-  .pf-main-col {
-    order: 1;
-  }
   .pf-side {
-    order: 2;
     display: grid;
     grid-template-columns: repeat(2, 1fr);
     gap: 16px;
     align-items: start;
   }
-  /* trend e desempenho ocupam a linha inteira */
-  .pf-side > .card:nth-child(1),
-  .pf-side > .card:nth-child(2) {
+  /* a evolução de PDL abre a grade auxiliar */
+  .pf-side > .card:first-child {
     grid-column: 1 / -1;
   }
 }
 
 @media (max-width: 900px) {
-  .pf-banner {
-    grid-template-columns: 1fr;
-    gap: 20px;
+  .pfb-top {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 18px;
+  }
+  .pfb-id {
+    width: 100%;
   }
   .pfb-cr {
+    align-items: flex-start;
+    text-align: left;
+  }
+  .pfb-art {
+    object-position: 68% 20%;
+  }
+  .perf-layout {
+    grid-template-columns: 1fr;
+  }
+  .perf-dist {
+    padding: 14px 0 0;
     border-left: none;
     border-top: 1px solid var(--line);
-    padding-left: 0;
-    padding-top: 20px;
+  }
+  .hist-row-main {
+    grid-template-columns: 56px minmax(140px, 1fr) minmax(170px, 0.9fr) 138px 24px;
+    grid-template-areas:
+      "place champ combat cr caret"
+      "kit kit kit kit kit";
+  }
+  .hr-when {
+    display: none;
+  }
+  .match-player {
+    grid-template-columns: minmax(190px, 1fr) minmax(160px, 0.8fr) minmax(100px, 0.5fr);
+  }
+  .match-player .match-loadout {
+    grid-column: 1 / -1;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    padding-left: 54px;
   }
 }
 
@@ -883,29 +1641,174 @@
   .pf-side {
     grid-template-columns: 1fr;
   }
-  .pf-side > .card:nth-child(1),
-  .pf-side > .card:nth-child(2) {
+  .pf-side > .card:first-child {
     grid-column: auto;
   }
   .hist-row-main {
-    grid-template-columns: 52px minmax(0, 1fr) 130px 28px;
+    grid-template-columns: 52px minmax(0, 1fr) 120px 24px;
+    grid-template-areas:
+      "place champ cr caret"
+      "combat combat combat combat"
+      "kit kit kit kit";
     gap: 12px;
   }
-  .hr-mods,
-  .hr-when {
+  .hr-combat {
+    padding-top: 10px;
+    border-top: 1px solid #252829;
+  }
+  .match-telemetry {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 12px;
+  }
+  .match-telemetry b {
+    grid-column: auto;
+  }
+  .match-loadout {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .match-loadout-group {
+    width: 100%;
+  }
+  .match-loadout-slots {
+    flex-wrap: wrap;
+  }
+  .match-lab-head {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .match-lab-meta {
+    justify-content: flex-start;
+  }
+  .match-team-head {
+    grid-template-columns: minmax(120px, 1fr) auto;
+  }
+  .match-team-damage {
+    grid-column: 1 / -1;
+  }
+  .match-player {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .match-player .match-telemetry {
+    justify-content: flex-end;
+  }
+  .match-player-damage {
+    grid-column: 1 / -1;
+    grid-template-columns: auto 1fr auto;
+    align-items: baseline;
+  }
+  .match-player .match-loadout {
+    grid-column: 1 / -1;
+    grid-template-columns: 1fr;
+    padding-left: 0;
+  }
+  .hist-detail-inner {
+    padding-inline: 16px;
+  }
+}
+
+@media (max-width: 600px) {
+  .profile-dossier .breadcrumb {
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .profile-dossier .breadcrumb .fresh-badge {
+    margin-left: 0;
+  }
+  .pfb-id {
+    align-items: flex-start;
+  }
+  .pfb-meta {
+    display: flex;
+    max-width: 100%;
+  }
+  .pf-banner .pavatar {
+    width: 68px !important;
+    height: 68px !important;
+  }
+  .pf-form {
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .perf-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .perf-cell:nth-child(3) {
+    border-left: none;
+    border-top: 1px solid var(--line);
+  }
+  .perf-cell:nth-child(4) {
+    border-top: 1px solid var(--line);
+  }
+  .hfb-top {
+    flex-wrap: nowrap;
+  }
+  .hfb-top .chips {
+    min-width: 0;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .hfb-top .chips::-webkit-scrollbar {
     display: none;
+  }
+  .hfb-clear {
+    flex-shrink: 0;
   }
 }
 
 @media (max-width: 480px) {
-  .pfb-cr-num {
-    font-size: 40px;
+  .profile-dossier .fresh-badge__label {
+    max-width: 86px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
-  .pfb-kvs {
-    gap: 12px 18px;
+  .pfb-inner {
+    padding: 18px 18px;
+  }
+  .pfb-name {
+    font-size: 22px;
+  }
+  .pfb-name-cube {
+    padding-block: 6px;
+    padding-right: 8px;
+  }
+  .pfb-name-cube__plate {
+    padding: 9px 11px;
+  }
+  .pfb-name-cube__marker {
+    width: 8px;
+    height: 8px;
+  }
+  /* Estreito: o canto inferior direito não sobra — a ação volta ao fluxo,
+     abaixo do strip de stats, ocupando a largura toda. */
+  .pfb-actions {
+    position: static;
+    width: 100%;
+  }
+  .pfb-share {
+    width: 100%;
+    justify-content: center;
+  }
+  .pfb-cr-num {
+    font-size: 42px;
+  }
+  /* stats empilham: divisórias verticais viram respiro simples */
+  .pfb-kv {
+    padding: 0 14px;
+  }
+  .pfb-kv:not(:last-child) {
+    border-right-color: rgba(255, 255, 255, 0.08);
   }
   .hist-row-main {
     grid-template-columns: 46px minmax(0, 1fr) auto 22px;
+    grid-template-areas:
+      "place champ cr caret"
+      "combat combat combat combat"
+      "kit kit kit kit";
     gap: 10px;
     padding: 12px;
   }
@@ -917,19 +1820,55 @@
   .hr-cr b {
     font-size: 15px;
   }
+  .hr-champ .ch-icon {
+    width: 40px;
+    height: 40px;
+  }
+  .hr-champ-txt b {
+    font-size: 14px;
+  }
+  .match-loadout-label {
+    min-width: 52px;
+  }
+  .match-loadout-icon {
+    width: 27px;
+    height: 27px;
+  }
+  .match-player {
+    grid-template-columns: 1fr;
+  }
+  .match-player .match-telemetry {
+    justify-content: flex-start;
+  }
+  .match-player-damage {
+    grid-column: auto;
+  }
+  .match-team-head {
+    grid-template-columns: 1fr;
+    gap: 7px;
+    padding-block: 13px;
+  }
+  .match-team-total,
+  .match-team-damage {
+    grid-column: auto;
+  }
+  .mod-foot {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .mod-foot .btn {
+    width: 100%;
+    justify-content: center;
+  }
   .pd-bar-wrap {
     height: 50px;
   }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .hist-detail,
-  .hr-caret,
-  .pd-bar {
-    transition: none;
+  .hist-day-head {
+    grid-template-columns: auto 1fr;
   }
-  .hist-skel-row,
-  .perf-cell.skel {
-    animation: none;
+  .hist-day-head b {
+    grid-column: 2;
+    grid-row: 2;
+    justify-self: start;
   }
 }

@@ -1,0 +1,22 @@
+# Amplify Hosting build spec (repo frontarena = esta pasta como raiz).
+# VITE_API_URL de produção vem do .env.production commitado.
+version: 1
+frontend:
+  phases:
+    preBuild:
+      commands:
+        - npm ci
+    build:
+      commands:
+        # Congela as respostas globais quentes em src/generated/*.json para a
+        # primeira visita pintar sem esperar a API. Nunca derruba o build: se a
+        # API estiver fora, mantém os placeholders e o site sobe sem semente.
+        - npm run snapshot
+        - npm run build
+  artifacts:
+    baseDirectory: dist
+    files:
+      - "**/*"
+  cache:
+    paths:
+      - node_modules/**/*

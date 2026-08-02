@@ -10,6 +10,7 @@ the matchId is unknown.
 
 from __future__ import annotations
 
+import asyncio
 from collections import defaultdict
 from typing import Annotated, Any
 
@@ -18,7 +19,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from arena.api.routers import _common as c
-from arena.schemas import MatchDetail, MatchPlayer, SubTeam
+from arena.schemas import MatchAugmentEntry, MatchDetail, MatchLoadoutEntry, MatchPlayer, SubTeam
+from arena.services.build_ref_service import get_build_ref_service
 
 router = APIRouter(tags=["match"])
 
@@ -42,6 +44,13 @@ async def get_match(
             detail=f"Partida '{match_id}' não encontrada.",
         )
 
+    build_ref = get_build_ref_service()
+    item_map, augment_catalog = await asyncio.gather(
+        build_ref._item_map(),
+        build_ref.augment_catalog(),
+    )
+    augment_map = {e.id: e for e in augment_catalog}
+
     fmt = c.FORMAT_BY_QUEUE.get(match.queue_id, "3v3")
     queue_label = "Arena 3v3" if fmt == "3v3" else "Arena 2v2"
 
@@ -62,8 +71,15 @@ async def get_match(
 
     subteams: list[SubTeam] = []
     for team_id in sorted(by_team, key=lambda t: placement_by_team.get(t, 999)):
+        team_rows = by_team[team_id]
+        # Subteam-scoped total, for kill_participation — NOT Riot's own
+        # challenges.killParticipation, which is computed on the legacy 2-bucket
+        # teamId grouping (~9 players/side in a 3v3) and is wrong for Arena's
+        # real 2-3 person subteam (verified live: Riot reported 31.25% for a
+        # player whose actual subteam-scoped participation was 100%).
+        team_kills = sum((part.kills or 0) for part, _ in team_rows)
         players: list[MatchPlayer] = []
-        for part, player in by_team[team_id]:
+        for part, player in team_rows:
             riot_id = c.compose_riot_id(player.summoner_name, player.tag_line)
             name, handle = c.split_riot_id(riot_id)
             players.append(
@@ -82,6 +98,24 @@ async def get_match(
                     cr_delta=round(part.cr_delta),
                     modifiers=c.map_modifiers(part.modifiers or {}),
                     integrity=None,
+                    items=_resolve_items(part.items, item_map),
+                    augments=_resolve_augments(part.augments, augment_map),
+                    level=part.champion_level,
+                    kills=part.kills,
+                    deaths=part.deaths,
+                    assists=part.assists,
+                    damage_to_champions=part.damage_to_champions,
+                    gold_earned=part.gold_earned,
+                    kill_participation=_kill_participation(part, team_kills=team_kills),
+                    damage_per_minute=_damage_per_minute(
+                        part, duration_seconds=match.duration_seconds
+                    ),
+                    damage_taken=part.damage_taken,
+                    total_heal=part.total_heal,
+                    damage_self_mitigated=part.damage_self_mitigated,
+                    largest_multi_kill=part.largest_multi_kill,
+                    killing_sprees=part.killing_sprees,
+                    time_spent_dead=part.time_spent_dead,
                 )
             )
         subteams.append(SubTeam(placement=placement_by_team.get(team_id, 0), players=players))
@@ -96,6 +130,84 @@ async def get_match(
         processed_at=match.processed_at.isoformat() if match.processed_at else "",
         subteams=subteams,
     )
+
+
+def _resolve_items(
+    ids: list[int] | None, item_map: dict[int, tuple[str, str | None, int, int, str]]
+) -> list[MatchLoadoutEntry]:
+    """Captured item ids -> display entries. Unmapped ids (unknown to CDragon,
+    e.g. a retired item on an old match) are dropped, not shown as a bare id."""
+    if not ids:
+        return []
+    out = []
+    for item_id in ids:
+        row = item_map.get(item_id)
+        if row is None:
+            continue
+        name, icon_url, _is_boots, gold, description = row
+        out.append(
+            MatchLoadoutEntry(
+                id=item_id,
+                name=name,
+                icon_url=icon_url,
+                gold=gold or None,
+                description=description or None,
+            )
+        )
+    return out
+
+
+def _resolve_augments(ids: list[int] | None, augment_map: dict[int, Any]) -> list[MatchAugmentEntry]:
+    """Captured augment ids -> display entries, in pick order (including a
+    genuine repeat from an augment-granting effect — that's what was picked)."""
+    if not ids:
+        return []
+    out = []
+    for aug_id in ids:
+        entry = augment_map.get(aug_id)
+        if entry is None:
+            continue
+        out.append(
+            MatchAugmentEntry(
+                id=aug_id,
+                name=entry.name,
+                icon_url=entry.icon_url,
+                rarity=entry.rarity,
+                description=entry.description or None,
+            )
+        )
+    return out
+
+
+def _kill_participation(part: Any, *, team_kills: int) -> int | None:
+    """0..100 — (kills + assists) over the player's own SUBTEAM's total kills.
+
+    ``None`` when the participant predates combat-telemetry capture (kills is
+    NULL) rather than fabricating a 0. Subteam-scoped by design — see the
+    module-level note on why Riot's own ``challenges.killParticipation`` (legacy
+    2-bucket ``teamId`` grouping) is wrong for Arena and must not be used.
+    Rounded to a whole percentage server-side — the frontend's ``nf()`` helper
+    is a generic thousands-separator formatter (``Intl.NumberFormat`` defaults
+    to up to 3 fraction digits), not a rate formatter, so an unrounded float
+    here renders as "68,966% part." instead of "69% part.".
+    """
+    if part.kills is None or part.assists is None:
+        return None
+    if team_kills <= 0:
+        return 0
+    return round(float(part.kills + part.assists) / team_kills * 100)
+
+
+def _damage_per_minute(part: Any, *, duration_seconds: int | None) -> int | None:
+    """Damage to champions over the MATCH's total duration (not the
+    participant's own ``timePlayed``) — verified against Riot's own
+    ``challenges.damagePerMinute`` on a live payload, matches exactly (before
+    rounding). Rounded to a whole number for the same reason as
+    :func:`_kill_participation` — an unrounded float renders as
+    "2.026,469 dano/min" instead of "2.026 dano/min"."""
+    if part.damage_to_champions is None or not duration_seconds:
+        return None
+    return round(float(part.damage_to_champions) / (duration_seconds / 60))
 
 
 async def _find_match(session: AsyncSession, match_id: str) -> Any:

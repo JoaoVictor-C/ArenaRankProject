@@ -1,5 +1,5 @@
 import "./Perfil.css";
-import { useState, useMemo, useCallback, useEffect } from "react";
+import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { useParams, Link } from "react-router-dom";
 import {
   PlayerAvatar,
@@ -9,10 +9,26 @@ import {
   Delta,
   Mi,
   StateBlock,
+  PlayerTagChip,
+  FreshnessBadge,
+  ProfileSurfaceNav,
+  BuildHoverIcon,
+  type BuildHoverData,
 } from "../components";
+import { avatarColorVars } from "../components/Avatar";
 import { useApi } from "../hooks/useApi";
-import { api } from "../lib/api";
-import { nf, signed, pct, deltaClass, tierLabel, timeAgo, fmtCountdown } from "../lib/format";
+import { nf, signed, pct, deltaClass, timeAgo, fmtCountdown } from "../lib/format";
+import {
+  STATE_SPINNER_LOOP,
+  useDrawCharts,
+  useGsapEntrance,
+  useGsapInteractions,
+  useGsapLoop,
+  useGsapMatchDetail,
+  type EntranceStep,
+  type InteractionMotion,
+  type LoopMotion,
+} from "../lib/motion";
 import type {
   PlayerProfile,
   FormDot,
@@ -23,16 +39,100 @@ import type {
   H2HRow,
   SeasonArchive,
 } from "../lib/types";
+import {
+  loadProfileMatchDetail,
+  loadProfileMatchSummary,
+  type ProfileAugmentEntry,
+  type ProfileLoadoutEntry,
+  type ProfileMatchDetail,
+  type ProfileMatchPlayer,
+  type ProfileMatchSummary,
+} from "./profileMatchDetail";
+import { resolveChartDomain } from "./championChartGeometry";
+import { useGsapNameMarkers, useGsapProfilePdl } from "./profileIdentityMotion";
+import { ProfileRatingSignals } from "./profileRatingSignals";
+import { useScrollFocusBand } from "./scrollFocusBand";
+import {
+  isTelemetryLabProfile,
+  loadPlayerMatchesForRoute,
+  loadProfileForRoute,
+  loadTelemetryLabMatch,
+  loadTelemetryLabSummary,
+} from "./profileTelemetryLab";
+
+const PROFILE_ENTRANCE_STEPS: EntranceStep[] = [
+  {
+    selector: ".pf-banner",
+    from: { opacity: 0, clipPath: "inset(0% 0% 100% 0%)" },
+    duration: 0.7,
+  },
+  {
+    selector: ".pfb-name-cube",
+    from: { scaleX: 0, transformOrigin: "0% 50%" },
+    duration: 1,
+    ease: "power3.out",
+    position: 0.2,
+  },
+  {
+    selector: ".pf-form",
+    from: { opacity: 0, y: 10 },
+    position: 0.18,
+  },
+  {
+    selector: ".pf-main-col",
+    from: { opacity: 0, y: 16 },
+    position: 0.24,
+  },
+  {
+    selector: ".pf-side > .card",
+    from: { opacity: 0, y: 12 },
+    stagger: 0.05,
+    position: 0.3,
+  },
+];
+
+const PROFILE_INTERACTIONS: InteractionMotion[] = [
+  {
+    trigger: ".pfb-share",
+    target: ".mi",
+    to: { rotation: -8, scale: 1.08 },
+  },
+  {
+    trigger: ".hist-row-main",
+    to: { x: 2 },
+  },
+  {
+    trigger: ".cf-icon",
+    to: { scale: 1.06 },
+  },
+];
+
+/* Os marcadores do nick NÃO entram aqui: o percurso deles depende da largura
+   medida do nome, então vivem em useGsapNameMarkers. */
+const PROFILE_LOOPS: LoopMotion[] = [
+  STATE_SPINNER_LOOP,
+  {
+    selector: ".hist-skel-row, .perf-cell.skel",
+    to: { opacity: 0.45 },
+    duration: 0.8,
+    repeat: -1,
+    yoyo: true,
+    ease: "power1.inOut",
+  },
+];
 
 /* ============================================================
    Helpers internos
    ============================================================ */
+/** Cor de fundo do dot de forma recente — MESMO padrão dos badges/histograma
+    (tokens --place-*): 1º ouro · 2–4 verde · 5+ vermelho. */
 function placeColor(p: number): string {
-  if (p === 1) return "var(--primary-bright)";
-  if (p <= 4) return "var(--green)";
-  return "var(--red)";
+  if (p === 1) return "var(--place-1)";
+  if (p <= 4) return "var(--place-3)";
+  return "var(--place-low)";
 }
 function placeFg(p: number): string {
+  // Ouro/verde pedem tinta escura; o vermelho fundo (--place-low) pede branca.
   return p <= 4 ? "#0c0c0e" : "#fff";
 }
 /** Cor da barra do histograma por colocação (mesma escala dos badges). */
@@ -52,124 +152,411 @@ function fmtShortDate(iso: string): string {
   );
 }
 
-/* ============================================================
-   Gráfico mini de evolução do PDL (SVG com faixa gradiente)
-   ============================================================ */
-function CrTrend({ history }: { history: CrHistoryPoint[] }) {
-  if (history.length < 2) return null;
-  const width = 300;
-  const height = 92;
-  const pad = 8;
-  const vals = history.map((p) => p.cr);
-  const minV = Math.min(...vals);
-  const maxV = Math.max(...vals);
-  const span = maxV - minV || 1;
-  const step = (width - pad * 2) / (history.length - 1);
-  const X = (i: number) => pad + i * step;
-  const Y = (v: number) => height - pad - ((v - minV) / span) * (height - pad * 2);
+type MatchDay = {
+  dateKey: string;
+  label: string;
+  matches: PlayerMatchRich[];
+  crDelta: number;
+};
 
-  const line = history
-    .map((pt, i) => (i === 0 ? "M" : "L") + X(i).toFixed(1) + " " + Y(pt.cr).toFixed(1))
-    .join(" ");
-  const lastIdx = history.length - 1;
-  const areaPath =
-    line +
-    ` L${X(lastIdx).toFixed(1)} ${height.toFixed(1)} L${pad.toFixed(1)} ${height.toFixed(1)} Z`;
+function localDateKey(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function matchDayLabel(date: Date): string {
+  const day = String(date.getDate()).padStart(2, "0");
+  const month = date
+    .toLocaleDateString("pt-BR", { month: "short" })
+    .replace(".", "")
+    .toUpperCase();
+  return `${day} ${month}`;
+}
+
+function groupMatchesByDay(matches: PlayerMatchRich[]): MatchDay[] {
+  const days: MatchDay[] = [];
+  const indexByDate = new Map<string, number>();
+
+  matches.forEach((match) => {
+    const date = new Date(match.ts);
+    const dateKey = localDateKey(date);
+    const existingIndex = indexByDate.get(dateKey);
+
+    if (existingIndex === undefined) {
+      indexByDate.set(dateKey, days.length);
+      days.push({
+        dateKey,
+        label: matchDayLabel(date),
+        matches: [match],
+        crDelta: match.crDelta,
+      });
+      return;
+    }
+
+    days[existingIndex].matches.push(match);
+    days[existingIndex].crDelta += match.crDelta;
+  });
+
+  return days;
+}
+
+/* ============================================================
+   Gráfico de evolução do PDL — SVG com eixos, escala e marcadores
+   ============================================================ */
+
+/** "22/07" — data curta para os ticks do eixo X. */
+function fmtDay(iso: string): string {
+  return new Date(iso).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
+}
+
+/** Largura real do container (ResizeObserver) — desenhamos o SVG em px 1:1
+    (viewBox == pixels), sem `preserveAspectRatio="none"`, p/ não distorcer
+    traço, marcador nem inclinação em nenhuma largura. */
+function useMeasuredWidth<T extends HTMLElement>() {
+  const ref = useRef<T | null>(null);
+  const [width, setWidth] = useState(0);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const ro = new ResizeObserver((entries) => {
+      setWidth(entries[0]?.contentRect.width ?? 0);
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  return [ref, width] as const;
+}
+
+function CrTrend({ history }: { history: CrHistoryPoint[] }) {
+  const [wrapRef, width] = useMeasuredWidth<HTMLDivElement>();
+  const H = 132;
+  const padL = 38;
+  const padR = 16;
+  const padT = 14;
+  const padB = 20;
+
+  const chart = useMemo(() => {
+    if (width <= 0 || history.length < 2) return null;
+
+    const vals = history.map((p) => p.cr);
+    // Ancorado na média em vez de min-máx: uma temporada estável oscilando 15
+    // PDL não deve desenhar o mesmo despenhadeiro de uma que oscilou 400.
+    //
+    // ATENÇÃO: minV/maxV são o DOMÍNIO DO EIXO, não valores da série — o teto
+    // quase nunca coincide com um ponto real. Quem precisa do pico de verdade
+    // (o marcador e o rótulo acessível) usa peakV.
+    const { min: minV, max: maxV } = resolveChartDomain(vals);
+    const peakV = Math.max(...vals);
+    const span = maxV - minV || 1;
+    const times = history.map((p) => new Date(p.ts).getTime());
+    const tMin = times[0];
+    const tMax = times[times.length - 1];
+    const tSpan = tMax - tMin || 1;
+    const useTime = tMax > tMin; // série com timestamps válidos → espaça por tempo real
+
+    const plotW = width - padL - padR;
+    const plotH = H - padT - padB;
+    const baseY = H - padB;
+    const n = history.length;
+    const xAt = (i: number) =>
+      useTime ? padL + ((times[i] - tMin) / tSpan) * plotW : padL + (plotW * i) / (n - 1);
+    const Y = (v: number) => padT + (1 - (v - minV) / span) * plotH;
+
+    const pts = history.map((p, i) => ({ x: xAt(i), y: Y(p.cr) }));
+    const line = pts.map((p, i) => (i === 0 ? "M" : "L") + p.x.toFixed(1) + " " + p.y.toFixed(1)).join(" ");
+    const area = `${line} L${pts[n - 1].x.toFixed(1)} ${baseY} L${pts[0].x.toFixed(1)} ${baseY} Z`;
+
+    const yTicks = maxV === minV ? [maxV] : [maxV, (minV + maxV) / 2, minV];
+
+    const xTicks: { label: string; anchor: "start" | "middle" | "end"; x: number }[] = [
+      { label: fmtDay(history[0].ts), anchor: "start", x: padL },
+    ];
+    if (n >= 3 && plotW > 150) {
+      const midT = tMin + tSpan / 2;
+      let nearest = history[0];
+      let best = Infinity;
+      for (let i = 0; i < n; i++) {
+        const d = Math.abs(times[i] - midT);
+        if (d < best) { best = d; nearest = history[i]; }
+      }
+      xTicks.push({ label: fmtDay(nearest.ts), anchor: "middle", x: padL + plotW / 2 });
+    }
+    xTicks.push({ label: fmtDay(history[n - 1].ts), anchor: "end", x: width - padR });
+
+    const lastIdx = n - 1;
+    const peakIdx = vals.indexOf(peakV);
+    return {
+      maxV: peakV, line, area, yTicks, xTicks, Y,
+      cur: pts[lastIdx], peak: pts[peakIdx], peakIdx, lastIdx,
+      firstCr: history[0].cr, lastCr: history[lastIdx].cr, delta: history[lastIdx].cr - history[0].cr,
+    };
+  }, [history, width]);
+
+  const ariaLabel = chart
+    ? `Evolução do PDL em 30 dias: de ${nf(chart.firstCr)} a ${nf(chart.lastCr)} PDL, ${signed(chart.delta)} no período; pico ${nf(chart.maxV)}.`
+    : "Evolução do PDL — 30 dias";
 
   return (
-    <svg className="trend-chart" viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none">
-      <defs>
-        <linearGradient id="crtrend-fill" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="var(--gold)" stopOpacity="0.32" />
-          <stop offset="100%" stopColor="var(--gold)" stopOpacity="0" />
-        </linearGradient>
-      </defs>
-      <path d={areaPath} fill="url(#crtrend-fill)" />
-      <path
-        d={line}
-        fill="none"
-        stroke="var(--gold)"
-        strokeWidth="2.5"
-        strokeLinejoin="round"
-        strokeLinecap="round"
-      />
-      <circle
-        cx={X(lastIdx)}
-        cy={Y(history[lastIdx].cr)}
-        r={3.5}
-        fill="var(--gold)"
-        stroke="#0e0e10"
-        strokeWidth={2}
-      />
-    </svg>
+    <div className="trend-wrap" ref={wrapRef} style={{ height: H }}>
+      {chart && (
+        <svg
+          className="trend-chart"
+          width="100%"
+          height={H}
+          viewBox={`0 0 ${width} ${H}`}
+          role="img"
+          aria-label={ariaLabel}
+        >
+          <title>{ariaLabel}</title>
+          <defs>
+            <linearGradient id="crtrend-fill" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="var(--gold)" stopOpacity="0.16" />
+              <stop offset="100%" stopColor="var(--gold)" stopOpacity="0" />
+            </linearGradient>
+          </defs>
+
+          {/* Grade + rótulos do eixo Y (valores de PDL) */}
+          {chart.yTicks.map((v, i) => {
+            const y = chart.Y(v);
+            return (
+              <g key={`y${i}`}>
+                <line className="trend-grid" x1={padL} y1={y.toFixed(1)} x2={width - padR} y2={y.toFixed(1)} />
+                <text className="trend-ylabel" x={padL - 8} y={y.toFixed(1)} dominantBaseline="middle" textAnchor="end">
+                  {nf(Math.round(v))}
+                </text>
+              </g>
+            );
+          })}
+
+          {/* Rótulos do eixo X (datas) */}
+          {chart.xTicks.map((t, i) => (
+            <text key={`x${i}`} className="trend-xlabel" x={t.x} y={H - 6} textAnchor={t.anchor}>
+              {t.label}
+            </text>
+          ))}
+
+          {/* Área + linha do PDL */}
+          <path data-chart-area d={chart.area} fill="url(#crtrend-fill)" />
+          <path data-chart-line className="trend-line" d={chart.line} />
+
+          {/* Pico (só quando não é o ponto atual) */}
+          {chart.peakIdx !== chart.lastIdx && (
+            <circle
+              data-chart-mark
+              className="trend-peak"
+              cx={chart.peak.x}
+              cy={chart.peak.y}
+              r={3}
+            />
+          )}
+
+          {/* Ponto atual + rótulo direto do valor */}
+          <circle
+            data-chart-mark
+            className="trend-cur"
+            cx={chart.cur.x}
+            cy={chart.cur.y}
+            r={4}
+          />
+          <text
+            data-chart-mark
+            className="trend-curlabel"
+            x={chart.cur.x}
+            y={Math.max(chart.cur.y - 9, padT + 4)}
+            textAnchor="end"
+          >
+            {nf(chart.lastCr)}
+          </text>
+        </svg>
+      )}
+    </div>
+  );
+}
+
+type ShareState = "idle" | "copied" | "shared" | "fallback";
+
+function ShareProfileButton({ playerName }: { playerName: string }) {
+  const [state, setState] = useState<ShareState>("idle");
+
+  const shareProfile = useCallback(async () => {
+    const url = window.location.href;
+
+    try {
+      if (typeof navigator.share === "function") {
+        await navigator.share({
+          title: `Perfil de ${playerName} no ArenaRank`,
+          url,
+        });
+        setState("shared");
+        return;
+      }
+
+      if (!navigator.clipboard?.writeText) throw new Error("clipboard indisponível");
+      await navigator.clipboard.writeText(url);
+      setState("copied");
+    } catch (shareError) {
+      if (shareError instanceof DOMException && shareError.name === "AbortError") return;
+      setState("fallback");
+    }
+  }, [playerName]);
+
+  const label =
+    state === "copied"
+      ? "Link copiado"
+      : state === "shared"
+        ? "Compartilhado"
+        : state === "fallback"
+          ? "Copie o endereço do navegador"
+          : "Compartilhar";
+
+  return (
+    <button
+      className="btn ghost pfb-share"
+      type="button"
+      aria-label="Compartilhar perfil"
+      onClick={shareProfile}
+    >
+      <Mi name={state === "copied" || state === "shared" ? "check" : "ios_share"} />
+      <span aria-live="polite">{label}</span>
+    </button>
   );
 }
 
 /* ============================================================
-   Banner de identidade + PDL (topo, largura total)
+   Banner de identidade + PDL — "Pôster do Gladiador"
+   Splash do campeão mais jogado como capa cinematográfica (scrim escuro p/
+   legibilidade) + identidade, tags e PDL de ouro sobrepostos.
    ============================================================ */
-function IdentityBanner({ data }: { data: PlayerProfile }) {
+
+/** Splash centralizado no rosto (CommunityDragon) — fallback quando a splash
+    ddragon oficial não resolve. Precisa só do championId numérico. */
+function cdragonCentered(championId?: number | null): string | null {
+  return championId
+    ? `https://cdn.communitydragon.org/latest/champion/${championId}/splash-art/centered/skin/0`
+    : null;
+}
+
+/** Camada de arte do banner: tenta a splash ddragon (oficial), degrada p/ o
+    recorte centralizado do CommunityDragon e, se ambos falharem, some (banner
+    tonal). Decorativa — o campeão já é nomeado no crédito e nas tags. */
+function BannerArt({
+  splashUrl,
+  championId,
+}: {
+  splashUrl?: string | null;
+  championId?: number | null;
+}) {
+  const sources = useMemo(
+    () => [splashUrl, cdragonCentered(championId)].filter(Boolean) as string[],
+    [splashUrl, championId]
+  );
+  const [i, setI] = useState(0);
+  const src = sources[i];
+  if (!src) return null;
+  return (
+    <img
+      key={src}
+      className="pfb-art"
+      src={src}
+      alt=""
+      aria-hidden="true"
+      decoding="async"
+      onError={() => setI((n) => n + 1)}
+    />
+  );
+}
+
+function IdentityBanner({
+  data,
+  firstRate,
+  cover,
+  fictional,
+}: {
+  data: PlayerProfile;
+  /** Taxa de 1º lugar (placement==1) do histórico completo — mesma fonte do card Desempenho.
+      `null` enquanto o summary de partidas ainda não carregou. */
+  firstRate: number | null;
+  /** Campeão mais jogado — fonte da capa. `null` sem histórico de campeões. */
+  cover: ChampStat | null;
+  fictional: boolean;
+}) {
   const total = data.wins + data.losses;
-  const firstRate = total > 0 ? Math.round((data.wins / total) * 100) : 0;
+  const hasArt = Boolean(cover?.championSplashUrl || cover?.championId);
 
   return (
-    <section className="pf-banner">
-      {/* Identidade */}
-      <div className="pfb-id">
-        <PlayerAvatar colors={data.avatar} url={data.profileIconUrl} alt={data.name} size={76} />
-        <div className="pfb-idtxt">
-          <h1 className="pfb-name">
-            {data.name}
-            <span className="pfb-tag">{data.handle}</span>
-          </h1>
-          <div className="pfb-meta">
-            <span className="pfb-region">
-              <span className="flag-br" aria-hidden="true" />
-              {data.region.toUpperCase()}
-            </span>
-            <TierBadge tier={data.tier} />
-            {data.provisional && <span className="badge provisional">Provisório</span>}
-            {data.tags.map((tag) => (
-              <span key={tag.kind} className="badge neutral">
-                <Mi name={tag.icon} /> {tag.label}
-              </span>
-            ))}
-          </div>
-          <div className="pfb-actions">
-            <button className="btn ghost" type="button">
-              <Mi name="person_add" /> Seguir
-            </button>
-            <button className="btn ghost" type="button">
-              <Mi name="ios_share" /> Compartilhar
-            </button>
-          </div>
-        </div>
-      </div>
+    <section className={`pf-banner${hasArt ? " has-art" : ""}`}>
+      <BannerArt splashUrl={cover?.championSplashUrl} championId={cover?.championId} />
+      <div className="pfb-scrim" aria-hidden="true" />
 
-      {/* PDL + rank */}
-      <div className="pfb-cr">
-        <div className="pfb-cr-main">
-          <div className="pfb-cr-num tnum">{nf(data.cr)}</div>
-          <div className="pfb-cr-side">
+      <div className="pfb-inner">
+        <div className="pfb-top">
+          {/* Identidade */}
+          <div className="pfb-id" style={avatarColorVars(data.avatar)}>
+            <PlayerAvatar colors={data.avatar} url={data.profileIconUrl} alt={data.name} size={84} />
+            <div className="pfb-idtxt">
+              <div className="pfb-name-cube">
+                <h1 className="pfb-name pfb-name-cube__plate">
+                  <span data-profile-nick>{data.name}</span>
+                  <span className="pfb-tag">{data.handle}</span>
+                </h1>
+                <span
+                  className="pfb-name-cube__marker is-top"
+                  aria-hidden="true"
+                />
+                <span
+                  className="pfb-name-cube__marker is-bottom"
+                  aria-hidden="true"
+                />
+              </div>
+              <div className="pfb-meta">
+                <span className="pfb-region">
+                  <span className="flag-br" aria-hidden="true" />
+                  {data.region.toUpperCase()}
+                </span>
+                <TierBadge tier={data.tier} />
+                {data.provisional && <span className="badge provisional">Provisório</span>}
+                {fictional && (
+                  <span className="badge profile-mock-badge">
+                    Perfil fictício · Dados mockados
+                  </span>
+                )}
+                {data.tags.map((tag, i) => (
+                  <PlayerTagChip key={i} tag={tag} />
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* PDL — âncora de ouro */}
+          <div className="pfb-cr">
+            <div
+              className="pfb-cr-num tnum"
+              data-profile-pdl
+              aria-label={`${nf(data.cr)} PDL`}
+              aria-live="off"
+            >
+              {nf(data.cr)}
+            </div>
             <div className="pfb-cr-lbl">PDL · Pontos de Liga</div>
-            {data.tier !== "none" && <div className="pfb-cr-tier">{tierLabel(data.tier)}</div>}
+            <div className="pfb-cr-sub">
+              <b className="tnum" style={{ color: "var(--primary-bright)" }}>#{nf(data.rank)}</b>
+              <Delta value={data.delta7d} />
+            </div>
           </div>
         </div>
+
+        {/* Strip editorial de stats */}
         <div className="pfb-kvs">
-          <div className="pfb-kv">
-            <b className="tnum" style={{ color: "var(--primary-bright)" }}>#{nf(data.rank)}</b>
-            <span>Rank global</span>
-          </div>
-          <div className="pfb-kv">
-            <Delta value={data.delta7d} />
-            <span>7 dias</span>
-          </div>
           <div className="pfb-kv">
             <b className="tnum">{nf(total)}</b>
             <span>Partidas</span>
           </div>
           <div className="pfb-kv">
-            <b className="tnum" style={{ color: "var(--primary-bright)" }}>{pct(firstRate)}</b>
+            <b className="tnum" style={{ color: "var(--primary-bright)" }}>
+              {firstRate === null ? "—" : pct(firstRate)}
+            </b>
             <span>1º lugar</span>
           </div>
           <div className="pfb-kv">
@@ -182,6 +569,18 @@ function IdentityBanner({ data }: { data: PlayerProfile }) {
             </b>
             <span>Col. média</span>
           </div>
+          {cover && (
+            <div className="pfb-kv pfb-kv-champ">
+              <b>{cover.name}</b>
+              <span>Mais jogado · {nf(cover.games)}</span>
+            </div>
+          )}
+        </div>
+
+        {/* Ação secundária, ancorada no canto — fora da coluna de identidade
+            para que o nick alinhe com o avatar. */}
+        <div className="pfb-actions">
+          <ShareProfileButton playerName={data.name} />
         </div>
       </div>
     </section>
@@ -214,11 +613,16 @@ function FormStrip({ form }: { form: FormDot[] }) {
    Sidebar — Card: PDL (30 dias)
    ============================================================ */
 function TrendCard({ data }: { data: PlayerProfile }) {
+  // Delta do período derivado da MESMA série do gráfico (último − primeiro),
+  // p/ o número do header casar com a curva e com o rótulo "30 dias"
+  // (data.delta7d é 7 dias — divergia do título).
+  const h = data.crHistory;
+  const windowDelta = h.length >= 2 ? h[h.length - 1].cr - h[0].cr : data.delta7d;
   return (
     <div className="panel card">
       <div className="card-h">
         <span>PDL — 30 dias</span>
-        <Delta value={data.delta7d} />
+        <Delta value={windowDelta} />
       </div>
       {data.crHistory.length >= 2 ? (
         <CrTrend history={data.crHistory} />
@@ -230,9 +634,9 @@ function TrendCard({ data }: { data: PlayerProfile }) {
 }
 
 /* ============================================================
-   Sidebar — Card: Desempenho (reage ao filtro do histórico)
+   Coluna principal — Desempenho recente (reage ao filtro do histórico)
    ============================================================ */
-function PerformanceCard({
+function RecentPerformance({
   resp,
   loading,
   filtered,
@@ -243,14 +647,23 @@ function PerformanceCard({
 }) {
   if (loading && !resp) {
     return (
-      <div className="panel card">
-        <div className="card-h"><span>Desempenho</span></div>
+      <section
+        className="panel recent-performance"
+        role="region"
+        aria-label="Desempenho recente"
+      >
+        <div className="perf-head">
+          <div>
+            <span className="perf-kicker">Leitura da amostra atual</span>
+            <h2>Desempenho recente</h2>
+          </div>
+        </div>
         <div className="perf-grid">
           {Array.from({ length: 4 }, (_, i) => (
             <div className="perf-cell skel" key={i} />
           ))}
         </div>
-      </div>
+      </section>
     );
   }
   if (!resp) return null;
@@ -261,51 +674,65 @@ function PerformanceCard({
   const maxCount = Math.max(1, ...places);
 
   return (
-    <div className="panel card">
-      <div className="card-h">
-        <span>Desempenho</span>
-        <span className="card-h-n tnum">{nf(s.games)} partidas</span>
-      </div>
-      {filtered && <div className="card-note">Métricas do filtro atual</div>}
-
-      <div className="perf-grid">
-        <div className="perf-cell">
-          <b className="tnum" style={{ color: "var(--primary-bright)" }}>{pct(s.firstRate)}</b>
-          <span>1º lugar</span>
+    <section
+      className="panel recent-performance"
+      role="region"
+      aria-label="Desempenho recente"
+    >
+      <div className="perf-head">
+        <div>
+          <span className="perf-kicker">
+            {filtered ? "Filtros aplicados" : "Leitura da amostra atual"}
+          </span>
+          <h2>Desempenho recente</h2>
         </div>
-        <div className="perf-cell">
-          <b className="tnum" style={{ color: "var(--green)" }}>{pct(s.top4)}</b>
-          <span>Top metade</span>
-        </div>
-        <div className="perf-cell">
-          <b className="tnum">
-            {s.avgPlace.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}
-          </b>
-          <span>Col. média</span>
-        </div>
-        <div className="perf-cell">
-          <b className={`tnum delta ${deltaClass(s.crSum)}`}>{signed(s.crSum)}</b>
-          <span>Δ PDL</span>
-        </div>
+        <span className="perf-sample tnum">
+          {nf(s.games)} {s.games === 1 ? "partida" : "partidas"}
+        </span>
       </div>
 
-      <div className="perf-dist" role="img" aria-label="Distribuição de colocações">
-        {places.slice(0, barCount).map((count, i) => (
-          <div className="pd-col" key={i} title={`${i + 1}º lugar — ${count}×`}>
-            <div className="pd-bar-wrap">
-              <div
-                className="pd-bar"
-                style={{
-                  height: `${Math.round((count / maxCount) * 100)}%`,
-                  background: histBarColor(i),
-                }}
-              />
-            </div>
-            <span className="pd-x">{i + 1}º</span>
+      <div className="perf-layout">
+        <div className="perf-grid">
+          <div className="perf-cell">
+            <b className="tnum" style={{ color: "var(--primary-bright)" }}>
+              {pct(s.firstRate)}
+            </b>
+            <span>1º lugar</span>
           </div>
-        ))}
+          <div className="perf-cell">
+            <b className="tnum" style={{ color: "var(--green)" }}>{pct(s.top4)}</b>
+            <span>Top metade</span>
+          </div>
+          <div className="perf-cell">
+            <b className="tnum">
+              {s.avgPlace.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}
+            </b>
+            <span>Col. média</span>
+          </div>
+          <div className="perf-cell">
+            <b className={`tnum delta ${deltaClass(s.crSum)}`}>{signed(s.crSum)}</b>
+            <span>Δ PDL</span>
+          </div>
+        </div>
+
+        <div className="perf-dist" role="img" aria-label="Distribuição de colocações">
+          {places.slice(0, barCount).map((count, i) => (
+            <div className="pd-col" key={i} title={`${i + 1}º lugar — ${count}×`}>
+              <div className="pd-bar-wrap">
+                <div
+                  className="pd-bar"
+                  style={{
+                    height: `${Math.round((count / maxCount) * 100)}%`,
+                    background: histBarColor(i),
+                  }}
+                />
+              </div>
+              <span className="pd-x">{i + 1}º</span>
+            </div>
+          ))}
+        </div>
       </div>
-    </div>
+    </section>
   );
 }
 
@@ -331,7 +758,7 @@ function ChampionsCard({ champions }: { champions: ChampStat[] }) {
   const shown = expanded ? sorted : sorted.slice(0, 5);
 
   return (
-    <div className="panel card">
+    <div className="panel card" id="campeoes">
       <div className="card-h">
         <span>Campeões</span>
         <div className="mini-tabs" role="group" aria-label="Ordenar campeões">
@@ -385,8 +812,9 @@ function ChampionsCard({ champions }: { champions: ChampStat[] }) {
    Sidebar — Card: Duplas & rivais
    ============================================================ */
 function DuosCard({ h2h }: { h2h: H2HRow[] }) {
-  const duos = useMemo(() => h2h.filter((r) => r.synergy === "duo"), [h2h]);
-  const rivals = useMemo(() => h2h.filter((r) => r.synergy === "rival"), [h2h]);
+  // Ignora pares sem partidas registradas — evita "0% · 0 jogos" no card.
+  const duos = useMemo(() => h2h.filter((r) => r.synergy === "duo" && r.games > 0), [h2h]);
+  const rivals = useMemo(() => h2h.filter((r) => r.synergy === "rival" && r.games > 0), [h2h]);
   const [tab, setTab] = useState<"duo" | "rival">(duos.length > 0 ? "duo" : "rival");
   if (h2h.length === 0) return null;
 
@@ -466,18 +894,385 @@ function SeasonsCard({ seasons }: { seasons: SeasonArchive[] }) {
 /* ============================================================
    Histórico — linha de partida (expansível)
    ============================================================ */
-function HistRow({ match }: { match: PlayerMatchRich }) {
-  const [open, setOpen] = useState(false);
-  const topHalf = match.place * 2 <= match.teamCount;
-  const tone = match.place === 1 ? "first" : topHalf ? "top" : "low";
+function compactTelemetry(value: number): string {
+  if (Math.abs(value) < 1000) return nf(value);
+  return `${(value / 1000).toLocaleString("pt-BR", {
+    maximumFractionDigits: 1,
+  })} mil`;
+}
+
+function playerKda(player: ProfileMatchPlayer | ProfileMatchSummary): number | null {
+  if (
+    player.kills === undefined ||
+    player.deaths === undefined ||
+    player.assists === undefined
+  ) {
+    return null;
+  }
+  return (player.kills + player.assists) / Math.max(1, player.deaths);
+}
+
+function hasCombatTelemetry(
+  player: ProfileMatchPlayer | ProfileMatchSummary | null,
+): player is ProfileMatchPlayer | ProfileMatchSummary {
+  return !!player &&
+    player.kills !== undefined &&
+    player.deaths !== undefined &&
+    player.assists !== undefined;
+}
+
+const LOADOUT_RARITY_LABEL: Record<string, string> = {
+  prismatic: "Prismático",
+  gold: "Ouro",
+  silver: "Prata",
+};
+
+function LoadoutIcon({
+  entry,
+  augment,
+}: {
+  entry: ProfileLoadoutEntry | ProfileAugmentEntry;
+  augment?: boolean;
+}) {
+  const rarity =
+    augment && "rarity" in entry ? entry.rarity : undefined;
+  const hoverData: BuildHoverData = {
+    name: entry.name,
+    iconUrl: entry.iconUrl,
+    badge: rarity ? LOADOUT_RARITY_LABEL[rarity] : undefined,
+    badgeClassName: rarity ? `rarity-${rarity}` : undefined,
+    description: entry.description,
+    // Só itens têm custo de compra — augments são escolha de draft, sem preço.
+    stats: entry.gold ? [{ label: "Custo", value: `${nf(entry.gold)} de ouro` }] : undefined,
+  };
 
   return (
-    <article className={`hist-row ${tone}`} data-open={open ? "true" : "false"}>
+    <BuildHoverIcon
+      data={hoverData}
+      className={`match-loadout-icon${augment ? " is-augment" : ""}`}
+      data-rarity={rarity}
+      data-match-item={augment ? undefined : ""}
+      data-match-augment={augment ? "" : undefined}
+    >
+      {entry.iconUrl ? (
+        <img src={entry.iconUrl} alt={entry.name} loading="lazy" decoding="async" />
+      ) : (
+        <span className="match-loadout-fallback" aria-label={entry.name}>
+          {augment ? "A" : "I"}
+        </span>
+      )}
+    </BuildHoverIcon>
+  );
+}
+
+function MatchLoadout({
+  items,
+  augments,
+  mocked = false,
+  compact = false,
+}: {
+  items?: ProfileLoadoutEntry[];
+  augments?: ProfileAugmentEntry[];
+  mocked?: boolean;
+  compact?: boolean;
+}) {
+  return (
+    <span className={`match-loadout${compact ? " is-compact" : ""}`}>
+      <span className="match-loadout-group">
+        <span className="match-loadout-label">Itens</span>
+        {items?.length ? (
+          <span className="match-loadout-slots" aria-label="Itens da partida">
+            {items.slice(0, 7).map((item, index) => (
+              <LoadoutIcon entry={item} key={`${item.id}-${index}`} />
+            ))}
+          </span>
+        ) : (
+          <span className="match-ingestion">Itens aguardando ingestão</span>
+        )}
+      </span>
+      <span className="match-loadout-group">
+        <span className="match-loadout-label">Augments</span>
+        {augments?.length ? (
+          <span className="match-loadout-slots" aria-label="Augments da partida">
+            {augments.slice(0, 6).map((augment, index) => (
+              <LoadoutIcon
+                augment
+                entry={augment}
+                key={`${augment.id}-${index}`}
+              />
+            ))}
+          </span>
+        ) : (
+          <span className="match-ingestion">Augments aguardando ingestão</span>
+        )}
+      </span>
+      {mocked && <span className="match-mock-flag">Dados mockados</span>}
+    </span>
+  );
+}
+
+function MatchPlayerTelemetry({
+  player,
+}: {
+  player: ProfileMatchPlayer | ProfileMatchSummary | null;
+}) {
+  if (!hasCombatTelemetry(player)) {
+    return <span className="match-ingestion">Estatísticas aguardando ingestão</span>;
+  }
+
+  const kda = playerKda(player);
+  return (
+    <span className="match-telemetry">
+      <b className="tnum">
+        {player.kills}/{player.deaths}/{player.assists}
+      </b>
+      <span className="tnum">{kda?.toLocaleString("pt-BR", {
+        maximumFractionDigits: 1,
+      })} KDA</span>
+      {player.killParticipation !== undefined && (
+        <span className="tnum">{nf(player.killParticipation)}% part.</span>
+      )}
+      {player.damagePerMinute !== undefined && (
+        <span className="tnum">{nf(player.damagePerMinute)} dano/min</span>
+      )}
+    </span>
+  );
+}
+
+function teamTotal(
+  players: ProfileMatchPlayer[],
+  key: "kills" | "deaths" | "assists" | "damageToChampions",
+): number | null {
+  if (players.some((player) => player[key] === undefined)) return null;
+  return players.reduce((sum, player) => sum + (player[key] ?? 0), 0);
+}
+
+function MatchScoreboard({
+  detail,
+  profileRiotId,
+}: {
+  detail: ProfileMatchDetail;
+  profileRiotId: string;
+}) {
+  const normalizedProfileId = profileRiotId.toLocaleLowerCase();
+  const teams = [...detail.subteams].sort((a, b) => a.placement - b.placement);
+  const mocked = detail.mockedFields.length > 0;
+
+  return (
+    <div className="match-lab">
+      <div className="match-lab-head">
+        <div>
+          <span className="match-lab-kicker">Telemetria completa</span>
+          <h3 data-match-title>Raio-X da partida</h3>
+        </div>
+        <div className="match-lab-meta">
+          <span>{detail.queueLabel || `Arena ${detail.format}`}</span>
+          <span className="tnum">{fmtCountdown(detail.durationSec)}</span>
+          <span className="tnum">{teams.length} times</span>
+          {mocked && <span className="match-mock-flag">Combate e loadout mockados</span>}
+        </div>
+      </div>
+
+      <div className="match-team-list">
+        {teams.map((team) => {
+          const ownTeam = team.players.some(
+            (player) => player.riotId.toLocaleLowerCase() === normalizedProfileId,
+          );
+          const kills = teamTotal(team.players, "kills");
+          const deaths = teamTotal(team.players, "deaths");
+          const assists = teamTotal(team.players, "assists");
+          const damage = teamTotal(team.players, "damageToChampions");
+
+          return (
+            <section
+              className={`match-team${ownTeam ? " is-profile-team" : ""}`}
+              data-match-team
+              key={`${team.placement}-${team.players.map((player) => player.riotId).join("-")}`}
+              aria-label={`${team.placement}º lugar`}
+            >
+              <header className="match-team-head">
+                <span className="match-team-place">
+                  <b className="tnum">{team.placement}º</b>
+                  <small>{ownTeam ? "Seu time" : "Time adversário"}</small>
+                </span>
+                {kills !== null && deaths !== null && assists !== null ? (
+                  <span className="match-team-total tnum">
+                    {kills}/{deaths}/{assists}
+                  </span>
+                ) : (
+                  <span className="match-ingestion">Totais aguardando ingestão</span>
+                )}
+                {damage !== null && (
+                  <span className="match-team-damage tnum">
+                    {compactTelemetry(damage)} dano
+                  </span>
+                )}
+              </header>
+
+              <div className="match-player-list">
+                {team.players.map((player) => {
+                  const isProfile =
+                    player.riotId.toLocaleLowerCase() === normalizedProfileId;
+                  return (
+                    <article
+                      className={`match-player${isProfile ? " is-profile" : ""}`}
+                      data-match-player
+                      key={player.riotId}
+                    >
+                      <div className="match-player-id">
+                        <ChampIcon
+                          colors={player.champion}
+                          url={player.championIconUrl}
+                          alt={player.championName}
+                          size="lg"
+                        />
+                        <span>
+                          <b title={player.riotId}>{player.riotId}</b>
+                          <small>
+                            {player.championName}
+                            {player.level !== undefined && <> · Nv. {player.level}</>}
+                          </small>
+                          <small>{player.rankLabel ?? `${nf(player.crAfter)} PDL`}</small>
+                        </span>
+                      </div>
+
+                      <MatchPlayerTelemetry player={player} />
+
+                      <div className="match-player-damage">
+                        {player.damageToChampions !== undefined ? (
+                          <>
+                            <b className="tnum">
+                              {compactTelemetry(player.damageToChampions)}
+                            </b>
+                            <span>Dano a campeões</span>
+                            {player.damagePerMinute !== undefined && (
+                              <small className="tnum">
+                                {nf(player.damagePerMinute)}/min
+                              </small>
+                            )}
+                          </>
+                        ) : (
+                          <span className="match-ingestion">
+                            Dano aguardando ingestão
+                          </span>
+                        )}
+                      </div>
+
+                      <MatchLoadout
+                        items={player.items}
+                        augments={player.augments}
+                        mocked={mocked}
+                        compact
+                      />
+                    </article>
+                  );
+                })}
+              </div>
+            </section>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function HistRow({
+  match,
+  profileRiotId,
+}: {
+  match: PlayerMatchRich;
+  profileRiotId: string;
+}) {
+  const rowRef = useRef<HTMLElement>(null);
+  const [open, setOpen] = useState(false);
+  const [detail, setDetail] = useState<ProfileMatchDetail | null>(null);
+  const [summary, setSummary] = useState<ProfileMatchSummary | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [detailError, setDetailError] = useState<Error | null>(null);
+  const requestActive = useRef(false);
+  const detailId = `match-detail-${match.matchId.replace(/[^a-zA-Z0-9_-]/g, "-")}`;
+
+  useEffect(() => {
+    let alive = true;
+    void loadTelemetryLabSummary(match.matchId)
+      .then((telemetrySummary) =>
+        telemetrySummary ?? loadProfileMatchSummary(match),
+      )
+      .then((nextSummary) => {
+        if (alive) setSummary(nextSummary);
+      })
+      .catch(() => undefined);
+    return () => {
+      alive = false;
+    };
+  }, [match]);
+
+  const loadDetail = useCallback(() => {
+    if (detail || requestActive.current) return;
+    requestActive.current = true;
+    setDetailLoading(true);
+    setDetailError(null);
+    void loadTelemetryLabMatch(match.matchId)
+      .then((telemetryDetail) =>
+        telemetryDetail ??
+        loadProfileMatchDetail(match.matchId, profileRiotId),
+      )
+      .then((nextDetail) => setDetail(nextDetail))
+      .catch((nextError: unknown) => {
+        requestActive.current = false;
+        setDetailError(
+          nextError instanceof Error
+            ? nextError
+            : new Error("Não foi possível carregar a partida."),
+        );
+      })
+      .finally(() => setDetailLoading(false));
+  }, [detail, match.matchId, profileRiotId]);
+
+  const toggleDetail = useCallback(() => {
+    setOpen((current) => {
+      const next = !current;
+      if (next) loadDetail();
+      return next;
+    });
+  }, [loadDetail]);
+
+  useGsapMatchDetail(rowRef, open, detail !== null);
+
+  const detailProfile = detail?.subteams
+    .flatMap((team) => team.players)
+    .find(
+      (player) =>
+        player.riotId.toLocaleLowerCase() === profileRiotId.toLocaleLowerCase(),
+    );
+  const closedTelemetry = detailProfile ?? summary;
+  const closedMocked =
+    (detail?.mockedFields.length ?? 0) > 0 || summary?.mocked === true;
+
+  // Cor por RESULTADO de PDL, não por colocação (um 4º pode ganhar ou perder
+  // pontos): 1º sempre ouro; senão ganhou=verde, perdeu=vermelho, zerado=cinza.
+  // Casa com a cor do delta de PDL exibido na própria linha (.hr-cr).
+  const tone =
+    match.place === 1
+      ? "first"
+      : match.crDelta > 0
+        ? "win"
+        : match.crDelta < 0
+          ? "loss"
+          : "flat";
+
+  return (
+    <article
+      className={`hist-row ${tone}`}
+      data-open={open ? "true" : "false"}
+      ref={rowRef}
+    >
       <button
         type="button"
         className="hist-row-main"
-        onClick={() => setOpen((v) => !v)}
+        onClick={toggleDetail}
         aria-expanded={open}
+        aria-controls={detailId}
       >
         <span className="hr-place">
           <Placement place={match.place} />
@@ -501,19 +1296,8 @@ function HistRow({ match }: { match: PlayerMatchRich }) {
           </span>
         </span>
 
-        <span className="hr-mods" aria-hidden="true">
-          {match.modifiers
-            .filter((mod) => mod.value !== 0)
-            .slice(0, 3)
-            .map((mod) => (
-              <span
-                key={mod.kind}
-                className={`hm-dot ${mod.value > 0 ? "up" : "down"}`}
-                title={`${mod.label}: ${signed(mod.value)}`}
-              >
-                <Mi name={mod.icon} />
-              </span>
-            ))}
+        <span className="hr-combat">
+          <MatchPlayerTelemetry player={closedTelemetry} />
         </span>
 
         <span className="hr-cr">
@@ -531,32 +1315,57 @@ function HistRow({ match }: { match: PlayerMatchRich }) {
         <span className="hr-caret">
           <Mi name="expand_more" />
         </span>
+
+        <span className="hr-kit">
+          <MatchLoadout
+            items={closedTelemetry?.items}
+            augments={closedTelemetry?.augments}
+            mocked={closedMocked}
+            compact
+          />
+        </span>
       </button>
 
-      <div className="hist-detail">
+      <div
+        className="hist-detail"
+        id={detailId}
+        aria-live="polite"
+        {...(open ? {} : { inert: "" })}
+      >
         <div className="hist-detail-inner">
-          <div className="hd-label">Detalhamento de modificadores</div>
-          {match.modifiers.length > 0 ? (
-            <div className="mod-grid">
-              {match.modifiers.map((mod) => (
-                <div key={mod.kind} className="mod-row">
-                  <span className="ml">
-                    <span className="ic mi"><Mi name={mod.icon} /></span>
-                    {mod.label}
-                  </span>
-                  <span
-                    className={`mv tnum ${mod.value > 0 ? "delta up" : mod.value < 0 ? "delta down" : ""}`}
-                  >
-                    {mod.value === 0 ? "—" : signed(mod.value)}
-                  </span>
-                </div>
-              ))}
+          {detailLoading && !detail && (
+            <div className="match-detail-state">
+              <span className="state-spinner" aria-hidden="true" />
+              <b>Carregando placar e adversários…</b>
             </div>
-          ) : (
-            <p className="faint" style={{ fontSize: 12 }}>Sem modificadores detalhados.</p>
           )}
+          {detailError && !detail && (
+            <div className="match-detail-state is-error">
+              <Mi name="sync_problem" />
+              <div>
+                <b>O detalhe desta partida não carregou.</b>
+                <span>{detailError.message}</span>
+              </div>
+              <button className="btn ghost" type="button" onClick={loadDetail}>
+                Tentar novamente
+              </button>
+            </div>
+          )}
+          {detail && (
+            <MatchScoreboard detail={detail} profileRiotId={profileRiotId} />
+          )}
+
+          {open && (
+            <ProfileRatingSignals
+              modifiers={match.modifiers}
+              placement={match.place}
+              premade={match.premade}
+              crDelta={match.crDelta}
+            />
+          )}
+
           <div className="mod-foot">
-            <div />
+            <span>O detalhe completo permanece disponível em sua própria rota.</span>
             <Link className="btn ghost" to={`/partida/${match.matchId}`}>
               Ver partida completa →
             </Link>
@@ -585,6 +1394,9 @@ function usePlayerMatches(riotId: string) {
   const [champion, setChampion] = useState<number | null>(null);
   const [items, setItems] = useState<PlayerMatchRich[]>([]);
   const [resp, setResp] = useState<PlayerMatchesResponse | null>(null);
+  /** Taxa de 1º lugar do histórico COMPLETO (sem filtro) — congela o valor do banner
+      para não oscilar quando o usuário filtra o histórico. */
+  const [lifetimeFirstRate, setLifetimeFirstRate] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<Error | null>(null);
@@ -594,8 +1406,7 @@ function usePlayerMatches(riotId: string) {
     let alive = true;
     setLoading(true);
     setError(null);
-    api
-      .playerMatches(riotId, {
+    loadPlayerMatchesForRoute(riotId, {
         limit: HIST_PAGE,
         offset: 0,
         result: result || undefined,
@@ -605,6 +1416,8 @@ function usePlayerMatches(riotId: string) {
         if (!alive) return;
         setResp(r);
         setItems(r.matches);
+        // Só o conjunto sem filtro representa o lifetime do jogador.
+        if (result === "" && champion === null) setLifetimeFirstRate(r.summary.firstRate);
       })
       .catch((e: Error) => alive && setError(e))
       .finally(() => alive && setLoading(false));
@@ -615,8 +1428,7 @@ function usePlayerMatches(riotId: string) {
 
   const loadMore = useCallback(() => {
     setLoadingMore(true);
-    api
-      .playerMatches(riotId, {
+    loadPlayerMatchesForRoute(riotId, {
         limit: HIST_PAGE,
         offset: items.length,
         result: result || undefined,
@@ -640,6 +1452,7 @@ function usePlayerMatches(riotId: string) {
     setChampion,
     items,
     resp,
+    lifetimeFirstRate,
     loading,
     loadingMore,
     error,
@@ -654,7 +1467,13 @@ type MatchesState = ReturnType<typeof usePlayerMatches>;
 /* ============================================================
    Histórico — coluna principal (a estrela)
    ============================================================ */
-function MatchHistory({ m }: { m: MatchesState }) {
+function MatchHistory({
+  m,
+  profileRiotId,
+}: {
+  m: MatchesState;
+  profileRiotId: string;
+}) {
   const {
     result,
     setResult,
@@ -672,6 +1491,7 @@ function MatchHistory({ m }: { m: MatchesState }) {
 
   const hasFilter = result !== "" || champion !== null;
   const facet = resp?.championsFacet ?? [];
+  const days = useMemo(() => groupMatchesByDay(items), [items]);
 
   const clearFilters = useCallback(() => {
     setResult("");
@@ -679,7 +1499,12 @@ function MatchHistory({ m }: { m: MatchesState }) {
   }, [setResult, setChampion]);
 
   return (
-    <div className="hist-main">
+    <section
+      id="partidas"
+      className="hist-main"
+      role="region"
+      aria-label="Histórico de partidas"
+    >
       <div className="hist-head">
         <h2 className="hist-title">Histórico de partidas</h2>
         <span className="hist-count tnum">
@@ -770,8 +1595,31 @@ function MatchHistory({ m }: { m: MatchesState }) {
         </div>
       ) : (
         <>
-          {items.map((match) => (
-            <HistRow key={match.matchId} match={match} />
+          {days.map((day) => (
+            <section
+              className="hist-day"
+              key={day.dateKey}
+              aria-label={`Partidas de ${day.label}`}
+            >
+              <div className="hist-day-head">
+                <time dateTime={day.dateKey}>{day.label}</time>
+                <span>
+                  {nf(day.matches.length)} {day.matches.length === 1 ? "partida" : "partidas"}
+                </span>
+                <b className={`tnum delta ${deltaClass(day.crDelta)}`}>
+                  {signed(day.crDelta)} PDL
+                </b>
+              </div>
+              <div className="hist-day-list">
+                {day.matches.map((match) => (
+                  <HistRow
+                    key={match.matchId}
+                    match={match}
+                    profileRiotId={profileRiotId}
+                  />
+                ))}
+              </div>
+            </section>
           ))}
           {hasMore && (
             <button
@@ -785,7 +1633,7 @@ function MatchHistory({ m }: { m: MatchesState }) {
           )}
         </>
       )}
-    </div>
+    </section>
   );
 }
 
@@ -793,41 +1641,76 @@ function MatchHistory({ m }: { m: MatchesState }) {
    Componente principal: Perfil (página única, sem sub-abas)
    ============================================================ */
 export function Perfil() {
+  const scopeRef = useRef<HTMLDivElement>(null);
   const { riotId = "" } = useParams<{ riotId: string }>();
   const decodedId = decodeURIComponent(riotId);
 
-  const { data, loading, error } = useApi(() => api.player(decodedId), [decodedId]);
+  const { data, loading, error, retry, refreshing, updatedAt } = useApi(
+    () => loadProfileForRoute(decodedId),
+    [decodedId]
+  );
   const matches = usePlayerMatches(decodedId);
   const filtered = matches.result !== "" || matches.champion !== null;
+  const fictional = isTelemetryLabProfile(decodedId);
+
+  // Campeão-capa = mais jogado (por partidas). Fonte da splash do banner.
+  const cover = useMemo<ChampStat | null>(
+    () => (data?.champions.length ? [...data.champions].sort((a, b) => b.games - a.games)[0] : null),
+    [data]
+  );
+
+  useGsapEntrance(scopeRef, {
+    steps: PROFILE_ENTRANCE_STEPS,
+    deps: [data?.riotId],
+  });
+  useGsapProfilePdl(scopeRef, data?.cr ?? null, data?.riotId);
+  useGsapNameMarkers(scopeRef, data?.riotId);
+  useScrollFocusBand(scopeRef, ".hist-row");
+  useDrawCharts(scopeRef, [data?.riotId, data?.crHistory.length]);
+  useGsapInteractions(scopeRef, PROFILE_INTERACTIONS);
+  useGsapLoop(scopeRef, PROFILE_LOOPS, [loading, matches.loading]);
 
   return (
-    <div className="shell">
+    <div className="shell profile-dossier" ref={scopeRef} data-gsap-scope>
       <div className="breadcrumb">
         <Link to="/">Início</Link>
         <span className="sep">›</span>
         <Link to="/leaderboard">Jogadores</Link>
         <span className="sep">›</span>
         <span>{decodedId || "Perfil"}</span>
+        {data && (
+          <FreshnessBadge updatedAt={updatedAt} refreshing={refreshing} onRefresh={retry} />
+        )}
       </div>
 
       <StateBlock loading={loading} error={error}>
         {data && (
           <>
-            <IdentityBanner data={data} />
+            <IdentityBanner
+              data={data}
+              firstRate={matches.lifetimeFirstRate}
+              cover={cover}
+              fictional={fictional}
+            />
+            <ProfileSurfaceNav riotId={decodedId} active="profile" />
             {data.form.length > 0 && <FormStrip form={data.form} />}
 
             <div className="pf-body">
+              <div className="pf-main-col">
+                <RecentPerformance
+                  resp={matches.resp}
+                  loading={matches.loading}
+                  filtered={filtered}
+                />
+                <MatchHistory m={matches} profileRiotId={decodedId} />
+              </div>
+
               <aside className="pf-side">
                 <TrendCard data={data} />
-                <PerformanceCard resp={matches.resp} loading={matches.loading} filtered={filtered} />
                 <ChampionsCard champions={data.champions} />
                 <DuosCard h2h={data.h2h} />
                 <SeasonsCard seasons={data.seasons} />
               </aside>
-
-              <main className="pf-main-col">
-                <MatchHistory m={matches} />
-              </main>
             </div>
           </>
         )}

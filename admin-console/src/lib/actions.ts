@@ -99,6 +99,13 @@ export interface IngestStatus {
   coveragePct: number | null;
   coverageAt: string | null;
   replayFloor: string | null;
+  /** Quando as sementes foram injetadas. null com mode=catching_up = pedido
+   *  feito, aguardando o tick da caixa de workers (que tem a chave da Riot e a
+   *  fila). */
+  seededAt: string | null;
+  /** Por que a semeadura falhou. O operador clica NESTA caixa e a execução
+   *  acontece na OUTRA — sem isto a falha seria invisível para ele. */
+  lastError: string | null;
 }
 
 export const fetchIngestStatus = (conn: Conn, signal?: AbortSignal): Promise<IngestStatus> =>

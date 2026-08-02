@@ -16,6 +16,10 @@ const REVEAL = [
   ".doc-hero", ".doc-sec", ".mh", ".standings", ".grid2",
   ".title-block", ".metrics", ".panel-2col", ".admin-h",
   ".steps", ".features", ".tourn-grid", ".lbp", ".form-row", ".cards",
+  // NÃO adicionar aqui as superfícies do mundo "handoff" (.wr- .cmp- .tl-):
+  // elas são território do lib/motion.ts (GSAP). Os dois sistemas aplicam
+  // opacity/transform no mesmo nó e brigam — resultado é flicker ou bloco
+  // preso invisível. Ver frontend/.impeccable/motion-brief.md §3.
 ].join(",");
 
 const COUNTUP = "[data-countup], .metric-x b, .priority-stat b";
@@ -33,6 +37,12 @@ type ArEl = HTMLElement & {
   __drawn?: boolean;
   __tiltLeave?: () => void;
 };
+
+/** Fronteira de propriedade: qualquer nó dentro das páginas migradas pertence
+    somente ao GSAP, mesmo que também use uma classe genérica do motor legado. */
+export function isGsapOwned(element: Element): boolean {
+  return element.closest("[data-gsap-scope]") !== null;
+}
 
 export function initAnimEngine(): void {
   if (started) return;
@@ -52,12 +62,13 @@ function initReveal(): void {
   if (!docEl.classList.contains("ar-anim")) docEl.classList.add("ar-anim");
 
   function isOutermost(el: Element): boolean {
+    if (isGsapOwned(el)) return false;
     const p = el.parentElement;
     return !(p && p.closest(REVEAL));
   }
 
   function reveal(el: ArEl): void {
-    if (el.__arIn) return;
+    if (el.__arIn || isGsapOwned(el)) return;
     el.__arIn = true;
     el.style.opacity = "1";
     el.style.transform = "none";
@@ -73,11 +84,14 @@ function initReveal(): void {
   }
 
   function fillBars(scope: Element): void {
+    if (isGsapOwned(scope)) return;
     const bars = scope.querySelectorAll<ArEl>(".pbar > span, .bar");
-    for (let i = 0; i < bars.length; i++) animateBar(bars[i]);
+    for (let i = 0; i < bars.length; i++) {
+      if (!isGsapOwned(bars[i])) animateBar(bars[i]);
+    }
   }
   function animateBar(el: ArEl): void {
-    if (el.__arFilled) return;
+    if (el.__arFilled || isGsapOwned(el)) return;
     el.__arFilled = true;
     let target = el.style.width;
     if (!target) {
@@ -97,7 +111,7 @@ function initReveal(): void {
   }
 
   function countUp(el: ArEl): void {
-    if (el.__arCount) return;
+    if (el.__arCount || isGsapOwned(el)) return;
     el.__arCount = true;
     const raw = (el.textContent || "").trim();
     const m = raw.match(/^([^\d-]*)(-?[\d.,]+)(.*)$/);
@@ -176,7 +190,7 @@ function initReveal(): void {
     const vh = window.innerHeight || document.documentElement.clientHeight;
     for (let i = 0; i < els.length; i++) {
       const el = els[i];
-      if (el.__arSeen) continue;
+      if (el.__arSeen || isGsapOwned(el)) continue;
       if (!isOutermost(el)) continue;
       el.__arSeen = true;
       // A SPA renders content asynchronously AFTER mount, so above-the-fold
@@ -207,7 +221,7 @@ function initReveal(): void {
   function registerCounts(root?: Document | Element): void {
     const els = (root || document).querySelectorAll<ArEl>(COUNTUP);
     for (let i = 0; i < els.length; i++) {
-      if (!els[i].__arCountSeen) {
+      if (!els[i].__arCountSeen && !isGsapOwned(els[i])) {
         els[i].__arCountSeen = true;
         cio.observe(els[i]);
       }
@@ -246,12 +260,13 @@ function initReveal(): void {
         const els = document.querySelectorAll<ArEl>(REVEAL);
         for (let i = 0; i < els.length; i++) {
           const el = els[i];
+          if (isGsapOwned(el)) continue;
           if (el.offsetParent === null) continue;
           if (isOutermost(el)) reveal(el);
         }
         const cs = document.querySelectorAll<ArEl>(COUNTUP);
         for (let j = 0; j < cs.length; j++) {
-          if (cs[j].offsetParent !== null) countUp(cs[j]);
+          if (!isGsapOwned(cs[j]) && cs[j].offsetParent !== null) countUp(cs[j]);
         }
       }, 80);
     },
@@ -288,6 +303,7 @@ function initFx(): void {
       (e) => {
         if (off()) return;
         const card = (e.target as Element).closest(sel) as ArEl | null;
+        if (card && isGsapOwned(card)) return;
         if (card && card.__tiltLeave === undefined) {
           card.__tiltLeave = () => {
             card.style.transform = "none";
@@ -311,7 +327,7 @@ function initFx(): void {
   }
 
   function drawSpark(svg: ArEl): void {
-    if (svg.__drawn) return;
+    if (svg.__drawn || isGsapOwned(svg)) return;
     svg.__drawn = true;
     const strokePaths = svg.querySelectorAll<SVGGeometryElement>("path[stroke], polyline[stroke]");
     const fills = svg.querySelectorAll<SVGElement>("path:not([stroke]), [fill^='url']");
@@ -342,7 +358,7 @@ function initFx(): void {
   }
 
   function buildChart(el: ArEl): void {
-    if (el.__built) return;
+    if (el.__built || isGsapOwned(el)) return;
     el.__built = true;
     const vals = (el.getAttribute("data-vals") || "")
       .split(",")
@@ -385,7 +401,7 @@ function initFx(): void {
     });
   }
   function fillChart(el: ArEl): void {
-    if (el.__filled) return;
+    if (el.__filled || isGsapOwned(el)) return;
     el.__filled = true;
     const cols = el.querySelectorAll<ArEl>(".ar-col");
     for (let i = 0; i < cols.length; i++) {
@@ -426,6 +442,7 @@ function initFx(): void {
     // [data-static]: charts renderizados/possuídos pelo React — o engine não
     // os reconstrói (buildChart faria textContent="" e apagaria o DOM do React).
     document.querySelectorAll<ArEl>(".ar-chart:not([data-static])").forEach((c) => {
+      if (isGsapOwned(c)) return;
       buildChart(c);
       if (c.__obs) return;
       c.__obs = true;
@@ -433,6 +450,7 @@ function initFx(): void {
       else fillChart(c);
     });
     document.querySelectorAll<ArEl>(".rc-spark, svg.spark").forEach((s) => {
+      if (isGsapOwned(s)) return;
       if (s.__obs) return;
       s.__obs = true;
       if (io) io.observe(s);

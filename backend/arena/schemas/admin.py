@@ -203,5 +203,12 @@ class IngestStatus(ArenaModel):
     saturated_at: str | None = None  # quando a descoberta parou de crescer
     coverage_pct: float | None = None  # estimativa da última amostragem do audit
     coverage_at: str | None = None
+    # Quando as sementes foram injetadas. NULL com mode=catching_up = pedido
+    # feito, aguardando o tick da caixa de workers (que é quem tem a chave da
+    # Riot e a fila).
+    seeded_at: str | None = None
+    # Por que a semeadura falhou, em PT-BR. O operador clica numa caixa e a
+    # execução acontece na outra — sem isto a falha seria invisível para ele.
+    last_error: str | None = None
     # Piso do replay incremental: há cauda fora de ordem esperando reprocessamento.
     replay_floor: str | None = None

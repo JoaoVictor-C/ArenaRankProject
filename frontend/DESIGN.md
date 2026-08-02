@@ -19,7 +19,7 @@ colors:
   line-strong: "#333845"
   text: "#eef0f3"
   text-dim: "#9aa0aa"
-  text-faint: "#5e6470"
+  text-faint: "#878e9a"
 typography:
   display:
     fontFamily: "Anton, sans-serif"
@@ -146,7 +146,7 @@ Uma paleta escura ancorada no logo: azul é marca e interação, ouro é rating 
 - **Pedra** (`#0b0c0f` bg / `#08090b` bg-deep): o palco. Fundo do corpo e do rodapé/header.
 - **Rampa de Superfície** (`#131419` surface → `#181a20` surface-2 → `#1e2128` surface-3): camadas empilhadas que criam profundidade sem sombra. Painel, chip, input, hover de linha sobem um degrau nessa rampa.
 - **Fios** (`#262a33` line / `#333845` line-strong): bordas hairline que separam superfícies e desenham tabelas.
-- **Tinta** (`#eef0f3` text / `#9aa0aa` text-dim / `#5e6470` text-faint): corpo, secundário e terciário. Sobre `surface` (`#131419`), `text` e `text-dim` passam AA de corpo; `text-faint` é só para rótulos grandes/decorativos, nunca corpo longo.
+- **Tinta** (`#eef0f3` text / `#9aa0aa` text-dim / `#878e9a` text-faint): corpo, secundário e terciário. Os três passam AA sobre toda a rampa de superfície (faint ≥5,3:1 desde a auditoria de 20/07); `text-faint` segue sendo a voz terciária — rótulos, metadados — nunca corpo longo.
 
 ### Named Rules
 **A Regra do Ouro Escasso.** O ouro nunca é decoração. Ele marca conquista — rating, topo, tier, conquista de perfil — e some do resto da tela. Se aparecer em mais de um punhado de elementos por página, perdeu o significado.
@@ -208,7 +208,7 @@ Ação é tátil e encorpada — botões e CTAs têm presença física, hover qu
 ### Inputs / Fields
 - **Style:** busca do header — fundo `#141519`, fio `#23252d`, 9px de raio, 44px de altura, ícone Material Symbols em cinza.
 - **Focus:** `:focus-within` troca a borda para Azul Arena (`#2f9bd6`). Sem glow.
-- **Placeholder:** `#686d78` — cinza legível, não o cinza-fantasma padrão.
+- **Placeholder:** `var(--text-faint)` (#878e9a) — passa AA (4,5:1+), não o cinza-fantasma padrão.
 
 ### Navigation (Header 3 tiers)
 - **Estrutura:** três faixas sobre `#0c0c0e` — (1) logo + abas de modo de jogo, (2) busca + ações (perfil dourado, troféu, Entrar), (3) mini-modos + navegação principal.
@@ -216,7 +216,7 @@ Ação é tátil e encorpada — botões e CTAs têm presença física, hover qu
 - **Ativo:** texto branco + barra inferior dourada (`#d5a038`) com glow contido (`box-shadow` dourado) — a única assinatura luminosa tolerada, marcando "você está aqui" com o ouro da conquista.
 
 ### Signature: Badges de Tier & Placement
-O sistema de status é a peça distintiva. Badges de tier (Top1 gradiente ouro, Top10 ouro-dim, Top50 azul-dim, Top100 verde-dim, Top500 neutro), badges de placement 1–8 (p1 ouro, p2 azul-farol, p3/p4 verde, p5+ cinza), streaks (win verde-dim, loss vermelho-dim) e deltas (up/down/flat) formam um vocabulário consistente de reconhecimento competitivo. Todos: caixa-alta, `700–800` weight, cantos de 5–6px, cor de fundo semântica com texto de alto contraste.
+O sistema de status é a peça distintiva. Badges de tier (Top1 gradiente ouro, Top10 ouro-dim, Top50 azul-dim, Top100 verde-dim, Top500 neutro), badges de placement 1–8 (p1 ouro, p2–p4 verde, p5+ vermelho), streaks (win verde-dim, loss vermelho-dim) e deltas (up/down/flat) formam um vocabulário consistente de reconhecimento competitivo. Todos: caixa-alta, `700–800` weight, cantos de 5–6px, cor de fundo semântica com texto de alto contraste.
 
 ## 6. Do's and Don'ts
 

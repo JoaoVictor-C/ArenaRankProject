@@ -74,6 +74,32 @@ def seed_riot_ids() -> list[tuple[str, str]]:
     return out
 
 
+def seed_region() -> Any:
+    """``settings.bootstrap_seed_region`` -> :class:`arena.riot.routing.Region`.
+
+    A config é texto, mas os construtores de URL esperam o enum e usam
+    ``region.host``. Passar a string crua levantava
+    ``AttributeError: 'str' object has no attribute 'host'`` DENTRO do try/except
+    que envolve a resolução — então cada semente era descartada como se a Riot
+    tivesse recusado, e o operador via "Nenhuma semente resolvida na Riot" com a
+    chave perfeitamente boa. Um valor inválido cai para AMERICAS com aviso, em
+    vez de repetir esse erro silencioso por semente.
+    """
+    from arena.riot.routing import Region
+
+    raw = (settings.bootstrap_seed_region or "").strip().lower()
+    try:
+        return Region(raw)
+    except ValueError:
+        _log.warning(
+            "bootstrap.bad_seed_region",
+            value=raw,
+            valid=[r.value for r in Region],
+            fallback=Region.AMERICAS.value,
+        )
+        return Region.AMERICAS
+
+
 async def resolve_seed_puuids() -> list[str]:
     """Resolve os Riot IDs de semente para puuids (account-v1)."""
     pairs = seed_riot_ids()
@@ -87,12 +113,11 @@ async def resolve_seed_puuids() -> list[str]:
     # dos workers por causa de um único chamador.
     client: Any = get_client()
     real: Any = getattr(client, "_real", client)
+    region = seed_region()
     puuids: list[str] = []
     for name, tag in pairs:
         try:
-            account = await real.get_account_by_riot_id(
-                name, tag, region=settings.bootstrap_seed_region
-            )
+            account = await real.get_account_by_riot_id(name, tag, region=region)
         except Exception:  # noqa: BLE001
             _log.warning("bootstrap.seed_resolve_failed", riotId=f"{name}#{tag}", exc_info=True)
             continue
@@ -104,26 +129,59 @@ async def resolve_seed_puuids() -> list[str]:
     return puuids
 
 
-async def start_bootstrap(redis: Any, season_id: str) -> dict[str, Any]:
-    """Coloca a temporada em ``catching_up`` e injeta as sementes.
+async def request_bootstrap(season_id: str) -> dict[str, Any]:
+    """Pede um refill: marca a temporada como ``catching_up``. Só banco.
 
-    Idempotente: re-executar só re-enfileira as sementes, e o
-    ``BACKFILL_CLAIMED_SET`` já garante que um puuid não seja importado duas
-    vezes — então retomar um refill interrompido é seguro.
+    NÃO semeia. Semear precisa da chave da Riot (para resolver "Nome#TAG" em
+    puuid) e do Redis das FILAS (para o backfill cair onde algum worker vá
+    consumir) — e no deploy dividido a API do EC2 não tem nenhum dos dois. Antes
+    esta função rodava no processo da API e por isso o botão "Iniciar refill"
+    era inutilizável a partir do EC2, mesmo com as sementes configuradas.
+
+    Quem semeia é o :func:`bootstrap_tick` da caixa de workers, que enxerga as
+    duas coisas. Aqui só se registra a INTENÇÃO; ``seeded_at=None`` é o sinal de
+    "pedido, ainda não semeado" que o tick procura.
+
+    Idempotente: repetir apenas reabre a janela de semeadura.
     """
-    if not settings.bootstrap_seed_riot_ids.strip():
-        return {"status": "error", "reason": "no seeds configured"}
-
-    puuids = await resolve_seed_puuids()
-    if not puuids:
-        return {"status": "error", "reason": "no seed resolved"}
-
     async with get_sessionmaker()() as session:
         await ingest_state.set_mode(session, season_id, m.IngestMode.catching_up)
         await ingest_state.update_progress(
-            session, season_id, saturated_at=None, frontier_pending=len(puuids)
+            session,
+            season_id,
+            saturated_at=None,
+            seeded_at=None,
+            last_error=None,
         )
         await session.commit()
+    _log.info("bootstrap.requested", seasonId=season_id)
+    return {"status": "ok"}
+
+
+async def seed_now(redis: Any, season_id: str) -> dict[str, Any]:
+    """Resolve as sementes e injeta no backfill. SÓ na caixa de workers.
+
+    Chamado pelo :func:`bootstrap_tick`, nunca por uma rota HTTP: depende da
+    chave da Riot e do Redis das filas.
+
+    Idempotente por ``BACKFILL_CLAIMED_SET`` — re-enfileirar um puuid já
+    reivindicado não o importa duas vezes, então retomar um refill interrompido
+    é seguro.
+    """
+    if not settings.bootstrap_seed_riot_ids.strip():
+        return {
+            "status": "error",
+            "reason": "Nenhuma semente configurada: defina BOOTSTRAP_SEED_RIOT_IDS "
+            "na caixa de workers (é lá que a semeadura acontece).",
+        }
+
+    puuids = await resolve_seed_puuids()
+    if not puuids:
+        return {
+            "status": "error",
+            "reason": "Nenhuma semente resolvida na Riot. Confira os Riot IDs em "
+            "BOOTSTRAP_SEED_RIOT_IDS e se RIOT_API_KEY é válida.",
+        }
 
     queued = await enqueue_backfill(redis, puuids)
     if redis is not None:
@@ -131,7 +189,7 @@ async def start_bootstrap(redis: Any, season_id: str) -> dict[str, Any]:
             await redis.delete(_QUIET_KEY)
         except Exception:  # noqa: BLE001
             pass
-    _log.info("bootstrap.started", seasonId=season_id, seeds=len(puuids), queued=queued)
+    _log.info("bootstrap.seeded", seasonId=season_id, seeds=len(puuids), queued=queued)
     return {"status": "ok", "seeds": len(puuids), "queued": queued}
 
 
@@ -166,7 +224,12 @@ async def _counts(session: Any, season_id: str) -> tuple[int, int]:
 
 
 async def bootstrap_tick(ctx: dict[str, Any]) -> dict[str, Any]:
-    """Mede a fronteira e decide quando o refill acabou.
+    """SEMEIA quando há um refill pedido, mede a fronteira, e fecha quando acaba.
+
+    A semeadura vive aqui — e não na rota de admin que o operador aperta —
+    porque depende da chave da Riot e do Redis das FILAS, que só existem nesta
+    caixa. A rota apenas marca ``catching_up`` com ``seeded_at`` nulo; este tick
+    vê esse estado e injeta as sementes.
 
     "Saturado" = ``_SATURATION_STREAK`` passadas seguidas sem jogador NOVO e sem
     nada pendente no backfill. Aí a descoberta alcançou tudo que dava, e quando o
@@ -187,6 +250,31 @@ async def bootstrap_tick(ctx: dict[str, Any]) -> dict[str, Any]:
             players, staged = await _counts(session, season_id)
             state = await ingest_state.get_state(session, season_id)
             previous = state.frontier_done if state else 0
+
+            # Refill pedido mas ainda não semeado -> semeia agora.
+            # A falha é GRAVADA, não só logada: quem apertou o botão está na
+            # outra caixa e nunca veria este log.
+            if state is not None and state.seeded_at is None:
+                seeded = await seed_now(redis, season_id)
+                if seeded.get("status") == "ok":
+                    await ingest_state.update_progress(
+                        session,
+                        season_id,
+                        seeded_at=datetime.now(UTC),
+                        frontier_pending=int(seeded.get("seeds", 0)),
+                        last_error=None,
+                    )
+                    await session.commit()
+                    _log.info("bootstrap.seed_ok", seasonId=season_id, **seeded)
+                    return {"status": "seeded", **seeded}
+                await ingest_state.update_progress(
+                    session, season_id, last_error=str(seeded.get("reason"))[:300]
+                )
+                await session.commit()
+                _log.warning(
+                    "bootstrap.seed_failed", seasonId=season_id, reason=seeded.get("reason")
+                )
+                return {"status": "seed_failed", "reason": seeded.get("reason")}
 
             pending = 0
             if redis is not None:
@@ -246,8 +334,10 @@ async def _current_season() -> str | None:
 
 __all__ = [
     "seed_riot_ids",
+    "seed_region",
     "resolve_seed_puuids",
-    "start_bootstrap",
+    "request_bootstrap",
+    "seed_now",
     "stop_bootstrap",
     "bootstrap_tick",
 ]

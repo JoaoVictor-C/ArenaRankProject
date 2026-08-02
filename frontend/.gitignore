@@ -2,9 +2,6 @@ node_modules
 dist
 dist-ssr
 *.local
-.env
-.env.*
-!.env.example
 .DS_Store
 *.log
 .vite
@@ -12,3 +9,4 @@ dist-ssr
 # Compiled output of vite.config.ts — never commit (Vite resolves .js before .ts).
 vite.config.js
 vite.config.d.ts
+scripts/poro-layers/

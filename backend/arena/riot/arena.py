@@ -18,7 +18,11 @@ integrity layer may later veto, but this is the transport-level gate.
 
 Outputs use this package's own dataclasses; the service layer maps them onto
 ``arena.rating.MatchInput``. We never surface raw Riot fields, mu/sigma, or item
-winrate from here — only structural facts (placements, champion ids, teams).
+winrate from here — only structural facts (placements, champion ids, teams,
+augment/item PICKS). The picks themselves are fine to capture (they're what
+backs the placement-derived ``champion_build_stats`` rollup downstream); the
+ToS line is never exposing an augment/item *winrate*, same posture as
+everywhere else this data surfaces.
 """
 
 from __future__ import annotations
@@ -90,6 +94,31 @@ class ParsedParticipant:
     # Diagnostics retained for the integrity layer; never UI-exposed.
     time_played: int = 0
     game_ended_in_early_surrender: bool = False
+    # Augment picks, draft order (``playerAugment1..6``), 0/missing slots
+    # dropped. Usually 4, but an augment-granting effect (e.g. "Transmutar:
+    # Caos") can push a 5th/6th real pick into the array — never assume a
+    # fixed length. Final items (``item0..6``), 0 (empty slot) dropped.
+    augments: list[int] = field(default_factory=list)
+    items: list[int] = field(default_factory=list)
+    # Combat telemetry (raw Riot primitives; ``kill_participation``/
+    # ``damage_per_minute`` are DERIVED downstream from these + subteam
+    # grouping, never captured here — see arena/api/routers/match.py). Several
+    # Riot participant fields are structurally meaningless in Arena (no lanes,
+    # no vision, no map objectives, fixed summoner spells for everyone) and are
+    # deliberately NOT captured — see the combat-telemetry plan for the full
+    # in/out list.
+    kills: int = 0
+    deaths: int = 0
+    assists: int = 0
+    damage_to_champions: int = 0
+    gold_earned: int = 0
+    champion_level: int = 0
+    damage_taken: int = 0
+    total_heal: int = 0
+    damage_self_mitigated: int = 0
+    largest_multi_kill: int = 0
+    killing_sprees: int = 0
+    time_spent_dead: int = 0
 
 
 @dataclass(slots=True)
@@ -156,6 +185,32 @@ def _resolve_mode(info: dict[str, Any]) -> ArenaMode:
     )
 
 
+def _picked_ints(p: dict[str, Any], prefix: str, slots: range) -> list[int]:
+    """Non-zero ``{prefix}{n}`` values across ``slots``, draft/slot order kept.
+
+    Riot pads unused augment/item slots with ``0`` rather than omitting the
+    key — ``playerAugment5``/``6`` are ``0`` on a normal 4-pick game, ``item5``
+    is ``0`` on an empty inventory slot. Keeping order (not sorting/deduping)
+    matters for augments: a genuine augment-granting effect can repeat an id.
+    """
+    out: list[int] = []
+    for n in slots:
+        try:
+            v = int(p.get(f"{prefix}{n}", 0) or 0)
+        except (TypeError, ValueError):
+            continue
+        if v > 0:
+            out.append(v)
+    return out
+
+
+#: Automatically-equipped Arena trinket(s) — present in ~every game regardless
+#: of player choice, not a real build decision. Excluded from capture so
+#: champion_build_stats / per-match item displays stay meaningful instead of
+#: always showing a ~100%-pick-rate item nobody actually chose.
+_EXCLUDED_ITEM_IDS = frozenset({3348})  # "Analisador Arcano" / Arcane Sweeper
+
+
 def _derive_eligibility(p: dict[str, Any], game_duration: int) -> bool:
     """Transport-level ``eligibleForProgression`` gate.
 
@@ -214,6 +269,24 @@ def parse_arena_match(payload: dict[str, Any]) -> ParsedArenaMatch:
             profile_icon=int(p.get("profileIcon", 0) or 0),
             time_played=int(p.get("timePlayed", 0) or 0),
             game_ended_in_early_surrender=bool(p.get("gameEndedInEarlySurrender", False)),
+            augments=_picked_ints(p, "playerAugment", range(1, 7)),
+            items=[
+                i
+                for i in _picked_ints(p, "item", range(0, 7))
+                if i not in _EXCLUDED_ITEM_IDS
+            ],
+            kills=int(p.get("kills", 0) or 0),
+            deaths=int(p.get("deaths", 0) or 0),
+            assists=int(p.get("assists", 0) or 0),
+            damage_to_champions=int(p.get("totalDamageDealtToChampions", 0) or 0),
+            gold_earned=int(p.get("goldEarned", 0) or 0),
+            champion_level=int(p.get("champLevel", 0) or 0),
+            damage_taken=int(p.get("totalDamageTaken", 0) or 0),
+            total_heal=int(p.get("totalHeal", 0) or 0),
+            damage_self_mitigated=int(p.get("damageSelfMitigated", 0) or 0),
+            largest_multi_kill=int(p.get("largestMultiKill", 0) or 0),
+            killing_sprees=int(p.get("killingSprees", 0) or 0),
+            time_spent_dead=int(p.get("totalTimeSpentDead", 0) or 0),
         )
         team = subteams.get(subteam_id)
         if team is None:
@@ -271,6 +344,20 @@ def parsed_to_json(parsed: ParsedArenaMatch) -> dict[str, Any]:
                         "profileIcon": p.profile_icon,
                         "timePlayed": p.time_played,
                         "earlySurrender": p.game_ended_in_early_surrender,
+                        "augments": p.augments,
+                        "items": p.items,
+                        "kills": p.kills,
+                        "deaths": p.deaths,
+                        "assists": p.assists,
+                        "damageToChampions": p.damage_to_champions,
+                        "goldEarned": p.gold_earned,
+                        "championLevel": p.champion_level,
+                        "damageTaken": p.damage_taken,
+                        "totalHeal": p.total_heal,
+                        "damageSelfMitigated": p.damage_self_mitigated,
+                        "largestMultiKill": p.largest_multi_kill,
+                        "killingSprees": p.killing_sprees,
+                        "timeSpentDead": p.time_spent_dead,
                     }
                     for p in t.participants
                 ],
@@ -304,6 +391,20 @@ def parsed_from_json(data: dict[str, Any]) -> ParsedArenaMatch:
                         profile_icon=int(p.get("profileIcon", 0)),
                         time_played=int(p.get("timePlayed", 0)),
                         game_ended_in_early_surrender=bool(p.get("earlySurrender", False)),
+                        augments=[int(a) for a in p.get("augments", [])],
+                        items=[int(i) for i in p.get("items", [])],
+                        kills=int(p.get("kills", 0)),
+                        deaths=int(p.get("deaths", 0)),
+                        assists=int(p.get("assists", 0)),
+                        damage_to_champions=int(p.get("damageToChampions", 0)),
+                        gold_earned=int(p.get("goldEarned", 0)),
+                        champion_level=int(p.get("championLevel", 0)),
+                        damage_taken=int(p.get("damageTaken", 0)),
+                        total_heal=int(p.get("totalHeal", 0)),
+                        damage_self_mitigated=int(p.get("damageSelfMitigated", 0)),
+                        largest_multi_kill=int(p.get("largestMultiKill", 0)),
+                        killing_sprees=int(p.get("killingSprees", 0)),
+                        time_spent_dead=int(p.get("timeSpentDead", 0)),
                     )
                     for p in t["participants"]
                 ],

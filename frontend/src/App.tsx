@@ -1,7 +1,6 @@
 import { lazy } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { Layout } from "./components/Layout";
-import { AdminGate } from "./components/AdminGate";
 
 // Cada página é carregada sob demanda (code-splitting): o bundle inicial fica só
 // com o shell + o roteador, e cada rota chega em seu próprio chunk. O <Suspense>
@@ -18,10 +17,18 @@ const Campeonatos2 = lazy(() =>
   import("./routes/Campeonatos2").then((m) => ({ default: m.Campeonatos2 })),
 );
 const Winrate = lazy(() => import("./routes/Winrate").then((m) => ({ default: m.Winrate })));
+const Campeao = lazy(() => import("./routes/Campeao").then((m) => ({ default: m.Campeao })));
+const Augments = lazy(() => import("./routes/Augments").then((m) => ({ default: m.Augments })));
+const Sinergias = lazy(() => import("./routes/Sinergias").then((m) => ({ default: m.Sinergias })));
+const ChampionOtps = lazy(() =>
+  import("./routes/ChampionOtps").then((m) => ({ default: m.ChampionOtps })),
+);
 const Perfil = lazy(() => import("./routes/Perfil").then((m) => ({ default: m.Perfil })));
+const Lens = import.meta.env.DEV
+  ? lazy(() => import("./routes/Lens").then((m) => ({ default: m.Lens })))
+  : null;
 const Partida = lazy(() => import("./routes/Partida").then((m) => ({ default: m.Partida })));
 const Sistema = lazy(() => import("./routes/Sistema").then((m) => ({ default: m.Sistema })));
-const Admin = lazy(() => import("./routes/Admin").then((m) => ({ default: m.Admin })));
 const Duo = lazy(() => import("./routes/Duo").then((m) => ({ default: m.Duo })));
 
 export function App() {
@@ -36,18 +43,16 @@ export function App() {
           <Route path="/campeonatos2" element={<Campeonatos2 />} />
           <Route path="/campeonatos2/:id" element={<Campeonatos2 />} />
           <Route path="/winrate" element={<Winrate />} />
+          <Route path="/campeao/:championId" element={<Campeao />} />
+          <Route path="/campeao/:championId/otps" element={<ChampionOtps />} />
+          <Route path="/augments" element={<Augments />} />
+          <Route path="/sinergias" element={<Sinergias />} />
+          {Lens && <Route path="/perfil/:riotId/lens" element={<Lens />} />}
           <Route path="/perfil/:riotId" element={<Perfil />} />
+          {Lens && <Route path="/:riotId/lens" element={<Lens />} />}
           <Route path="/partida/:matchId" element={<Partida />} />
           <Route path="/duo" element={<Duo />} />
           <Route path="/sistema" element={<Sistema />} />
-          <Route
-            path="/admin"
-            element={
-              <AdminGate>
-                <Admin />
-              </AdminGate>
-            }
-          />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>

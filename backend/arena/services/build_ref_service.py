@@ -1,11 +1,19 @@
-"""PROVISIONAL — categorized champion reference build (``champion_build_ref``).
+"""CDragon display resolution for augments/items — name, icon, rarity, description.
 
-Serves the "build recomendada" surface: augments grouped by in-game rarity
-(prismatic / gold / silver — the three draft rounds), items split into itens /
-botas, and reference teammates, for one champion. Source is the external
-GLOBAL patch aggregate snapshotted into ``champion_build_ref`` by
-``scripts/fetch_build_ref.py`` (migration 0006) — not our BR ladder; the UI
-labels it as such.
+Riot's match-v5 payload only ever gives us NUMERIC augment/item ids
+(``playerAugment1..6`` / ``item0..6``, captured in ``arena/riot/arena.py`` and
+rolled up into ``champion_build_stats`` by ``StatsService``) — never a name,
+icon, or rarity. This module is the one remaining reason to talk to
+CommunityDragon for builds: turning those ids into something a person can
+read. The STATS themselves (games/top1/top4/pick_rate/tier) are OUR OWN data
+now — see ``stats_service.py``'s ``champion_build_picks``/``top_build_picks``
+and ``arena/api/routers/champions.py``, which join the two together.
+
+(Until this session, this module ALSO owned the stats: a third-party
+aggregate, ``champion_build_ref``, snapshotted by a script that has since been
+removed along with the table — migration ``0020_drop_champion_build_ref``.
+That was always meant to be provisional; native augment/item capture landed,
+so it's gone.)
 
 Display names and icons resolve via CommunityDragon (PT-BR locale):
 
@@ -13,33 +21,26 @@ Display names and icons resolve via CommunityDragon (PT-BR locale):
   (includes the Arena ``22xxxxx`` item variants ddragon lacks; ``categories``
   containing ``"Boots"`` drives the itens/botas split).
 - augments: ``cdragon/arena/pt_br.json`` (``rarity``: 0=silver 1=gold
-  2=prismatic).
+  2=prismatic, 4=unique).
 
 Both are cached 12h through the same two-tier :class:`DDragonCache` pattern
 the ddragon service uses (in-process always, Redis best-effort).
 
-ToS posture: every surfaced stat is placement-derived (top1/top4 rate +
-average placement + pick rate); the aggregate's ``win_rate`` fields (null
-upstream anyway) are never read. Entries whose id no longer maps to a live
-CDragon name (augments rotated out of the current patch, ~12% of games in
-sampling) are DROPPED — a bare numeric id would read as broken data.
-
-Drop the whole feature (this module, the table/model, migration 0006, the
-fetch script, the endpoint) once native augment ingestion lands.
+Entries whose id no longer maps to a live CDragon name (augments/items
+rotated out of the current patch) are DROPPED wherever they're joined against
+our own stats — a bare numeric id would read as broken data.
 """
 
 from __future__ import annotations
 
 import asyncio
-from dataclasses import dataclass, field
+import re
+from dataclasses import dataclass
 from typing import Any
 
 import httpx
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from arena.core.logging import get_logger
-from arena.db import models as m
 from arena.ddragon.cache import DEFAULT_TTL_SECONDS, DDragonCache
 
 # Redis builder shared with the ddragon singleton (same optional-Redis policy).
@@ -53,98 +54,118 @@ CDRAGON_AUGMENTS_URL = f"{CDRAGON_BASE}/cdragon/arena/pt_br.json"
 
 KEY_ITEMS = "cdragon:items:pt_br"
 KEY_AUGMENTS = "cdragon:augments:pt_br"
+KEY_AUGMENT_CATALOG = "cdragon:augment_catalog:pt_br"
 
-#: Sample floor per entry (games). The aggregate carries plenty of sub-50
-#: noise entries with confident-looking tiers; below this we don't show them.
-#: Exposed on the API response so the UI can state the criterion.
+#: READ floor for a (champion, pick) cell in ``champion_build_stats`` — below
+#: this, the sample is too thin to show with a confident-looking tier. Must
+#: stay ABOVE ``settings.champion_build_min_games`` (the WRITE floor) or the
+#: read path would silently lose cells it's entitled to show.
 BUILD_MIN_GAMES = 50
 
-#: Sample floor per entry in the GLOBAL (cross-champion) top lists — higher
-#: than the per-champion floor because the global pool is ~170x larger.
+#: READ floor for the GLOBAL (cross-champion) top lists — higher than the
+#: per-champion floor because the pool is summed across every champion.
 TOP_MIN_GAMES = 200
 
-# Display caps for the global top lists.
-_CAP_TOP_AUGMENTS = 12
-_CAP_TOP_ITEMS = 14
-
-# Redis/in-process key for the aggregated global top (heavy to recompute:
-# ~170 JSONB payloads scanned).
-KEY_TOP_BUILD = "buildref:top:pt_br"
-
-# Relative-position cutoffs for the global tier letters (by weighted average
-# placement, best first) — same bucketing idea as the champions tierlist.
-_TOP_TIER_CUTOFFS: list[tuple[str, float]] = [
-    ("S", 0.10),
-    ("A", 0.30),
-    ("B", 0.55),
-    ("C", 0.80),
-    ("D", 1.0),
-]
-
-# Display caps per category (sorted best-first before capping).
-_CAP_AUGMENTS_PER_RARITY = 8
-_CAP_ITEMS = 12
-_CAP_BOOTS = 4
-_CAP_TEAMMATES = 8
-
-# Aggregate's numeric tier (1 best .. 5 worst) -> our tier letters.
-_TIER_LETTER: dict[int, str] = {1: "S", 2: "A", 3: "B", 4: "C", 5: "D"}
-_TIER_ORDER = "SABCD"
-
-# CDragon augment ``rarity`` values.
+# CDragon augment ``rarity`` values. 4 ("unique") isn't a draft-round rarity
+# (the champion_build panel only buckets prismatic/gold/silver) but the
+# /augments catalog surfaces it — special rule-changing picks (e.g. "Recebe
+# uma Bigorna de Atributo Prismática").
 _RARITY_SILVER = 0
 _RARITY_GOLD = 1
 _RARITY_PRISMATIC = 2
+_RARITY_UNIQUE = 4
+
+_CATALOG_RARITY: dict[int, str] = {
+    _RARITY_SILVER: "silver",
+    _RARITY_GOLD: "gold",
+    _RARITY_PRISMATIC: "prismatic",
+    _RARITY_UNIQUE: "unique",
+}
 
 _HTTP_TIMEOUT = 15.0
 
+# items.json carries no rarity/category field for items (unlike augments.json's
+# `rarity`) and the 48 real Prismatic Items have no shared id range — they're
+# scattered across 443xxx, 447xxx, AND several reused base-game SR ids
+# (e.g. 6632 Divine Sunderer, 3131 Sword of the Divine). An id-range guess
+# (what shipped first) was flat wrong: it caught 9 unrelated 228xxx items
+# (Anathema's Chains, Wooglet's Witchcap, Deathblade, Adaptive Helm, Obsidian
+# Cleaver, Sanguine Blade, Runeglaive, Multitool, Abyssal Mask — a different,
+# unrelated Arena shop tier) and missed every real one. This is an explicit
+# id allowlist instead, cross-checked name-by-name against the League Wiki's
+# "Prismatic items" category (wiki.leagueoflegends.com/en-us/Category:
+# Prismatic_items, 48 entries) against CDragon's items.json 2026-08-01 —
+# re-verify both sources if Riot adds/removes Prismatic Items.
+PRISMATIC_ITEM_IDS: frozenset[int] = frozenset(
+    {
+        447122,  # Black Hole Gauntlet
+        443059,  # Cloak of Starry Night
+        4644,  # Crown of the Shattered Queen
+        447109,  # Cruelty
+        443054,  # Darksteel Talons
+        447107,  # Decapitator
+        443056,  # Demon King's Crown
+        4637,  # Demonic Embrace
+        447113,  # Detonation Orb
+        447120,  # Diamond-Tipped Spear
+        6632,  # Divine Sunderer
+        447106,  # Dragonheart
+        6691,  # Duskblade of Draktharr
+        443063,  # Eleisa's Miracle
+        447105,  # Empyrean Promise
+        6656,  # Everfrost
+        447112,  # Flesheater
+        443061,  # Force of Entropy
+        443055,  # Fulmination
+        6671,  # Galeforce
+        447101,  # Gambler's Blade
+        3193,  # Gargoyle Stoneplate
+        6630,  # Goredrinker
+        443069,  # Hamstringer
+        447103,  # Hemomancer's Helm
+        443081,  # Hexbolt Companion
+        4402,  # Innervating Locket
+        447116,  # Kinkou Jitte
+        447119,  # Lightning Rod
+        447100,  # Mirage Blade
+        447110,  # Moonflair Spellblade
+        4636,  # Night Harvester
+        6693,  # Prowler's Claw
+        447123,  # Puppeteer
+        447118,  # Pyromancer's Cloak
+        6667,  # Radiant Virtue
+        447102,  # Reality Fracture
+        443090,  # Reaper's Toll
+        447115,  # Regicide
+        447114,  # Reverberation
+        447108,  # Runecarver
+        443062,  # Sanguine Gift
+        443058,  # Shield of Molten Stone
+        3131,  # Sword of the Divine
+        443064,  # Talisman of Ascension
+        443079,  # Turbo Chemtank
+        447121,  # Twilight's Edge
+        443080,  # Twin Mask
+    }
+)
+
+
+def is_prismatic_item(item_id: int) -> bool:
+    return item_id in PRISMATIC_ITEM_IDS
+
 
 @dataclass(slots=True)
-class BuildEntryView:
-    """One augment / item / teammate row (teammates: ``id`` is a championId)."""
+class AugmentCatalogEntryView:
+    """One Arena augment for the global catalog (``/augments`` page).
+
+    Identity only (name/icon/rarity/description) — not a placement stat row.
+    """
 
     id: int
     name: str
     icon_url: str | None
-    tier: str  # "S".."D"
-    games: int
-    avg_place: float
-    top1: int  # 0..100
-    top4: int  # 0..100
-    pick_rate: float  # 0..100
-
-
-@dataclass(slots=True)
-class TopBuildView:
-    """Global (cross-champion) top augments/items — the /winrate right rail."""
-
-    patch: str
-    updated_at: str
-    games: int  # total champion-games in the sampled snapshots
-    champions: int  # champions aggregated
-    augments: list[BuildEntryView] = field(default_factory=list)
-    items: list[BuildEntryView] = field(default_factory=list)
-
-
-@dataclass(slots=True)
-class ChampionBuildView:
-    """Categorized reference build for one champion (global patch aggregate)."""
-
-    patch: str
-    updated_at: str  # snapshot date ("2026-07-19"); "" when unknown
-    games: int
-    avg_place: float
-    tier: str | None
-    top1: int
-    top4: int
-    augments_prismatic: list[BuildEntryView] = field(default_factory=list)
-    augments_gold: list[BuildEntryView] = field(default_factory=list)
-    augments_silver: list[BuildEntryView] = field(default_factory=list)
-    items: list[BuildEntryView] = field(default_factory=list)
-    boots: list[BuildEntryView] = field(default_factory=list)
-    # name/icon resolution for teammates happens in the router via the ddragon
-    # helpers already used by the tierlist (name is "" here).
-    teammates: list[BuildEntryView] = field(default_factory=list)
+    rarity: str  # "unique" | "prismatic" | "gold" | "silver"
+    description: str
 
 
 def _item_icon_url(icon_path: str) -> str | None:
@@ -164,9 +185,41 @@ def _augment_icon_url(icon_rel: str) -> str | None:
     return f"{CDRAGON_BASE}/game/{rel}"
 
 
+_DESC_TAG_RE = re.compile(r"<[^>]+>")
+# CDragon uses two placeholder syntaxes: `@MaxStacks@` (scaling values, resolved
+# per-rank in-game) and `%i:Augment%` (inline icon markers). Neither has a value
+# outside a live game, so both are dropped rather than shown literally.
+_DESC_PLACEHOLDER_RE = re.compile(r"[@%][^@%\s]+[@%]")
+_DESC_WHITESPACE_RE = re.compile(r"\s+")
+
+
+def _clean_display_text(desc: str) -> str:
+    """CDragon rich-text (augment ``desc`` or item ``description``) -> plain
+    PT-BR text for display.
+
+    Strips rich-text tags (``<br>``, ``<spellName>...</spellName>``,
+    ``<mainText>``/``<stats>``/``<attention>`` for items) — keeping the tags'
+    inner text — and unresolved placeholders (``@MaxStacks@``,
+    ``%i:Augment%``). The aggregate has no rank/context to resolve those
+    against, and a literal "@MaxStacks@%" would read as broken data; we drop
+    the token rather than show a fake value, same posture as dropping a stale
+    augment id elsewhere in this module.
+    """
+    text = desc.replace("<br>", " ").replace("<br/>", " ").replace("<BR>", " ")
+    text = _DESC_TAG_RE.sub("", text)
+    text = _DESC_PLACEHOLDER_RE.sub("", text)
+    return _DESC_WHITESPACE_RE.sub(" ", text).strip()
+
+
 # JSON-safe cache rows: {"<id>": [name, icon_url|None, extra]} where extra is
 # ``1 if boots else 0`` for items and the rarity int for augments.
 _MapRow = tuple[str, str | None, int]
+
+# Item map rows carry two more fields than the shared ``_MapRow`` shape (gold
+# cost + description) — the match-detail item hover (Perfil `/perfil` loadout
+# tooltip) needs both, and the augment map doesn't (augments have no gold
+# cost; their description already comes from ``augment_catalog()``).
+_ItemMapRow = tuple[str, str | None, int, int, str]
 
 
 def _coerce_cached_map(raw: Any) -> dict[int, _MapRow]:
@@ -188,8 +241,33 @@ def _coerce_cached_map(raw: Any) -> dict[int, _MapRow]:
     return out
 
 
+def _coerce_cached_item_map(raw: Any) -> dict[int, _ItemMapRow]:
+    """Same as :func:`_coerce_cached_map` but for the wider item row shape."""
+    if not isinstance(raw, dict):
+        return {}
+    out: dict[int, _ItemMapRow] = {}
+    for key, row in raw.items():
+        try:
+            entry_id = int(key)
+        except (TypeError, ValueError):
+            continue
+        if not isinstance(row, (list, tuple)) or len(row) != 5:
+            continue
+        name, icon, is_boots, gold, description = row
+        if not isinstance(name, str) or not name:
+            continue
+        out[entry_id] = (
+            name,
+            icon if isinstance(icon, str) else None,
+            int(is_boots or 0),
+            int(gold or 0),
+            str(description or ""),
+        )
+    return out
+
+
 class BuildRefService:
-    """Async accessor: CDragon display maps + ``champion_build_ref`` transform."""
+    """Async accessor: CDragon augment/item display maps + the augment catalog."""
 
     def __init__(
         self,
@@ -227,20 +305,24 @@ class BuildRefService:
 
     # -- CDragon display maps ------------------------------------------------
 
-    async def _item_map(self) -> dict[int, _MapRow]:
-        """``{itemId: (pt-BR name, icon_url, 1 if boots)}`` (cache-first, 12h)."""
+    async def _item_map(self) -> dict[int, _ItemMapRow]:
+        """``{itemId: (pt-BR name, icon_url, 1 if boots, gold total, description)}``
+        (cache-first, 12h). Gold + description feed the match-detail item
+        hover (Perfil `/perfil` loadout tooltip) — everything else already
+        only used name/icon/is_boots, so those keep working unchanged (Python
+        doesn't care that the tuple grew two more trailing fields)."""
         cached = await self._cache.get(KEY_ITEMS)
-        coerced = _coerce_cached_map(cached)
+        coerced = _coerce_cached_item_map(cached)
         if coerced:
             return coerced
 
         async with self._lock:
             cached = await self._cache.get(KEY_ITEMS)
-            coerced = _coerce_cached_map(cached)
+            coerced = _coerce_cached_item_map(cached)
             if coerced:
                 return coerced
             data = await self._fetch_json(CDRAGON_ITEMS_URL)
-            built: dict[str, _MapRow] = {}
+            built: dict[str, _ItemMapRow] = {}
             if isinstance(data, list):
                 for it in data:
                     if not isinstance(it, dict):
@@ -255,11 +337,14 @@ class BuildRefService:
                     categories = it.get("categories") or []
                     is_boots = isinstance(categories, list) and "Boots" in categories
                     icon = _item_icon_url(str(it.get("iconPath", "")))
-                    built[str(item_id)] = (name, icon, 1 if is_boots else 0)
+                    gold_raw = it.get("priceTotal")
+                    gold = int(gold_raw) if isinstance(gold_raw, (int, float)) else 0
+                    description = _clean_display_text(str(it.get("description", "") or ""))
+                    built[str(item_id)] = (name, icon, 1 if is_boots else 0, gold, description)
             if built:
                 await self._cache.set(KEY_ITEMS, built)
                 _log.info("build_ref.items_loaded", count=len(built))
-            return _coerce_cached_map(built)
+            return _coerce_cached_item_map(built)
 
     async def _augment_map(self) -> dict[int, _MapRow]:
         """``{augmentId: (pt-BR name, icon_url, rarity)}`` (cache-first, 12h)."""
@@ -297,303 +382,96 @@ class BuildRefService:
                 _log.info("build_ref.augments_loaded", count=len(built))
             return _coerce_cached_map(built)
 
-    # -- transform ----------------------------------------------------------
+    async def augment_catalog(self) -> list[AugmentCatalogEntryView]:
+        """Every current Arena augment: id/name/icon/rarity/description, PT-BR.
 
-    @staticmethod
-    def _entries(
-        raw: Any,
-        display: dict[int, _MapRow] | None,
-        *,
-        min_games: int = BUILD_MIN_GAMES,
-    ) -> list[tuple[BuildEntryView, int]]:
-        """Filtered, sorted ``(entry, extra)`` rows from one aggregate section.
-
-        ``display=None`` (teammates) keeps every id and leaves ``name`` blank
-        for the router to resolve via ddragon. With a display map, unmapped ids
-        are dropped (credibility: no name, no row). ``extra`` is the map's third
-        field (boots flag / rarity), 0 without a map.
+        A direct CDragon fetch (cache-first, 12h). Broader than
+        :meth:`_augment_map` (which only keeps rarities 0/1/2 for build-stats
+        display matching): this also keeps rarity 4 ("unique" — special
+        rule-changing picks) and carries the description.
         """
-        if not isinstance(raw, dict):
-            return []
-        rows: list[tuple[BuildEntryView, int]] = []
-        for key, stats in raw.items():
-            try:
-                entry_id = int(key)
-            except (TypeError, ValueError):
-                continue
-            if entry_id <= 0 or not isinstance(stats, dict):
-                continue  # id 0 = empty item slot in the aggregate
-            games = int(stats.get("num_games") or 0)
-            if games < min_games:
-                continue
-            tier = _TIER_LETTER.get(int(stats.get("tier") or 0))
-            if tier is None:
-                continue
-            name = ""
-            icon: str | None = None
-            extra = 0
-            if display is not None:
-                mapped = display.get(entry_id)
-                if mapped is None:
-                    continue
-                name, icon, extra = mapped
-            rows.append(
-                (
-                    BuildEntryView(
-                        id=entry_id,
-                        name=name,
-                        icon_url=icon,
-                        tier=tier,
-                        games=games,
-                        avg_place=round(float(stats.get("avg_placement") or 0.0), 2),
-                        top1=round(float(stats.get("top_1_percent") or 0.0) * 100),
-                        top4=round(float(stats.get("top_4_percent") or 0.0) * 100),
-                        pick_rate=round(float(stats.get("pick_rate") or 0.0) * 100, 1),
-                    ),
-                    extra,
+        cached = await self._cache.get(KEY_AUGMENT_CATALOG)
+        entries = _coerce_catalog(cached)
+        if entries:
+            return entries
+
+        async with self._lock:
+            cached = await self._cache.get(KEY_AUGMENT_CATALOG)
+            entries = _coerce_catalog(cached)
+            if entries:
+                return entries
+            data = await self._fetch_json(CDRAGON_AUGMENTS_URL)
+            augments = data.get("augments") if isinstance(data, dict) else None
+            built: list[AugmentCatalogEntryView] = []
+            if isinstance(augments, list):
+                for aug in augments:
+                    if not isinstance(aug, dict):
+                        continue
+                    try:
+                        aug_id = int(aug.get("id", 0))
+                    except (TypeError, ValueError):
+                        continue
+                    name = str(aug.get("name", "")).strip()
+                    try:
+                        rarity_num = int(aug.get("rarity", -1))
+                    except (TypeError, ValueError):
+                        continue
+                    rarity_key = _CATALOG_RARITY.get(rarity_num)
+                    if aug_id <= 0 or not name or rarity_key is None:
+                        continue
+                    icon = _augment_icon_url(str(aug.get("iconSmall", "")))
+                    description = _clean_display_text(str(aug.get("desc", "") or ""))
+                    built.append(
+                        AugmentCatalogEntryView(
+                            id=aug_id,
+                            name=name,
+                            icon_url=icon,
+                            rarity=rarity_key,
+                            description=description,
+                        )
+                    )
+            if built:
+                await self._cache.set(
+                    KEY_AUGMENT_CATALOG, [_catalog_entry_to_json(e) for e in built]
                 )
-            )
-        rows.sort(key=lambda r: (_TIER_ORDER.index(r[0].tier), -r[0].pick_rate))
-        return rows
-
-    async def champion_build(
-        self, session: AsyncSession, *, champion_id: int
-    ) -> ChampionBuildView | None:
-        """Latest snapshot for one champion, categorized; ``None`` with no row."""
-        stmt = (
-            select(m.ChampionBuildRef)
-            .where(m.ChampionBuildRef.champion_id == champion_id)
-            .order_by(
-                m.ChampionBuildRef.dt.desc().nulls_last(),
-                m.ChampionBuildRef.fetched_at.desc(),
-            )
-            .limit(1)
-        )
-        row = (await session.execute(stmt)).scalars().first()
-        if row is None:
-            return None
-        payload: dict[str, Any] = row.payload if isinstance(row.payload, dict) else {}
-
-        item_map, augment_map = await asyncio.gather(self._item_map(), self._augment_map())
-
-        augments = self._entries(payload.get("augments"), augment_map)
-        by_rarity: dict[int, list[BuildEntryView]] = {
-            _RARITY_PRISMATIC: [],
-            _RARITY_GOLD: [],
-            _RARITY_SILVER: [],
-        }
-        for entry, rarity in augments:
-            bucket = by_rarity.get(rarity)
-            if bucket is not None and len(bucket) < _CAP_AUGMENTS_PER_RARITY:
-                bucket.append(entry)
-
-        items: list[BuildEntryView] = []
-        boots: list[BuildEntryView] = []
-        for entry, is_boots in self._entries(payload.get("items"), item_map):
-            target, cap = (boots, _CAP_BOOTS) if is_boots else (items, _CAP_ITEMS)
-            if len(target) < cap:
-                target.append(entry)
-
-        teammates = [
-            entry
-            for entry, _ in self._entries(payload.get("teammates"), None)[:_CAP_TEAMMATES]
-        ]
-
-        tier = _TIER_LETTER.get(int(payload.get("tier") or 0))
-        return ChampionBuildView(
-            patch=row.patch if row.patch != "unknown" else "",
-            updated_at=row.dt or "",
-            games=int(payload.get("num_games") or 0),
-            avg_place=round(float(payload.get("avg_placement") or 0.0), 2),
-            tier=tier,
-            top1=round(float(payload.get("top_1_percent") or 0.0) * 100),
-            top4=round(float(payload.get("top_4_percent") or 0.0) * 100),
-            augments_prismatic=by_rarity[_RARITY_PRISMATIC],
-            augments_gold=by_rarity[_RARITY_GOLD],
-            augments_silver=by_rarity[_RARITY_SILVER],
-            items=items,
-            boots=boots,
-            teammates=teammates,
-        )
+                _log.info("build_ref.augment_catalog_loaded", count=len(built))
+            return built
 
 
-    # -- global top (cross-champion aggregate) -------------------------------
-
-    @staticmethod
-    def _aggregate_section(
-        raws: list[Any],
-        display: dict[int, _MapRow],
-        *,
-        min_games: int,
-        cap: int,
-    ) -> list[BuildEntryView]:
-        """Games-weighted cross-champion aggregate of one payload section.
-
-        Rank order = total games desc ("em alta": what the meta actually plays).
-        Tier letter = relative position by weighted average placement (strength),
-        so a popular-but-weak pick still reads as B/C. ``pick_rate`` becomes the
-        entry's share of the whole category's games (the mock's "PR").
-        """
-        acc: dict[int, list[float]] = {}  # id -> [games, avg_sum, top1_sum, top4_sum]
-        for raw in raws:
-            if not isinstance(raw, dict):
-                continue
-            for key, stats in raw.items():
-                try:
-                    entry_id = int(key)
-                except (TypeError, ValueError):
-                    continue
-                if entry_id <= 0 or not isinstance(stats, dict) or entry_id not in display:
-                    continue
-                games = int(stats.get("num_games") or 0)
-                if games <= 0:
-                    continue
-                slot = acc.setdefault(entry_id, [0.0, 0.0, 0.0, 0.0])
-                slot[0] += games
-                slot[1] += games * float(stats.get("avg_placement") or 0.0)
-                slot[2] += games * float(stats.get("top_1_percent") or 0.0)
-                slot[3] += games * float(stats.get("top_4_percent") or 0.0)
-
-        pool = [(eid, s) for eid, s in acc.items() if s[0] >= min_games]
-        if not pool:
-            return []
-        category_games = sum(s[0] for _, s in pool)
-
-        # Tier by strength: weighted avg placement, best (lowest) first.
-        by_strength = sorted(pool, key=lambda p: p[1][1] / p[1][0])
-        tier_of: dict[int, str] = {}
-        total = len(by_strength)
-        for pos, (eid, _s) in enumerate(by_strength):
-            frac = (pos + 1) / total
-            tier_of[eid] = next(t for t, cutoff in _TOP_TIER_CUTOFFS if frac <= cutoff)
-
-        out: list[BuildEntryView] = []
-        for eid, s in sorted(pool, key=lambda p: -p[1][0])[:cap]:
-            games = int(s[0])
-            name, icon, _extra = display[eid]
-            out.append(
-                BuildEntryView(
-                    id=eid,
-                    name=name,
-                    icon_url=icon,
-                    tier=tier_of[eid],
-                    games=games,
-                    avg_place=round(s[1] / s[0], 2),
-                    top1=round(s[2] / s[0] * 100),
-                    top4=round(s[3] / s[0] * 100),
-                    pick_rate=round(s[0] / category_games * 100, 1),
-                )
-            )
-        return out
-
-    async def top_build(self, session: AsyncSession) -> TopBuildView:
-        """Global top augments/items across every champion snapshot (cached 12h)."""
-        cached = _coerce_top_view(await self._cache.get(KEY_TOP_BUILD))
-        if cached is not None:
-            return cached
-
-        rows = (await session.execute(select(m.ChampionBuildRef))).scalars().all()
-        # Latest snapshot per champion (dt lexicographic, then fetched_at).
-        latest: dict[int, m.ChampionBuildRef] = {}
-        for row in rows:
-            cur = latest.get(row.champion_id)
-            key = (row.dt or "", row.fetched_at)
-            if cur is None or key > ((cur.dt or ""), cur.fetched_at):
-                latest[row.champion_id] = row
-        if not latest:
-            return TopBuildView(patch="", updated_at="", games=0, champions=0)
-
-        item_map, augment_map = await asyncio.gather(self._item_map(), self._augment_map())
-        payloads = [r.payload for r in latest.values() if isinstance(r.payload, dict)]
-        augments = self._aggregate_section(
-            [p.get("augments") for p in payloads],
-            augment_map,
-            min_games=TOP_MIN_GAMES,
-            cap=_CAP_TOP_AUGMENTS,
-        )
-        items = self._aggregate_section(
-            [p.get("items") for p in payloads],
-            item_map,
-            min_games=TOP_MIN_GAMES,
-            cap=_CAP_TOP_ITEMS,
-        )
-
-        patches = [r.patch for r in latest.values() if r.patch and r.patch != "unknown"]
-        patch = max(set(patches), key=patches.count) if patches else ""
-        dts = [r.dt for r in latest.values() if r.dt]
-        view = TopBuildView(
-            patch=patch,
-            updated_at=max(dts) if dts else "",
-            games=sum(int(p.get("num_games") or 0) for p in payloads),
-            champions=len(latest),
-            augments=augments,
-            items=items,
-        )
-        if view.games > 0:  # never pin an empty aggregate for 12h
-            await self._cache.set(KEY_TOP_BUILD, _top_view_to_json(view))
-        return view
-
-
-def _entry_to_json(e: BuildEntryView) -> dict[str, Any]:
+def _catalog_entry_to_json(e: AugmentCatalogEntryView) -> dict[str, Any]:
     return {
         "id": e.id,
         "name": e.name,
         "icon_url": e.icon_url,
-        "tier": e.tier,
-        "games": e.games,
-        "avg_place": e.avg_place,
-        "top1": e.top1,
-        "top4": e.top4,
-        "pick_rate": e.pick_rate,
+        "rarity": e.rarity,
+        "description": e.description,
     }
 
 
-def _entry_from_json(raw: Any) -> BuildEntryView | None:
+def _catalog_entry_from_json(raw: Any) -> AugmentCatalogEntryView | None:
     if not isinstance(raw, dict):
         return None
     try:
-        return BuildEntryView(
+        return AugmentCatalogEntryView(
             id=int(raw["id"]),
             name=str(raw["name"]),
             icon_url=raw.get("icon_url"),
-            tier=str(raw["tier"]),
-            games=int(raw["games"]),
-            avg_place=float(raw["avg_place"]),
-            top1=int(raw["top1"]),
-            top4=int(raw["top4"]),
-            pick_rate=float(raw["pick_rate"]),
+            rarity=str(raw["rarity"]),
+            description=str(raw.get("description", "")),
         )
     except (KeyError, TypeError, ValueError):
         return None
 
 
-def _top_view_to_json(v: TopBuildView) -> dict[str, Any]:
-    return {
-        "patch": v.patch,
-        "updated_at": v.updated_at,
-        "games": v.games,
-        "champions": v.champions,
-        "augments": [_entry_to_json(e) for e in v.augments],
-        "items": [_entry_to_json(e) for e in v.items],
-    }
-
-
-def _coerce_top_view(raw: Any) -> TopBuildView | None:
-    if not isinstance(raw, dict):
-        return None
-    try:
-        augments = [e for e in (_entry_from_json(x) for x in raw.get("augments", [])) if e]
-        items = [e for e in (_entry_from_json(x) for x in raw.get("items", [])) if e]
-        return TopBuildView(
-            patch=str(raw.get("patch", "")),
-            updated_at=str(raw.get("updated_at", "")),
-            games=int(raw.get("games", 0)),
-            champions=int(raw.get("champions", 0)),
-            augments=augments,
-            items=items,
-        )
-    except (TypeError, ValueError):
-        return None
+def _coerce_catalog(raw: Any) -> list[AugmentCatalogEntryView]:
+    if not isinstance(raw, list):
+        return []
+    out: list[AugmentCatalogEntryView] = []
+    for item in raw:
+        entry = _catalog_entry_from_json(item)
+        if entry is not None:
+            out.append(entry)
+    return out
 
 
 # ---------------------------------------------------------------------------

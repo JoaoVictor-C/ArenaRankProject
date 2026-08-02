@@ -1,314 +1,1214 @@
-/* ============================================================
-   Partida.css — estilos da página de detalhe de partida
-   Nomes de classe mantidos 1:1 com o design para o motor de animação.
-   ============================================================ */
+@font-face {
+  font-family: "Mori";
+  src:
+    local("PP Mori Variable"),
+    local("PP Mori"),
+    local("Mori");
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+}
 
-/* ---------- Cabeçalho da partida ---------- */
-.mh {
+.partida-dossier {
+  --pd-rule-strong: color-mix(in srgb, var(--line) 68%, var(--text-faint));
+  --pd-system-soft: color-mix(in srgb, var(--primary) 14%, var(--surface));
+  --pd-gold-soft: color-mix(in srgb, var(--gold) 12%, var(--surface));
+  --pd-body-font: "Plus Jakarta Sans", system-ui, sans-serif;
   display: grid;
-  grid-template-columns: 1.3fr 1fr 1fr;
-  gap: 0;
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  overflow: hidden;
-  background: rgba(0, 0, 0, 0.3);
-  margin-bottom: 14px;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  gap: clamp(32px, 5vw, 64px);
+  padding-block: 10px clamp(52px, 8vw, 92px);
+  overflow: clip;
+  color: var(--text);
+  font-family: var(--pd-body-font);
+  font-variant-numeric: tabular-nums;
 }
-.mh > div {
-  padding: 24px 26px;
+
+.partida-dossier *,
+.partida-dossier *::before,
+.partida-dossier *::after {
+  box-sizing: border-box;
 }
-.mh .col {
-  border-right: 1px solid var(--line);
+
+.partida-dossier h1,
+.partida-dossier h2,
+.partida-dossier h3,
+.partida-dossier p,
+.partida-dossier ul {
+  margin: 0;
 }
-.mh .k {
-  font: 600 10px/1 "Plus Jakarta Sans", sans-serif;
-  letter-spacing: 0.1em;
+
+.partida-dossier button {
+  color: inherit;
+  font: inherit;
+}
+
+.partida-dossier button:focus-visible {
+  outline: 3px solid var(--primary-bright);
+  outline-offset: 3px;
+}
+
+.partida-dossier .eyebrow {
   color: var(--text-faint);
+  font-size: 11px;
+  font-weight: 750;
+  letter-spacing: 0.09em;
+  line-height: 1.2;
   text-transform: uppercase;
-  margin-bottom: 12px;
-}
-.mh .mode-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  font: 800 14px/1 "Plus Jakarta Sans", sans-serif;
-  letter-spacing: 0.04em;
-  padding: 9px 14px;
-  border-radius: 7px;
-  background: rgba(47, 155, 214, 0.16);
-  color: #7fd0ff;
-  border: 1px solid rgba(47, 155, 214, 0.4);
-}
-.mh .mid {
-  font: 600 13px/1.5 "Plus Jakarta Sans", sans-serif;
-  color: var(--text-dim);
-  margin-top: 14px;
-}
-.mh .mid b {
-  color: #fff;
-}
-.mh .when b {
-  font: 800 20px/1 "Plus Jakarta Sans", sans-serif;
-  color: #fff;
-  display: block;
-  margin-bottom: 6px;
-}
-.mh .when .abs {
-  font: 500 12px/1.4 "Plus Jakarta Sans", sans-serif;
-  color: var(--text-faint);
-}
-.mh .integ {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-.mh .integ .ok {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  font: 700 13px/1 "Plus Jakarta Sans", sans-serif;
-  color: var(--green);
 }
 
-/* ---------- Classificação ---------- */
-.standings {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-.team-row {
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  overflow: hidden;
-  background: rgba(0, 0, 0, 0.26);
-}
-.team-row.you {
-  border-color: rgba(241, 197, 74, 0.5);
-  background: linear-gradient(90deg, rgba(241, 197, 74, 0.08), rgba(0, 0, 0, 0.26) 60%);
-}
-.team-main {
+.partida-dossier .partida-dossier-hero {
   display: grid;
-  grid-template-columns: 70px 1fr 150px 44px;
-  gap: 18px;
-  align-items: center;
-  padding: 14px 18px;
-  cursor: pointer;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 24px 48px;
+  padding: clamp(24px, 4vw, 44px) clamp(20px, 4vw, 44px);
+  border-block: 1px solid var(--line);
+  background: var(--surface);
 }
-.team-main:hover {
-  background: rgba(255, 255, 255, 0.02);
+
+.partida-dossier .partida-dossier-hero > div {
+  min-width: 0;
 }
-.team-place {
+
+.partida-dossier .partida-dossier-hero h1 {
+  margin-top: 9px;
+  color: var(--text);
+  font-size: clamp(20px, calc(20px + 3vw), 58px);
+  font-weight: 800;
+  letter-spacing: -0.035em;
+  line-height: 0.98;
+  text-wrap: balance;
+}
+
+.partida-dossier .partida-dossier-hero > div:first-child > p:last-child {
   display: flex;
-  flex-direction: column;
+  align-items: center;
+  gap: 7px;
+  margin-top: 16px;
+  color: var(--text-dim);
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.partida-dossier .partida-dossier-hero > div:last-child {
+  display: grid;
+  grid-template-columns: repeat(2, auto);
+  justify-items: start;
+  gap: 9px 22px;
+  color: var(--text-dim);
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.partida-dossier .partida-dossier-hero > div:last-child p {
+  display: inline-flex;
   align-items: center;
   gap: 6px;
-}
-.team-place .place {
-  width: 46px;
-  height: 40px;
-  font-size: 19px;
-  border-radius: 7px;
-}
-.team-place .pl {
-  font: 600 9px/1 "Plus Jakarta Sans", sans-serif;
-  color: var(--text-faint);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-}
-.team-players {
-  display: flex;
-  gap: 28px;
-  flex-wrap: wrap;
-}
-.tp {
-  display: flex;
-  align-items: center;
-  gap: 11px;
-}
-.tp .nm {
-  font: 700 14px/1.1 "Plus Jakarta Sans", sans-serif;
-}
-.tp .tag {
-  font: 500 11px/1 "Plus Jakarta Sans", sans-serif;
-  color: var(--text-faint);
-  margin-top: 4px;
-}
-.tp .d {
-  font: 800 13px/1 "Plus Jakarta Sans", sans-serif;
-  margin-top: 4px;
-}
-.team-cr {
-  text-align: right;
-}
-.team-cr .sum {
-  font: 800 20px/1 "Plus Jakarta Sans", sans-serif;
-}
-.team-cr .cap {
-  font: 600 9px/1 "Plus Jakarta Sans", sans-serif;
-  color: var(--text-faint);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  margin-top: 6px;
-}
-.team-caret {
-  display: flex;
-  justify-content: center;
-  color: var(--text-faint);
-  font-size: 18px;
-  transition: transform 0.2s;
-  user-select: none;
-}
-.team-row[data-open="true"] .team-caret {
-  transform: rotate(180deg);
-}
-.team-detail {
-  display: none;
-  padding: 0 18px 18px;
-}
-.team-row[data-open="true"] .team-detail {
-  display: block;
-}
-
-/* ---------- Cards de jogador (breakdown de modificadores) ---------- */
-.pp-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 14px;
-}
-.pp-card {
-  background: rgba(0, 0, 0, 0.4);
-  border: 1px solid var(--line);
-  border-radius: 9px;
-  padding: 14px 16px;
-}
-.pp-card .pp-head {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 12px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid var(--line);
-}
-.pp-card .pp-head .nm {
-  font: 700 14px/1 "Plus Jakarta Sans", sans-serif;
-}
-.pp-card .pp-head .cr-range {
-  margin-left: auto;
-  text-align: right;
-}
-.pp-card .pp-head .cr-range .delta {
-  font: 800 16px/1 "Plus Jakarta Sans", sans-serif;
-}
-.pp-card .pp-head .cr-range .range-txt {
-  font: 600 10px/1 "Plus Jakarta Sans", sans-serif;
-  color: var(--text-faint);
-  margin-top: 5px;
-}
-.pp-mod {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 8px 0;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
-}
-.pp-mod:last-child {
-  border-bottom: none;
-}
-.pp-mod .l {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font: 500 12px/1.3 "Plus Jakarta Sans", sans-serif;
-  color: var(--text-dim);
-}
-.pp-mod .l .ic {
-  width: 18px;
-  text-align: center;
-  color: var(--text-faint);
-}
-.pp-mod .v {
-  font: 800 13px/1 "Plus Jakarta Sans", sans-serif;
   white-space: nowrap;
 }
 
-/* ---------- Flags de integridade do jogador ---------- */
-.pp-integrity {
-  margin-top: 10px;
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
+.partida-dossier .partida-demo-disclosure {
+  position: sticky;
+  top: 76px;
+  z-index: 12;
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr);
+  align-items: center;
+  gap: 8px 12px;
+  width: min(100%, 720px);
+  margin: -32px auto -24px;
+  padding: 11px 16px;
+  border: 1px solid var(--primary);
+  border-radius: var(--r-md);
+  background: color-mix(in srgb, var(--surface) 94%, var(--primary));
+  box-shadow: 0 10px 28px color-mix(in srgb, var(--bg) 66%, transparent);
+  color: var(--text-dim);
+  font-size: 12px;
+  font-weight: 650;
 }
 
-/* ---------- Grid inferior (integridade + processamento) ---------- */
-.grid2 {
-  display: grid;
-  grid-template-columns: 1.6fr 1fr;
-  gap: 22px;
-  align-items: start;
-  margin-top: 26px;
+.partida-dossier .partida-demo-disclosure .mi,
+.partida-dossier .partida-demo-disclosure strong {
+  color: var(--primary-bright);
 }
-.integ-panel .flag {
-  display: flex;
+
+.partida-dossier .partida-demo-disclosure strong {
+  font-weight: 850;
+}
+
+.partida-dossier .partida-orbital {
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  place-items: center;
+  min-height: 540px;
+  padding: 72px 148px;
+  background: var(--bg);
+}
+
+.partida-dossier .partida-orbital::before {
+  content: "";
+  position: absolute;
+  inset: 9% 8%;
+  z-index: -1;
+  border: 1px solid var(--pd-rule-strong);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.partida-dossier .partida-orbital nav {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  grid-template-rows: repeat(5, minmax(0, 1fr));
+  min-width: 0;
+  perspective: 900px;
+  transform-style: preserve-3d;
+}
+
+.partida-dossier .partida-orbital-team {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  place-self: center;
   align-items: center;
   gap: 9px;
-  padding: 11px 13px;
-  margin-bottom: 8px;
-  border-radius: 7px;
+  width: 120px;
+  min-height: 66px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  cursor: pointer;
+  transform-style: preserve-3d;
+  will-change: transform;
 }
-.integ-note {
-  font: 500 12px/1.6 "Plus Jakarta Sans", sans-serif;
-  color: var(--text-faint);
-  margin-top: 14px;
-  padding-top: 14px;
-  border-top: 1px solid var(--line);
-}
-.proc {
+
+.partida-dossier .partida-orbital-team > span:last-child {
   display: flex;
-  flex-direction: column;
-  gap: 12px;
+  min-width: 0;
 }
-.proc-row {
+
+.partida-dossier .partida-orbital-team .ch-icon {
+  flex: none;
+  border-color: var(--surface);
+}
+
+.partida-dossier .partida-orbital-team .ch-icon + .ch-icon {
+  margin-left: -12px;
+}
+
+.partida-dossier .partida-orbital-team .place {
+  font-family: "Mori", sans-serif;
+  font-variant-numeric: tabular-nums;
+}
+
+.partida-dossier .partida-orbital-team[aria-pressed="true"] {
+  border-color: var(--primary-bright);
+  background: var(--pd-system-soft);
+  box-shadow: 0 14px 30px color-mix(in srgb, var(--primary) 18%, transparent);
+  transform: translateZ(16px) scale(1.045);
+}
+
+.partida-dossier .partida-orbital-team.pd-orbit-node--1 {
+  grid-column: 4;
+  grid-row: 1;
+  align-self: start;
+  border-color: var(--gold);
+  background: var(--pd-gold-soft);
+}
+
+.partida-dossier .partida-orbital-team.pd-orbit-node--1[aria-pressed="true"] {
+  border-color: var(--gold);
+  outline: 2px solid var(--primary-bright);
+  outline-offset: 3px;
+  background: var(--pd-gold-soft);
+}
+
+.partida-dossier .partida-orbital-team.pd-orbit-node--1[aria-pressed="true"]:focus-visible {
+  outline-width: 3px;
+  outline-offset: 4px;
+}
+
+.partida-dossier .partida-orbital-team.pd-orbit-node--2 {
+  grid-column: 7;
+  grid-row: 2;
+  justify-self: end;
+}
+
+.partida-dossier .partida-orbital-team.pd-orbit-node--3 {
+  grid-column: 7;
+  grid-row: 4;
+  justify-self: end;
+}
+
+.partida-dossier .partida-orbital-team.pd-orbit-node--4 {
+  grid-column: 4;
+  grid-row: 5;
+  align-self: end;
+}
+
+.partida-dossier .partida-orbital-team.pd-orbit-node--5 {
+  grid-column: 1;
+  grid-row: 4;
+  justify-self: start;
+}
+
+.partida-dossier .partida-orbital-team.pd-orbit-node--6 {
+  grid-column: 1;
+  grid-row: 2;
+  justify-self: start;
+}
+
+.partida-dossier .partida-orbital-summary {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  justify-items: center;
+  width: min(100%, 430px);
+  min-width: 0;
+  padding: 32px 26px;
+  border-block: 1px solid var(--line);
+  background: var(--surface);
+  text-align: center;
+}
+
+.partida-dossier .partida-orbital-summary h2 {
+  max-width: 16ch;
+  margin-top: 13px;
+  overflow-wrap: anywhere;
+  color: var(--text);
+  font-family: "Mori", sans-serif;
+  font-size: clamp(20px, calc(16px + 1.6vw), 58px);
+  font-weight: 750;
+  letter-spacing: -0.03em;
+  line-height: 1.03;
+  text-wrap: balance;
+}
+
+.partida-dossier .partida-orbital-summary p {
+  margin-top: 9px;
+  color: var(--text-dim);
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.partida-dossier .partida-orbital-summary > .partida-orbital-result {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  color: var(--text);
+  font-weight: 750;
+}
+
+.partida-dossier .partida-orbital-totals {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 14px;
-  font: 500 12px/1.4 "Plus Jakarta Sans", sans-serif;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 7px 14px;
+  margin-top: 11px;
 }
-.proc-row .k {
-  color: var(--text-faint);
-}
-.proc-row .v {
-  color: #fff;
+
+.partida-dossier .partida-orbital-totals p,
+.partida-dossier .partida-orbital-totals p:last-child {
+  display: block;
+  margin: 0;
+  color: var(--text-dim);
+  font-size: 11px;
   font-weight: 700;
 }
-.proc-row .v.mono {
-  font-family: ui-monospace, Menlo, monospace;
+
+.partida-dossier .partida-team-lab,
+.partida-dossier .partida-player-analysis,
+.partida-dossier .partida-scoreboard,
+.partida-dossier .partida-comparisons,
+.partida-dossier .partida-public-integrity {
+  min-width: 0;
+}
+
+.partida-dossier .partida-team-lab > header,
+.partida-dossier .partida-player-analysis > header,
+.partida-dossier .partida-scoreboard > header,
+.partida-dossier .partida-comparisons > header,
+.partida-dossier .partida-public-integrity > header {
+  display: grid;
+  gap: 7px;
+  margin-bottom: 18px;
+}
+
+.partida-dossier .partida-team-lab > header h2,
+.partida-dossier .partida-player-analysis > header h2,
+.partida-dossier .partida-scoreboard > header h2,
+.partida-dossier .partida-comparisons > header h2,
+.partida-dossier .partida-public-integrity > header h2 {
+  color: var(--text);
+  font-size: clamp(20px, calc(16px + 1vw), 58px);
+  font-weight: 800;
+  letter-spacing: -0.025em;
+  line-height: 1.05;
+}
+
+.partida-dossier .partida-team-lab {
+  padding-block: 24px;
+  border-block: 1px solid var(--line);
+}
+
+.partida-dossier .partida-team-players {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  border: 1px solid var(--line);
+  background: var(--surface);
+}
+
+.partida-dossier .partida-team-player {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 4px 10px;
+  min-width: 0;
+  min-height: 88px;
+  padding: 14px;
+  border: 0;
+  border-right: 1px solid var(--line);
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+}
+
+.partida-dossier .partida-team-player:last-child {
+  border-right: 0;
+}
+
+.partida-dossier .partida-team-player[data-selected="true"] {
+  background: var(--pd-system-soft);
+}
+
+.partida-dossier .partida-team-player > .ch-icon {
+  grid-row: 1 / 4;
+}
+
+.partida-dossier .partida-team-player > .partida-team-player-name {
+  grid-column: 2;
+  grid-row: 1;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.partida-dossier .partida-team-player > .partida-team-player-id {
+  grid-column: 2;
+  grid-row: 2;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-faint);
+  font-size: 11px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.partida-dossier .partida-team-player > .partida-team-player-rating,
+.partida-dossier .partida-team-player > .partida-team-player-kda {
+  grid-column: 3;
+  color: var(--text-dim);
+  font-size: 11px;
+  font-weight: 750;
+  white-space: nowrap;
+}
+
+.partida-dossier .partida-team-player > .partida-team-player-champion {
+  grid-column: 2;
+  grid-row: 3;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-dim);
+  font-weight: 700;
+  text-overflow: ellipsis;
+}
+
+.partida-dossier .partida-team-player > .partida-team-player-rating {
+  grid-row: 1 / 3;
+}
+
+.partida-dossier .partida-team-player > .partida-team-player-kda {
+  grid-row: 3;
+}
+
+.partida-dossier .partida-player-analysis {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 24px;
+  padding: clamp(22px, 4vw, 38px);
+  border: 1px solid var(--line);
+  background: var(--surface);
+}
+
+.partida-dossier .partida-player-analysis > header,
+.partida-dossier .partida-player-analysis > .partida-combat-stats,
+.partida-dossier .partida-player-analysis > .partida-rating-summary,
+.partida-dossier .partida-player-analysis > .rating-signals,
+.partida-dossier .partida-player-analysis > p {
+  grid-column: 1 / -1;
+}
+
+.partida-dossier .partida-player-analysis > header > p:last-child {
+  color: var(--text-dim);
+  font-size: 13px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.partida-dossier .partida-combat-stats {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  margin-block: 6px 20px;
+  border-block: 1px solid var(--line);
+}
+
+.partida-dossier .partida-combat-stats p {
+  min-width: 0;
+  padding: 16px 11px;
+  border-right: 1px solid var(--line);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 750;
+  text-align: center;
+}
+
+.partida-dossier .partida-combat-stats p:last-child {
+  border-right: 0;
+}
+
+.partida-dossier .partida-rating-summary {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--line);
+  color: var(--text-dim);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.partida-dossier .partida-rating-summary p:last-child {
+  color: var(--text);
+  font-weight: 800;
+}
+
+.partida-dossier .partida-player-analysis > section:not(.rating-signals) {
+  min-width: 0;
+  padding: 16px 0 6px;
+}
+
+.partida-dossier .partida-player-analysis > section:not(.rating-signals) + section:not(.rating-signals) {
+  padding-left: 24px;
+  border-left: 1px solid var(--line);
+}
+
+.partida-dossier .partida-player-analysis > section:not(.rating-signals) h3 {
+  margin-bottom: 12px;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.partida-dossier .partida-player-analysis > section:not(.rating-signals) > p {
+  color: var(--text-dim);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.partida-dossier .partida-loadout-entry {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 100%;
+  margin: 0 8px 8px 0;
+  color: var(--text-dim);
+  font-size: 11px;
+  font-weight: 650;
+  vertical-align: top;
+}
+
+.partida-dossier .partida-loadout-entry img,
+.partida-dossier .partida-loadout-entry > span:first-child:not(:last-child) {
+  display: inline-grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  flex: none;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--surface-2);
+  object-fit: cover;
+}
+
+.partida-dossier .partida-loadout-entry.is-augment img,
+.partida-dossier .partida-loadout-entry.is-augment > span:first-child:not(:last-child) {
+  border-color: var(--primary);
+}
+
+.partida-dossier .rating-signals,
+.partida-dossier .rating-signals-heading,
+.partida-dossier .rating-signal-card,
+.partida-dossier .rating-signal-card p,
+.partida-dossier .rating-signal-impact {
+  font-family: "Mori", sans-serif;
+}
+
+.partida-dossier .rating-signal-card p,
+.partida-dossier .rating-signal-impact,
+.partida-dossier .rating-signals-heading b {
+  font-weight: 650;
+}
+
+.partida-dossier .rating-signal-impact {
+  font-weight: 800;
+}
+
+.partida-dossier .partida-scoreboard-table {
+  width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  scrollbar-color: var(--surface-3) var(--bg);
+}
+
+.partida-dossier .partida-scoreboard table {
+  width: 100%;
+  min-width: 1120px;
+  border-collapse: collapse;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.partida-dossier .partida-scoreboard caption {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.partida-dossier .partida-scoreboard th,
+.partida-dossier .partida-scoreboard td {
+  padding: 12px 10px;
+  border-bottom: 1px solid var(--line);
+  color: var(--text-dim);
+  font-weight: 650;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.partida-dossier .partida-scoreboard thead th {
+  padding-block: 10px;
+  background: var(--surface-2);
+  color: var(--text-faint);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.partida-dossier .partida-scoreboard th:nth-child(2) {
+  text-align: left;
+}
+
+.partida-dossier .partida-score-team-total th,
+.partida-dossier .partida-score-team-total td {
+  background: var(--surface-2);
+  color: var(--text);
+  font-weight: 800;
+}
+
+.partida-dossier .partida-scoreboard tbody.is-selected-team .partida-score-team-total > * {
+  border-top: 2px solid var(--primary-bright);
+}
+
+.partida-dossier .partida-scoreboard tbody.is-selected-team .partida-score-team-total > :first-child {
+  box-shadow: inset 4px 0 0 var(--primary-bright);
+}
+
+.partida-dossier .partida-scoreboard tbody.is-selected-team .partida-score-team-total > th:nth-child(2)::after {
+  content: "Em foco";
+  display: inline-block;
+  margin-left: 8px;
+  font-size: 9px;
+  font-weight: 850;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.partida-dossier .partida-scoreboard tr.is-selected-player > * {
+  border-block-color: var(--primary);
+  background: var(--pd-system-soft);
+}
+
+.partida-dossier .partida-scoreboard tr.is-selected-player > :first-child {
+  box-shadow: inset 4px 0 0 var(--primary-bright);
+}
+
+.partida-dossier .partida-scoreboard tr.is-selected-player > th button::after {
+  content: "Em análise";
+  grid-column: 2;
+  font-size: 9px;
+  font-weight: 850;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.partida-dossier .partida-scoreboard tbody:last-child tr:last-child > * {
+  border-bottom: 0;
+}
+
+.partida-dossier .partida-scoreboard [data-score-player] > th button {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 2px 9px;
+  min-width: 0;
+  padding: 2px;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+}
+
+.partida-dossier .partida-scoreboard [data-score-player] > th button .ch-icon {
+  grid-row: 1 / 3;
+}
+
+.partida-dossier .partida-scoreboard [data-score-player] > th button span {
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.partida-dossier .partida-scoreboard [data-score-player] > th button span:last-child {
+  color: var(--text-faint);
   font-size: 11px;
 }
 
-/* ---------- Responsivo ---------- */
-@media (max-width: 1000px) {
-  .mh,
-  .grid2,
-  .pp-grid {
-    grid-template-columns: 1fr;
+.partida-dossier .partida-scoreboard [data-score-player] > th button[aria-pressed="true"] {
+  color: var(--primary-bright);
+}
+
+.partida-dossier .partida-scoreboard td:nth-child(10) {
+  max-width: 190px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.partida-dossier .partida-scoreboard td:nth-child(10) span + span::before {
+  content: " · ";
+}
+
+.partida-dossier .partida-comparisons {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 28px 36px;
+}
+
+.partida-dossier .partida-comparisons > header {
+  grid-column: 1 / -1;
+  margin-bottom: -4px;
+}
+
+.partida-dossier .partida-comparisons > section {
+  min-width: 0;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+
+.partida-dossier .partida-comparisons h3 {
+  margin-bottom: 14px;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.partida-dossier .partida-comparisons ul {
+  display: grid;
+  gap: 10px;
+  padding: 0;
+  list-style: none;
+}
+
+.partida-dossier .partida-comparisons li {
+  display: grid;
+  grid-template-columns: minmax(7rem, 0.7fr) minmax(90px, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  color: var(--text-dim);
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.partida-dossier .partida-comparisons li > span:first-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.partida-dossier .partida-comparison-mark {
+  position: relative;
+  display: block;
+  height: 6px;
+  overflow: hidden;
+  background: var(--surface-3);
+}
+
+.partida-dossier .partida-comparison-mark::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: var(--rail-value, 0%);
+  background: var(--primary);
+}
+
+.partida-dossier .partida-comparisons strong {
+  min-width: 52px;
+  color: var(--text);
+  font-weight: 800;
+  text-align: right;
+}
+
+.partida-dossier .partida-comparisons-unavailable {
+  padding: 18px 20px;
+  border-block: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--text-dim);
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.partida-dossier .partida-public-integrity {
+  padding-block: 24px;
+  border-block: 1px solid var(--line);
+}
+
+.partida-dossier .partida-public-integrity ul {
+  display: grid;
+  gap: 8px;
+  padding: 0;
+  list-style: none;
+}
+
+.partida-dossier .partida-public-integrity li {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 11px 0;
+  border-bottom: 1px solid var(--line);
+  color: var(--text-dim);
+  font-size: 13px;
+}
+
+.partida-dossier .partida-public-integrity li:last-child {
+  border-bottom: 0;
+}
+
+.partida-dossier .partida-public-integrity li strong {
+  color: var(--text);
+}
+
+.partida-dossier .partida-public-integrity > p {
+  color: var(--text-dim);
+  font-size: 13px;
+  font-weight: 650;
+}
+
+@media (hover: hover) {
+  .partida-dossier .partida-orbital-team:hover,
+  .partida-dossier .partida-team-player:hover {
+    border-color: var(--primary);
+    background: var(--pd-system-soft);
   }
-  .mh .col {
-    border-right: none;
-    border-bottom: 1px solid var(--line);
-  }
-  .team-main {
-    grid-template-columns: 60px 1fr 110px 36px;
-    gap: 12px;
+
+  .partida-dossier .partida-scoreboard [data-score-player] > th button:hover {
+    color: var(--primary-bright);
   }
 }
 
-@media (max-width: 640px) {
-  .team-main {
-    grid-template-columns: 56px 1fr 44px;
+@media (max-width: 980px) {
+  .partida-dossier {
+    gap: 44px;
   }
-  .team-cr {
+
+  .partida-dossier .partida-orbital {
+    min-height: 450px;
+    padding-inline: 116px;
+  }
+
+  .partida-dossier .partida-orbital::before {
+    inset: 18% 5%;
+  }
+
+  .partida-dossier .partida-orbital nav {
+    grid-template-columns: repeat(9, minmax(0, 1fr));
+  }
+
+  .partida-dossier .partida-orbital-team.pd-orbit-node--1 {
+    grid-column: 5;
+  }
+
+  .partida-dossier .partida-orbital-team.pd-orbit-node--2,
+  .partida-dossier .partida-orbital-team.pd-orbit-node--3 {
+    grid-column: 9;
+  }
+
+  .partida-dossier .partida-orbital-team.pd-orbit-node--4 {
+    grid-column: 5;
+  }
+
+  .partida-dossier .partida-orbital-team.pd-orbit-node--5,
+  .partida-dossier .partida-orbital-team.pd-orbit-node--6 {
+    grid-column: 1;
+  }
+
+  .partida-dossier .partida-team-player {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .partida-dossier .partida-team-player > .partida-team-player-rating,
+  .partida-dossier .partida-team-player > .partida-team-player-kda {
+    grid-column: 2;
+  }
+
+  .partida-dossier .partida-team-player > .partida-team-player-rating {
+    grid-row: 4;
+  }
+
+  .partida-dossier .partida-team-player > .partida-team-player-kda {
+    grid-row: 5;
+  }
+
+  .partida-dossier .partida-combat-stats {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .partida-dossier .partida-combat-stats p:nth-child(3) {
+    border-right: 0;
+  }
+
+  .partida-dossier .partida-combat-stats p:nth-child(-n + 3) {
+    border-bottom: 1px solid var(--line);
+  }
+}
+
+@media (max-width: 680px) {
+  .partida-dossier {
+    gap: 36px;
+    padding-bottom: 58px;
+    overflow: visible;
+  }
+
+  .partida-dossier .partida-dossier-hero {
+    grid-template-columns: 1fr;
+    align-items: start;
+    padding: 22px 18px;
+  }
+
+  .partida-dossier .partida-dossier-hero > div:last-child {
+    grid-template-columns: 1fr;
+    gap: 9px;
+  }
+
+  .partida-dossier .partida-dossier-hero > div:last-child p {
+    white-space: normal;
+  }
+
+  .partida-dossier .partida-demo-disclosure {
+    top: 64px;
+    grid-template-columns: auto minmax(0, 1fr);
+    width: auto;
+    margin: -20px 12px -16px;
+  }
+
+  .partida-dossier .partida-demo-disclosure > span:last-child {
+    grid-column: 1 / -1;
+  }
+
+  .partida-dossier .partida-orbital {
+    display: grid;
+    min-height: 0;
+    padding: 0;
+    place-items: stretch;
+    background: transparent;
+  }
+
+  .partida-dossier .partida-orbital::before {
+    content: none;
+  }
+
+  .partida-dossier .partida-orbital nav {
+    position: relative;
+    inset: auto;
+    display: grid;
+    grid-auto-columns: 104px;
+    grid-auto-flow: column;
+    grid-template-columns: none;
+    grid-template-rows: 1fr;
+    gap: 8px;
+    width: 100%;
+    max-width: 100%;
+    padding: 4px 4px 14px;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    scrollbar-color: var(--surface-3) var(--bg);
+    scroll-snap-type: inline mandatory;
+  }
+
+  .partida-dossier .partida-orbital-team,
+  .partida-dossier .partida-orbital-team.pd-orbit-node--1,
+  .partida-dossier .partida-orbital-team.pd-orbit-node--2,
+  .partida-dossier .partida-orbital-team.pd-orbit-node--3,
+  .partida-dossier .partida-orbital-team.pd-orbit-node--4,
+  .partida-dossier .partida-orbital-team.pd-orbit-node--5,
+  .partida-dossier .partida-orbital-team.pd-orbit-node--6 {
+    grid-column: auto;
+    grid-row: 1;
+    place-self: stretch;
+    width: 104px;
+    min-height: 68px;
+    scroll-snap-align: start;
+  }
+
+  .partida-dossier .partida-orbital-summary {
+    width: 100%;
+    margin-top: 10px;
+    padding: 24px 18px;
+  }
+
+  .partida-dossier .partida-team-players {
+    grid-template-columns: 1fr;
+  }
+
+  .partida-dossier .partida-team-player,
+  .partida-dossier .partida-team-player:last-child {
+    min-height: 82px;
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .partida-dossier .partida-team-player:last-child {
+    border-bottom: 0;
+  }
+
+  .partida-dossier .partida-player-analysis {
+    grid-template-columns: 1fr;
+    padding: 20px 16px;
+  }
+
+  .partida-dossier .partida-combat-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .partida-dossier .partida-combat-stats p,
+  .partida-dossier .partida-combat-stats p:nth-child(3) {
+    border-right: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+  }
+
+  .partida-dossier .partida-combat-stats p:nth-child(even) {
+    border-right: 0;
+  }
+
+  .partida-dossier .partida-combat-stats p:nth-last-child(-n + 2) {
+    border-bottom: 0;
+  }
+
+  .partida-dossier .partida-rating-summary {
+    display: grid;
+    gap: 7px;
+  }
+
+  .partida-dossier .partida-player-analysis > section:not(.rating-signals) {
+    grid-column: 1;
+    padding: 16px 0;
+    border-top: 1px solid var(--line);
+  }
+
+  .partida-dossier .partida-player-analysis > section:not(.rating-signals) + section:not(.rating-signals) {
+    padding-left: 0;
+    border-left: 0;
+  }
+
+  .partida-dossier .partida-scoreboard-table {
+    overflow: visible;
+    border: 0;
+  }
+
+  .partida-dossier .partida-scoreboard table,
+  .partida-dossier .partida-scoreboard tbody,
+  .partida-dossier .partida-scoreboard tr,
+  .partida-dossier .partida-scoreboard th,
+  .partida-dossier .partida-scoreboard td {
+    display: block;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .partida-dossier .partida-scoreboard table {
+    background: transparent;
+  }
+
+  .partida-dossier .partida-scoreboard thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  .partida-dossier .partida-scoreboard tbody {
+    margin-bottom: 20px;
+    border: 1px solid var(--line);
+    background: var(--surface);
+  }
+
+  .partida-dossier .partida-scoreboard tr {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .partida-dossier .partida-scoreboard th,
+  .partida-dossier .partida-scoreboard td {
+    min-height: 48px;
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--line);
+    color: var(--text);
+    text-align: right;
+    white-space: normal;
+  }
+
+  .partida-dossier .partida-scoreboard th::before,
+  .partida-dossier .partida-scoreboard td::before {
+    display: block;
+    margin-bottom: 6px;
+    color: var(--text-faint);
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+
+  .partida-dossier .partida-scoreboard tr > :nth-child(1)::before {
+    content: "Colocação";
+  }
+
+  .partida-dossier .partida-scoreboard tr > :nth-child(3)::before {
+    content: "Nível";
+  }
+
+  .partida-dossier .partida-scoreboard tr > :nth-child(4)::before {
+    content: "K/D/A";
+  }
+
+  .partida-dossier .partida-scoreboard tr > :nth-child(5)::before {
+    content: "AMA";
+  }
+
+  .partida-dossier .partida-scoreboard tr > :nth-child(6)::before {
+    content: "Participação";
+  }
+
+  .partida-dossier .partida-scoreboard tr > :nth-child(7)::before {
+    content: "Dano";
+  }
+
+  .partida-dossier .partida-scoreboard tr > :nth-child(8)::before {
+    content: "DPM";
+  }
+
+  .partida-dossier .partida-scoreboard tr > :nth-child(9)::before {
+    content: "Ouro";
+  }
+
+  .partida-dossier .partida-scoreboard tr > :nth-child(10)::before {
+    content: "Loadout";
+  }
+
+  .partida-dossier .partida-scoreboard tr > :nth-child(11)::before {
+    content: "CR";
+  }
+
+  .partida-dossier .partida-scoreboard tr > :nth-child(12)::before {
+    content: "PDL";
+  }
+
+  .partida-dossier .partida-scoreboard tr > :nth-child(2),
+  .partida-dossier .partida-scoreboard tr > :nth-child(10) {
+    grid-column: 1 / -1;
+  }
+
+  .partida-dossier .partida-scoreboard .partida-score-team-total {
+    background: var(--surface-2);
+  }
+
+  .partida-dossier .partida-scoreboard .partida-score-team-total > :nth-child(2) {
+    display: flex;
+    align-items: center;
+  }
+
+  .partida-dossier .partida-scoreboard .partida-score-team-total > :nth-child(3),
+  .partida-dossier .partida-scoreboard .partida-score-team-total > :nth-child(5),
+  .partida-dossier .partida-scoreboard .partida-score-team-total > :nth-child(6),
+  .partida-dossier .partida-scoreboard .partida-score-team-total > :nth-child(8),
+  .partida-dossier .partida-scoreboard .partida-score-team-total > :nth-child(10) {
     display: none;
+  }
+
+  .partida-dossier .partida-scoreboard [data-score-player] > th button {
+    min-height: 44px;
+  }
+
+  .partida-dossier .partida-scoreboard [data-score-player] > th button span {
+    max-width: none;
+  }
+
+  .partida-dossier .partida-scoreboard td:nth-child(10) {
+    max-width: none;
+  }
+
+  .partida-dossier .partida-comparisons {
+    grid-template-columns: 1fr;
+    gap: 26px;
+  }
+
+  .partida-dossier .partida-comparisons li {
+    grid-template-columns: minmax(6.5rem, 0.8fr) minmax(72px, 1fr) auto;
+    gap: 8px;
+  }
+
+  .partida-dossier .partida-public-integrity li {
+    display: grid;
+    gap: 4px;
+  }
+}
+
+@media (pointer: coarse) {
+  .partida-dossier .partida-orbital-team,
+  .partida-dossier .partida-team-player,
+  .partida-dossier .partida-scoreboard [data-score-player] > th button {
+    min-height: 44px;
   }
 }

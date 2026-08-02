@@ -7,32 +7,42 @@ requested ``metric`` and bucketed into S+/S/A/B/C/D by relative position. Names
 and avatar colors come from the ddragon map (real champion names). Falls back to
 an empty, well-formed tierlist before any champion data exists.
 
-ToS Riot: champion top4/first/avgPlace/pickRate are OK. The build endpoint
-surfaces augment/item/teammate stats placement-derived only (top1/top4 +
-average placement, from the external global reference aggregate in
-``champion_build_ref``); a raw augment/item winrate is never exposed. Arena
-has no bans -> ``banRate`` is always 0.
+ToS Riot: champion top4/first/avgPlace/pickRate are OK. The build endpoints
+surface augment/item stats placement-derived only (top1/top4 + average
+placement, from ``champion_build_stats`` — OUR OWN rollup of captured Riot
+picks, not a third-party aggregate; see ``stats_service.py`` and
+``build_ref_service.py``'s module docstring for the migration history). A raw
+augment/item winrate is never exposed. Arena has no bans -> ``banRate`` is
+always 0.
 """
 
 from __future__ import annotations
 
+import asyncio
 from collections.abc import Callable, Iterable
 from datetime import UTC, datetime
-from typing import Annotated, Literal, cast
+from typing import Annotated, Any, Literal, cast
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from arena.api.routers import _common as c
+from arena.core.config import settings
 from arena.db import models as m
 from arena.ddragon import get_ddragon
 from arena.schemas import (
+    AugmentCatalogEntry,
+    AugmentCatalogResponse,
     BuildEntry,
-    BuildTeammate,
     ChampionAugments,
     ChampionBuildResponse,
+    ChampionBuildVariant,
+    ChampionBuildVariantsResponse,
     ChampionMainsResponse,
+    ChampionMatchupsResponse,
+    ChampionRoundPoint,
+    ChampionRoundsResponse,
     ChampionSynergy,
     ChampionSynergyGroup,
     ChampionSynergyGroupResponse,
@@ -43,26 +53,29 @@ from arena.schemas import (
     ChampTier,
     ChampTierlistResponse,
     ChampTopPlayer,
+    MatchupEntry,
     SynergyChampion,
     SynergyTier,
     SynergyTierlistResponse,
     TopBuildResponse,
 )
-from arena.schemas.champions import BuildTierKey
+from arena.schemas.champions import AugmentRarity, BuildTierKey, MatchupKind
 from arena.schemas.common import Format
 from arena.services.build_ref_service import (
     BUILD_MIN_GAMES,
     TOP_MIN_GAMES,
-    BuildEntryView,
     get_build_ref_service,
+    is_prismatic_item,
 )
 from arena.services.stats_service import (
     SYNERGY_MIN_GAMES,
+    BuildPickRow,
     ChampionBestPlayer,
     ChampionSynergyGroupRow,
     ChampionTierRow,
     ChampionTrendPointView,
     StatsService,
+    _wilson_lower_bound,
 )
 
 ChampTierKey = Literal["S+", "S", "A", "B", "C", "D"]
@@ -85,16 +98,39 @@ _VALID_METRICS = {"top4", "first", "avgplace", "pick", "ban"}
 # How many comps the synergy tierlist pulls before bucketing into S+..D bands.
 _SYNERGY_TIERLIST_LIMIT = 100
 
+# Display caps for the /winrate right rail and the per-champion build panel.
+_CAP_TOP_AUGMENTS = 12
+_CAP_TOP_ITEMS = 14
+_CAP_AUGMENTS_PER_RARITY = 8
+_CAP_ITEMS = 12
+_CAP_BOOTS = 4
+_CAP_PRISMATIC_ITEMS = 10
+
+_TIER_RANK: dict[str, int] = {"S": 0, "A": 1, "B": 2, "C": 3, "D": 4}
+
 
 async def _current_patch() -> str:
-    """Real display patch ("15.14") from the ddragon version ("15.14.1").
+    """Real display patch ("26.15") — Riot's public patch-notes number, not
+    the raw ddragon CDN version ("16.15.1").
 
-    ddragon's ``versions.json`` tracks the live game patch; cache-first, so this
-    never blocks the hot path after warm-up. The old hardcoded "14.20" default
-    contradicted the "ao vivo" meta line and read as fake data.
+    ddragon's ``versions.json`` (and CommunityDragon's build metadata) never
+    followed Riot's rebrand of patch-notes numbering to the calendar year —
+    confirmed live 2026-08-01: ddragon reports "16.15.1" while Riot's own
+    patch-notes page (leagueoflegends.com/.../patch-notes/) shows "Notas da
+    Atualização 26.15", and ddragon's last several entries (16.14.1, 16.13.1,
+    ...) line up 1:1 with 26.14, 26.13, ... — a steady "CDN major + 10 =
+    display year" offset (both counters tick once per year, so the gap
+    holds). This ONLY affects this display label — asset URLs still need the
+    raw CDN version (``get_version()`` elsewhere), never this. If Riot ever
+    re-syncs the two schemes, the ``+ 10`` below needs updating/removing.
     """
     version = await get_ddragon().get_version()
-    return ".".join(version.split(".")[:2])
+    major_str, _, rest = version.partition(".")
+    minor_str = rest.split(".")[0]
+    try:
+        return f"{int(major_str) + 10}.{minor_str}"
+    except ValueError:
+        return ".".join(version.split(".")[:2])
 
 
 def _sort_key(metric: str) -> Callable[[ChampionTierRow], float]:
@@ -407,35 +443,59 @@ async def get_champion_synergy_tierlist(
     )
 
 
-def _build_entry_dto(e: BuildEntryView) -> BuildEntry:
+def _build_entry_dto(row: BuildPickRow, display: tuple[Any, ...]) -> BuildEntry:
+    """One native pick + its CDragon display info (name/icon/... ) -> DTO.
+
+    ``display`` is positional (name, icon, extra, ...) shared by both the
+    augment map (3 elements: name/icon/rarity) and the item map (5: name/icon/
+    is_boots/gold/description, wider since the match-detail item hover also
+    needs gold cost + description) — only the first two are used here.
+    """
+    name, icon = display[0], display[1]
     return BuildEntry(
-        id=e.id,
-        name=e.name,
-        icon_url=e.icon_url,
-        tier=cast(BuildTierKey, e.tier),
-        games=e.games,
-        avg_place=e.avg_place,
-        top1=e.top1,
-        top4=e.top4,
-        pick_rate=e.pick_rate,
-    )
-
-
-def _build_teammate_dto(e: BuildEntryView) -> BuildTeammate:
-    """Teammate row: the view's ``id`` is a championId; resolve display here."""
-    name = c.champion_name(e.id) or str(e.id)
-    return BuildTeammate(
-        champion_id=e.id,
+        id=row.pick_id,
         name=name,
-        champion_icon_url=c.champion_icon_url(e.id),
-        colors=c.avatar_for(name),
-        tier=cast(BuildTierKey, e.tier),
-        games=e.games,
-        avg_place=e.avg_place,
-        top1=e.top1,
-        top4=e.top4,
-        pick_rate=e.pick_rate,
+        icon_url=icon,
+        tier=cast(BuildTierKey, row.tier),
+        games=row.games,
+        avg_place=row.avg_place,
+        top1=row.top1,
+        top4=row.top4,
+        pick_rate=row.pick_rate,
     )
+
+
+def _resolve_entries(
+    rows: list[BuildPickRow], display: dict[int, tuple[Any, ...]]
+) -> list[tuple[BuildEntry, int]]:
+    """Drop picks whose id isn't in the CDragon display map (rotated out of the
+    current patch / unknown — no name, no row: the same credibility rule
+    ``build_ref_service`` already applies elsewhere) and carry the map's
+    ``extra`` (rarity for augments, boots-flag for items) alongside the DTO."""
+    out: list[tuple[BuildEntry, int]] = []
+    for row in rows:
+        mapped = display.get(row.pick_id)
+        if mapped is None:
+            continue
+        out.append((_build_entry_dto(row, mapped), mapped[2]))
+    return out
+
+
+def _champion_overall_tier(
+    all_champs: list[ChampionTierRow], champion_id: int
+) -> BuildTierKey | None:
+    """This champion's tier on the SAME ranking the ``/champions`` table shows
+    (collapsed to 5 letters — ``BuildTierKey`` has no S+) — reusing that ranking
+    instead of inventing a second "how good is this champion" scale."""
+    if not all_champs:
+        return None
+    ordered = sorted(all_champs, key=_sort_key("top4"))
+    total = len(ordered)
+    for position, row in enumerate(ordered):
+        if row.champion_id == champion_id:
+            key, _label, _color = _tier_for(position, total)
+            return "S" if key == "S+" else key
+    return None
 
 
 @router.get(
@@ -443,22 +503,70 @@ def _build_teammate_dto(e: BuildEntryView) -> BuildTeammate:
     response_model=TopBuildResponse,
     response_model_by_alias=True,
     summary=(
-        "Top global de augments e itens do patch (agregado cross-campeão; ToS: "
-        "placement-derived, sem winrate de augment/item)"
+        "Top global de augments e itens da temporada (agregado cross-campeão "
+        "NATIVO; ToS: placement-derived, sem winrate de augment/item)"
     ),
 )
 async def get_top_build(
     session: Annotated[AsyncSession, Depends(c.get_db)],
+    season: Annotated[int, Query(ge=1)] = 3,
 ) -> TopBuildResponse:
-    view = await get_build_ref_service().top_build(session)
+    patch = await _current_patch()
+    season_id = await c.resolve_season_id(session, season)
+    if season_id is None:
+        return TopBuildResponse(
+            updated_at="", patch=patch, games=0, champions=0, min_games=TOP_MIN_GAMES
+        )
+
+    stats = StatsService()
+    build_ref = get_build_ref_service()
+    all_champs, item_map, augment_map, aug_rows, item_rows = await asyncio.gather(
+        stats.champion_tierlist(session, season_id=season_id, min_games=0),
+        build_ref._item_map(),
+        build_ref._augment_map(),
+        stats.top_build_picks(session, season_id=season_id, kind="augment", min_games=TOP_MIN_GAMES),
+        stats.top_build_picks(session, season_id=season_id, kind="item", min_games=TOP_MIN_GAMES),
+    )
+    augments = [e for e, _ in _resolve_entries(aug_rows, augment_map)]
+    items = [e for e, _ in _resolve_entries(item_rows, item_map)]
+    augments.sort(key=lambda e: -e.games)
+    items.sort(key=lambda e: -e.games)
     return TopBuildResponse(
-        updated_at=view.updated_at,
-        patch=view.patch,
-        games=view.games,
-        champions=view.champions,
+        updated_at=datetime.now(UTC).isoformat(),
+        patch=patch,
+        games=sum(r.games for r in all_champs),
+        champions=len(all_champs),
         min_games=TOP_MIN_GAMES,
-        augments=[_build_entry_dto(e) for e in view.augments],
-        items=[_build_entry_dto(e) for e in view.items],
+        augments=augments[:_CAP_TOP_AUGMENTS],
+        items=items[:_CAP_TOP_ITEMS],
+    )
+
+
+@router.get(
+    "/champions/augments/catalog",
+    response_model=AugmentCatalogResponse,
+    response_model_by_alias=True,
+    summary=(
+        "Catálogo completo de augments do Arena no patch atual (identidade — "
+        "nome/ícone/raridade/descrição oficiais da Riot via CDragon)"
+    ),
+)
+async def get_augment_catalog() -> AugmentCatalogResponse:
+    patch = await _current_patch()
+    entries = await get_build_ref_service().augment_catalog()
+    return AugmentCatalogResponse(
+        updated_at=datetime.now(UTC).isoformat(),
+        patch=patch,
+        augments=[
+            AugmentCatalogEntry(
+                id=e.id,
+                name=e.name,
+                icon_url=e.icon_url,
+                rarity=cast(AugmentRarity, e.rarity),
+                description=e.description,
+            )
+            for e in entries
+        ],
     )
 
 
@@ -467,53 +575,388 @@ async def get_top_build(
     response_model=ChampionBuildResponse,
     response_model_by_alias=True,
     summary=(
-        "Build de referência categorizada — augments por raridade, itens/botas e "
-        "parceiros (agregado global do patch; ToS: placement-derived, sem winrate "
-        "de augment/item)"
+        "Build de referência categorizada — augments por raridade e itens/botas "
+        "(rollup NATIVO da temporada; ToS: placement-derived, sem winrate de "
+        "augment/item)"
     ),
 )
 async def get_champion_build(
     session: Annotated[AsyncSession, Depends(c.get_db)],
     champion_id: int,
+    season: Annotated[int, Query(ge=1)] = 3,
 ) -> ChampionBuildResponse:
     name = c.champion_name(champion_id) or str(champion_id)
     icon = c.champion_icon_url(champion_id)
-    view = await get_build_ref_service().champion_build(session, champion_id=champion_id)
-    if view is None:
-        # No snapshot for this champion yet — honest empty (games=0), never fake.
-        return ChampionBuildResponse(
-            champion_id=champion_id,
-            name=name,
-            champion_icon_url=icon,
-            patch="",
-            updated_at="",
-            games=0,
-            avg_place=0.0,
-            tier=None,
-            top1=0,
-            top4=0,
+    patch = await _current_patch()
+    season_id = await c.resolve_season_id(session, season)
+    empty = ChampionBuildResponse(
+        champion_id=champion_id,
+        name=name,
+        champion_icon_url=icon,
+        patch="",
+        updated_at="",
+        games=0,
+        avg_place=0.0,
+        tier=None,
+        top1=0,
+        top4=0,
+        min_games=BUILD_MIN_GAMES,
+    )
+    if season_id is None:
+        return empty
+
+    stats = StatsService()
+    build_ref = get_build_ref_service()
+    all_champs, item_map, augment_map, aug_rows, item_rows = await asyncio.gather(
+        stats.champion_tierlist(session, season_id=season_id, min_games=0),
+        build_ref._item_map(),
+        build_ref._augment_map(),
+        stats.champion_build_picks(
+            session, season_id=season_id, champion_id=champion_id, kind="augment",
             min_games=BUILD_MIN_GAMES,
-        )
+        ),
+        stats.champion_build_picks(
+            session, season_id=season_id, champion_id=champion_id, kind="item",
+            min_games=BUILD_MIN_GAMES,
+        ),
+    )
+    champ_row = next((r for r in all_champs if r.champion_id == champion_id), None)
+    if champ_row is None or champ_row.games <= 0:
+        # No eligible games for this champion this season yet — honest empty,
+        # never fake (same posture the old external-aggregate path had).
+        return empty
+
+    # Best tier first within each bucket — capped AFTER the sort, not during
+    # collection, or the cap would keep whatever came first in SQL row order
+    # instead of the actual best entries.
+    augments_by_rarity: dict[int, list[BuildEntry]] = {2: [], 1: [], 0: []}  # prismatic/gold/silver
+    for entry, rarity in _resolve_entries(aug_rows, augment_map):
+        bucket = augments_by_rarity.get(rarity)
+        if bucket is not None:
+            bucket.append(entry)
+    for bucket in augments_by_rarity.values():
+        bucket.sort(key=lambda e: _TIER_RANK.get(e.tier, len(_TIER_RANK)))
+    augments_by_rarity = {
+        rarity: bucket[:_CAP_AUGMENTS_PER_RARITY] for rarity, bucket in augments_by_rarity.items()
+    }
+
+    items: list[BuildEntry] = []
+    boots: list[BuildEntry] = []
+    prismatic_items: list[BuildEntry] = []
+    for entry, is_boots in _resolve_entries(item_rows, item_map):
+        if is_boots:
+            boots.append(entry)
+        elif is_prismatic_item(entry.id):
+            prismatic_items.append(entry)
+        elif len(items) < _CAP_ITEMS:
+            items.append(entry)
+    boots.sort(key=lambda e: _TIER_RANK.get(e.tier, len(_TIER_RANK)))
+    boots = boots[:_CAP_BOOTS]
+    prismatic_items.sort(key=lambda e: _TIER_RANK.get(e.tier, len(_TIER_RANK)))
+    prismatic_items = prismatic_items[:_CAP_PRISMATIC_ITEMS]
+
+    tier = _champion_overall_tier(all_champs, champion_id)
     return ChampionBuildResponse(
         champion_id=champion_id,
         name=name,
         champion_icon_url=icon,
-        patch=view.patch,
-        updated_at=view.updated_at,
-        games=view.games,
-        avg_place=view.avg_place,
-        tier=cast(BuildTierKey, view.tier) if view.tier is not None else None,
-        top1=view.top1,
-        top4=view.top4,
+        patch=patch,
+        updated_at=datetime.now(UTC).isoformat(),
+        games=champ_row.games,
+        avg_place=champ_row.avg_place,
+        tier=tier,
+        top1=champ_row.first_rate,
+        top4=champ_row.top4_rate,
         min_games=BUILD_MIN_GAMES,
         augments=ChampionAugments(
-            prismatic=[_build_entry_dto(e) for e in view.augments_prismatic],
-            gold=[_build_entry_dto(e) for e in view.augments_gold],
-            silver=[_build_entry_dto(e) for e in view.augments_silver],
+            prismatic=augments_by_rarity[2],
+            gold=augments_by_rarity[1],
+            silver=augments_by_rarity[0],
         ),
-        items=[_build_entry_dto(e) for e in view.items],
-        boots=[_build_entry_dto(e) for e in view.boots],
-        teammates=[_build_teammate_dto(e) for e in view.teammates],
+        items=items,
+        boots=boots,
+        prismatic_items=prismatic_items,
+        # Teammates (best reference partners) aren't derived from champion_build_stats
+        # (that's augment/item picks, not champion pairings) — the old external
+        # aggregate had them, native doesn't yet. champion_combo_stats (the
+        # synergy rollup) carries the right data to add this later; left empty
+        # (honest, not fake) rather than half-built for this pass.
+        teammates=[],
+    )
+
+
+def _matchup_entry(champion_id: int, *, games: int, top4: int, avg_place: float, base_win_rate: int) -> MatchupEntry:
+    name = c.champion_name(champion_id) or str(champion_id)
+    win_rate = round(100 * top4 / games) if games > 0 else 0
+    return MatchupEntry(
+        champion_id=champion_id,
+        name=name,
+        champion_icon_url=c.champion_icon_url(champion_id),
+        colors=c.avatar_for(name),
+        games=games,
+        win_rate=win_rate,
+        delta=win_rate - base_win_rate,
+        avg_place=avg_place,
+    )
+
+
+@router.get(
+    "/champions/{champion_id}/matchups",
+    response_model=ChampionMatchupsResponse,
+    response_model_by_alias=True,
+    summary=(
+        "Melhores/piores parceiros de dupla (kind=duo) ou oponentes entre "
+        "subteams (kind=versus) do campeão (rollups NATIVOS champion_combo_stats/"
+        "champion_versus_stats; ToS: placement-derived)"
+    ),
+)
+async def get_champion_matchups(
+    session: Annotated[AsyncSession, Depends(c.get_db)],
+    champion_id: int,
+    kind: Annotated[MatchupKind, Query()] = "duo",
+    season: Annotated[int, Query(ge=1)] = 3,
+    limit: Annotated[int, Query(ge=1, le=20)] = 5,
+) -> ChampionMatchupsResponse:
+    name = c.champion_name(champion_id) or str(champion_id)
+    season_id = await c.resolve_season_id(session, season)
+    floor = max(SYNERGY_MIN_GAMES, settings.synergy_combo_min_games)
+    empty = ChampionMatchupsResponse(
+        champion_id=champion_id,
+        name=name,
+        season=season,
+        format="3v3",
+        kind=kind,
+        sample_size=0,
+        min_games=floor,
+        base_win_rate=0,
+    )
+    if season_id is None:
+        return empty
+
+    stats = StatsService()
+    partners_call = (
+        stats.champion_matchups_versus(session, season_id=season_id, champion_id=champion_id, min_games=floor)
+        if kind == "versus"
+        else stats.champion_matchups_duo(session, season_id=season_id, champion_id=champion_id, min_games=floor)
+    )
+    all_champs, partners = await asyncio.gather(
+        stats.champion_tierlist(session, season_id=season_id, min_games=0),
+        partners_call,
+    )
+    champ_row = next((r for r in all_champs if r.champion_id == champion_id), None)
+    if champ_row is None or champ_row.games <= 0 or not partners:
+        return empty
+    base_win_rate = champ_row.top4_rate
+
+    scored = [
+        (p, round(100 * p.top4 / p.games) if p.games > 0 else 0, round(p.placement_sum / p.games, 2))
+        for p in partners
+        if p.games > 0
+    ]
+    best_ranked = sorted(scored, key=lambda x: -_wilson_lower_bound(x[0].top4, x[0].games))
+    worst_ranked = sorted(scored, key=lambda x: -_wilson_lower_bound(x[0].games - x[0].top4, x[0].games))
+
+    best = [
+        _matchup_entry(p.champion_id, games=p.games, top4=p.top4, avg_place=avg_place, base_win_rate=base_win_rate)
+        for p, _win_rate, avg_place in best_ranked[:limit]
+    ]
+    worst = [
+        _matchup_entry(p.champion_id, games=p.games, top4=p.top4, avg_place=avg_place, base_win_rate=base_win_rate)
+        for p, _win_rate, avg_place in worst_ranked[:limit]
+    ]
+
+    return ChampionMatchupsResponse(
+        champion_id=champion_id,
+        name=name,
+        season=season,
+        format="3v3",
+        kind=kind,
+        sample_size=sum(p.games for p, _, _ in scored),
+        min_games=floor,
+        base_win_rate=base_win_rate,
+        best=best,
+        worst=worst,
+    )
+
+
+_ROUND_STAGE_LABELS: dict[int, str] = {1: "Prata", 2: "Ouro", 3: "Prismático"}
+# augment rarity int (build_ref_service: 0 silver/1 gold/2 prismatic) -> stage index
+_RARITY_TO_ROUND: dict[int, int] = {0: 1, 1: 2, 2: 3}
+
+
+@router.get(
+    "/champions/{champion_id}/rounds",
+    response_model=ChampionRoundsResponse,
+    response_model_by_alias=True,
+    summary=(
+        "Curva de força por estágio de draft — prata/ouro/prismático "
+        "(rollup NATIVO champion_build_stats; ToS: placement-derived). Riot "
+        "não expõe timeline para a fila Arena (CHERRY) em nenhum endpoint "
+        "público, então não existe força round-a-round real de se medir; "
+        "isto usa os três estágios reais do draft de augments como eixo, que "
+        "são os spikes de força de fato definidos pelo modo."
+    ),
+)
+async def get_champion_rounds(
+    session: Annotated[AsyncSession, Depends(c.get_db)],
+    champion_id: int,
+    season: Annotated[int, Query(ge=1)] = 3,
+) -> ChampionRoundsResponse:
+    name = c.champion_name(champion_id) or str(champion_id)
+    season_id = await c.resolve_season_id(session, season)
+    empty = ChampionRoundsResponse(
+        champion_id=champion_id,
+        name=name,
+        champion_icon_url=c.champion_icon_url(champion_id),
+        season=season,
+        format="3v3",
+        sample_size=0,
+        min_games=BUILD_MIN_GAMES,
+    )
+    if season_id is None:
+        return empty
+
+    stats = StatsService()
+    augment_map = await get_build_ref_service()._augment_map()
+    picks = await stats.champion_build_picks(
+        session, season_id=season_id, champion_id=champion_id, kind="augment",
+        min_games=BUILD_MIN_GAMES,
+    )
+    if not picks:
+        return empty
+
+    by_stage: dict[int, list[BuildPickRow]] = {1: [], 2: [], 3: []}
+    for row in picks:
+        entry = augment_map.get(row.pick_id)
+        stage = _RARITY_TO_ROUND.get(entry[2]) if entry else None
+        if stage is not None:
+            by_stage[stage].append(row)
+
+    rounds: list[ChampionRoundPoint] = []
+    for stage in (1, 2, 3):
+        rows = by_stage[stage]
+        if not rows:
+            continue
+        # The best pick's own top4 rate — how far this stage's draft choice
+        # can lift the champion, not a raw per-augment "winrate" claim.
+        best = max(rows, key=lambda r: r.top4)
+        rounds.append(
+            ChampionRoundPoint(
+                round=stage,
+                label=_ROUND_STAGE_LABELS[stage],
+                win_rate=best.top4,
+                games=best.games,
+            )
+        )
+    if not rounds:
+        return empty
+
+    peak = max(rounds, key=lambda r: r.win_rate)
+    return ChampionRoundsResponse(
+        champion_id=champion_id,
+        name=name,
+        champion_icon_url=c.champion_icon_url(champion_id),
+        season=season,
+        format="3v3",
+        sample_size=sum(r.games for r in rounds),
+        min_games=BUILD_MIN_GAMES,
+        peak_round=peak.round,
+        rounds=rounds,
+    )
+
+
+@router.get(
+    "/champions/{champion_id}/builds",
+    response_model=ChampionBuildVariantsResponse,
+    response_model_by_alias=True,
+    summary=(
+        "Variantes de build do campeão agrupadas pelo augment prismático "
+        "(rollup NATIVO champion_build_variant_stats; ToS: placement-derived)"
+    ),
+)
+async def get_champion_build_variants(
+    session: Annotated[AsyncSession, Depends(c.get_db)],
+    champion_id: int,
+    season: Annotated[int, Query(ge=1)] = 3,
+) -> ChampionBuildVariantsResponse:
+    name = c.champion_name(champion_id) or str(champion_id)
+    patch = await _current_patch()
+    season_id = await c.resolve_season_id(session, season)
+    empty = ChampionBuildVariantsResponse(
+        champion_id=champion_id,
+        name=name,
+        patch="",
+        updated_at="",
+        games=0,
+        min_games=BUILD_MIN_GAMES,
+    )
+    if season_id is None:
+        return empty
+
+    stats = StatsService()
+    build_ref = get_build_ref_service()
+    variants, item_map, augment_map = await asyncio.gather(
+        stats.champion_build_variants(
+            session, season_id=season_id, champion_id=champion_id, min_games=BUILD_MIN_GAMES
+        ),
+        build_ref._item_map(),
+        build_ref._augment_map(),
+    )
+    if not variants:
+        return empty
+
+    out: list[ChampionBuildVariant] = []
+    for row, item_ids in variants:
+        aug_display = augment_map.get(row.pick_id)
+        if aug_display is None:
+            continue  # augment rotated out of the current patch — drop, don't show a bare id
+        aug_name, aug_icon, _rarity = aug_display
+        # Each item's own within-variant winrate isn't tracked (only pick
+        # frequency) — the variant's own tier/games/placement describe the
+        # BUILD, not each item individually; reused here rather than
+        # fabricating a per-item number we don't have.
+        resolved_items: list[BuildEntry] = []
+        for item_id in item_ids:
+            item_display = item_map.get(item_id)
+            if item_display is None:
+                continue  # item rotated out of the current patch — drop, don't show a bare id
+            item_name, item_icon, *_extra = item_display
+            resolved_items.append(
+                BuildEntry(
+                    id=item_id, name=item_name, icon_url=item_icon, tier=cast(BuildTierKey, row.tier),
+                    games=row.games, avg_place=row.avg_place, top1=row.top1, top4=row.top4,
+                    pick_rate=row.pick_rate,
+                )
+            )
+        out.append(
+            ChampionBuildVariant(
+                id=str(row.pick_id),
+                name=aug_name,
+                tier=cast(BuildTierKey, row.tier),
+                games=row.games,
+                pick_rate=row.pick_rate,
+                top4=row.top4,
+                top1=row.top1,
+                avg_place=row.avg_place,
+                items=resolved_items,
+                required_augments=[
+                    BuildEntry(
+                        id=row.pick_id, name=aug_name, icon_url=aug_icon, tier=cast(BuildTierKey, row.tier),
+                        games=row.games, avg_place=row.avg_place, top1=row.top1, top4=row.top4,
+                        pick_rate=row.pick_rate,
+                    )
+                ],
+            )
+        )
+
+    return ChampionBuildVariantsResponse(
+        champion_id=champion_id,
+        name=name,
+        patch=patch,
+        updated_at=datetime.now(UTC).isoformat(),
+        games=sum(row.games for row, _items in variants),
+        min_games=BUILD_MIN_GAMES,
+        variants=out,
     )
 
 

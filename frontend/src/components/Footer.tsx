@@ -23,7 +23,6 @@ export function Footer() {
         <div>
           <h4>Plataforma</h4>
           <ul>
-            <li><Link to="/admin">Painel Admin</Link></li>
             <li><Link to="/sistema">Integridade</Link></li>
             <li><Link to="/sistema">ArenaRank Pro</Link></li>
             <li><Link to="/campeonatos">Torneios</Link></li>

@@ -1,0 +1,70 @@
+.profile-surface-nav {
+  display: flex;
+  align-items: stretch;
+  gap: 2px;
+  min-height: 50px;
+  margin: 14px 0 24px;
+  padding: 4px;
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: color-mix(in srgb, var(--surface-2) 92%, transparent);
+  scrollbar-width: none;
+}
+.profile-surface-nav::-webkit-scrollbar {
+  display: none;
+}
+
+.profile-surface-nav a {
+  position: relative;
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-width: 110px;
+  padding: 0 18px;
+  border-radius: calc(var(--r-md) - 4px);
+  color: var(--text-dim);
+  font: 700 11px/1 "Plus Jakarta Sans", sans-serif;
+  letter-spacing: 0.04em;
+  text-decoration: none;
+  text-transform: uppercase;
+  transition: background-color 160ms ease, color 160ms ease;
+}
+
+.profile-surface-nav a:hover {
+  background: var(--surface-3);
+  color: var(--text);
+}
+
+.profile-surface-nav a.is-active {
+  background: var(--primary-dim);
+  color: var(--primary-bright);
+}
+
+.profile-surface-nav a.is-active::after {
+  content: "";
+  position: absolute;
+  right: 14px;
+  bottom: 5px;
+  left: 14px;
+  height: 2px;
+  background: var(--primary);
+}
+
+.profile-surface-nav small {
+  padding: 3px 5px;
+  border: 1px solid color-mix(in srgb, var(--gold) 42%, var(--line));
+  border-radius: 4px;
+  color: var(--gold-bright);
+  font: 800 7px/1 ui-monospace, "SF Mono", Menlo, monospace;
+  letter-spacing: 0.08em;
+}
+
+@media (max-width: 600px) {
+  .profile-surface-nav a {
+    min-width: 92px;
+    padding-inline: 13px;
+  }
+}

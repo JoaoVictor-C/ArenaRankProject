@@ -10,6 +10,12 @@ body {
   margin: 0;
   padding: 0;
 }
+/* Barra de scroll horizontal nunca deve aparecer: decoração (blob) e o drawer
+   fora da tela (translateX 100%) ficam clipados. `clip` não cria contêiner de
+   scroll, então não quebra o `position: sticky` do header. */
+html {
+  overflow-x: clip;
+}
 body {
   background-color: var(--bg);
   color: var(--text);
@@ -69,15 +75,34 @@ a {
 }
 
 /* ---------- background ---------- */
-.dot-grid {
-  position: fixed;
+.pfield {
   inset: 0;
-  background-image: radial-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px);
-  background-size: 26px 26px;
-  pointer-events: none;
   z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
 }
-body[data-bg="plain"] .dot-grid {
+.pfield--global {
+  position: fixed;
+}
+.pfield--route {
+  position: absolute;
+  -webkit-mask-image: linear-gradient(to bottom, #000, transparent 640px);
+  mask-image: linear-gradient(to bottom, #000, transparent 640px);
+}
+.pfield__mote {
+  position: absolute;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  /* A discrição vive no `opacity` (0.05–0.11, sorteado por mote): o mote é
+     creme opaco e a camada é que fica quase subliminar. */
+  background: rgb(236 231 216);
+  opacity: var(--pfield-alpha, 0.08);
+}
+.pfield__mote--gold {
+  background: color-mix(in srgb, var(--gold) 24%, rgb(236 231 216));
+}
+body[data-bg="plain"] .pfield {
   display: none;
 }
 .blob-wrap {
@@ -99,6 +124,16 @@ body[data-bg="plain"] .dot-grid {
 }
 body[data-bg="plain"] .blob-wrap {
   display: none;
+}
+/* No mobile o blob de 1000px estoura a viewport (é position:absolute e escapa do
+   clip do html) — ancora na largura da tela mantendo o glow. */
+@media (max-width: 900px) {
+  .blob-wrap {
+    width: 100%;
+    max-width: 100vw;
+    left: 0;
+    transform: none;
+  }
 }
 body[data-bg="gradient"] .blob-wrap {
   opacity: 0.5;
@@ -135,6 +170,10 @@ body[data-bg="gradient"] .blob-wrap {
 }
 .breadcrumb .sep {
   color: var(--line);
+}
+/* Badge de frescor ancora à direita da linha de breadcrumb. */
+.breadcrumb .fresh-badge {
+  margin-left: auto;
 }
 
 .section-head {
@@ -370,7 +409,9 @@ body[data-bg="gradient"] .blob-wrap {
   color: var(--red);
 }
 
-/* player tags (Top 1 Global, Top 1 BR, Em alta, OTP...) — fundo sólido ≥90% */
+/* Player tags. Duas famílias: identidade de campeão ("OTP VLAD", "TOP 2 EZREAL")
+   tingida com a cor dominante do campeão (bg/borda vêm inline via useIconColors)
+   e momentum ("Em alta"). Fundo sólido ≥90%. */
 .ptag {
   display: inline-flex;
   align-items: center;
@@ -388,28 +429,24 @@ body[data-bg="gradient"] .blob-wrap {
 .ptag .mi {
   font-size: 11px;
 }
-.ptag-global {
-  background: linear-gradient(135deg, var(--gold-bright), var(--gold));
-  color: #2a2008;
-}
-.ptag-region {
-  background: var(--primary);
-}
 .ptag-hot {
   background: var(--amber);
   color: #241a05;
 }
-.ptag-veteran {
-  background: var(--surface-3);
-  color: var(--text-dim);
+/* Tag de campeão: bg (degradê da cor dominante) + borderColor aplicados inline.
+   Aqui só o que garante leitura sobre qualquer matiz. */
+.ptag-champ {
+  color: #fff;
+  text-shadow: 0 1px 1.5px rgba(0, 0, 0, 0.5);
 }
-.ptag-rookie {
-  background: var(--green);
-  color: #07210f;
-}
+/* Fallbacks quando o ícone do campeão não resolve (sem cor extraída). */
 .ptag-otp {
   background: var(--primary-bright);
   color: #04212f;
+}
+.ptag-champrank {
+  background: var(--surface-3);
+  color: var(--text);
 }
 /* contador de excedente (+2, +3...) quando há mais de 2 tags */
 .ptag.more {
@@ -483,7 +520,8 @@ body[data-bg="gradient"] .blob-wrap {
 .chip[data-active="true"] {
   background: var(--primary);
   border-color: var(--primary);
-  color: #fff;
+  /* ink escuro sobre o azul (mesmo padrão do AdminGate): #fff on --primary = 3.1:1 (reprova AA). */
+  color: #07101f;
 }
 .chip[data-active="true"].soft {
   background: var(--primary-dim);
@@ -809,6 +847,14 @@ body[data-bg="gradient"] .blob-wrap {
   font: 600 14px/1.4 "Plus Jakarta Sans", sans-serif;
   text-align: center;
 }
+.state-block-compact {
+  min-height: 112px;
+  padding: 24px 16px;
+  font-size: 12px;
+}
+.state-block-compact .mi {
+  font-size: 24px !important;
+}
 .state-spinner {
   width: 28px;
   height: 28px;
@@ -820,5 +866,84 @@ body[data-bg="gradient"] .blob-wrap {
 @keyframes ar-spin {
   to {
     transform: rotate(360deg);
+  }
+}
+
+/* ============================================================
+   RESPONSIVO — shell, footer e primitivos compartilhados
+   (mobile-first tuning; a cascata desktop acima permanece intacta)
+   ============================================================ */
+
+/* tablet portrait / phone grande: shell respira menos, footer 4→2 col */
+@media (max-width: 680px) {
+  .shell {
+    padding: 20px max(16px, env(safe-area-inset-left)) 56px;
+    padding-right: max(16px, env(safe-area-inset-right));
+  }
+  .breadcrumb {
+    margin-bottom: 16px;
+  }
+  .section-head {
+    gap: 12px;
+    margin-bottom: 14px;
+  }
+  .section-head h2 {
+    font-size: 18px;
+  }
+
+  .site-footer .inner {
+    grid-template-columns: 1fr 1fr;
+    gap: 26px 20px;
+    padding: 30px 18px 30px;
+  }
+  .site-footer .brand {
+    grid-column: 1 / -1;
+  }
+  .site-footer p {
+    max-width: none;
+  }
+  .site-footer .legal {
+    padding: 16px 18px calc(22px + env(safe-area-inset-bottom));
+  }
+}
+
+/* phone: footer empilha, cards e chips com mais folga de toque */
+@media (max-width: 440px) {
+  .shell {
+    padding-top: 16px;
+    padding-bottom: 48px;
+    padding-left: max(13px, env(safe-area-inset-left));
+    padding-right: max(13px, env(safe-area-inset-right));
+  }
+  .panel-pad {
+    padding: 15px;
+  }
+  .site-footer .inner {
+    grid-template-columns: 1fr;
+    gap: 22px;
+  }
+  .chip {
+    padding: 9px 14px;
+  }
+}
+
+/* toque grosso: alvos maiores em chips/tabs/botões */
+@media (pointer: coarse) {
+  .chip {
+    padding: 9px 14px;
+  }
+  .tab {
+    padding: 13px 16px;
+  }
+  .btn {
+    padding: 11px 16px;
+  }
+}
+
+/* o FAB de ajustes não deve encostar no home indicator */
+@media (max-width: 900px) {
+  .tweaks {
+    right: max(16px, env(safe-area-inset-right));
+    bottom: max(16px, env(safe-area-inset-bottom));
   }
 }

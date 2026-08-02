@@ -1,0 +1,310 @@
+{
+  "label": "Dados ilustrativos do modo de desenvolvimento",
+  "loadouts": [
+    {
+      "items": [
+        {
+          "id": 3089,
+          "name": "Capuz da Morte de Rabadon",
+          "iconUrl": "https://ddragon.leagueoflegends.com/cdn/15.14.1/img/item/3089.png"
+        },
+        {
+          "id": 6655,
+          "name": "Tormenta de Luden",
+          "iconUrl": "https://ddragon.leagueoflegends.com/cdn/15.14.1/img/item/6655.png"
+        },
+        {
+          "id": 6653,
+          "name": "Angústia de Liandry",
+          "iconUrl": "https://ddragon.leagueoflegends.com/cdn/15.14.1/img/item/6653.png"
+        },
+        {
+          "id": 3118,
+          "name": "Malevolência",
+          "iconUrl": "https://ddragon.leagueoflegends.com/cdn/15.14.1/img/item/3118.png"
+        },
+        {
+          "id": 3135,
+          "name": "Cajado do Vazio",
+          "iconUrl": "https://ddragon.leagueoflegends.com/cdn/15.14.1/img/item/3135.png"
+        },
+        {
+          "id": 4645,
+          "name": "Chama Sombria",
+          "iconUrl": "https://ddragon.leagueoflegends.com/cdn/15.14.1/img/item/4645.png"
+        },
+        {
+          "id": 3340,
+          "name": "Sentinela Invisível",
+          "iconUrl": "https://ddragon.leagueoflegends.com/cdn/15.14.1/img/item/3340.png"
+        }
+      ],
+      "augments": [
+        {
+          "id": 27,
+          "name": "Abalos Sísmicos",
+          "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/earthwake_small.png",
+          "rarity": "prismatic"
+        },
+        {
+          "id": 219,
+          "name": "Agouro",
+          "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/doomsayer_small.png",
+          "rarity": "prismatic"
+        },
+        {
+          "id": 115,
+          "name": "Armas Extensivas",
+          "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/scopiestweapons_small.png",
+          "rarity": "prismatic"
+        },
+        {
+          "id": 225,
+          "name": "Ataque Duplo",
+          "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/dualwield_small.png",
+          "rarity": "gold"
+        },
+        {
+          "id": 193,
+          "name": "Centro do Universo",
+          "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/centeroftheuniverse_small.png",
+          "rarity": "gold"
+        },
+        {
+          "id": 53,
+          "name": "Cientista Louco",
+          "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/madscientist_small.png",
+          "rarity": "silver"
+        }
+      ]
+    },
+    {
+      "items": [
+        {
+          "id": 3078,
+          "name": "Força da Trindade",
+          "iconUrl": "https://ddragon.leagueoflegends.com/cdn/15.14.1/img/item/3078.png"
+        },
+        {
+          "id": 3153,
+          "name": "Espada do Rei Destruído",
+          "iconUrl": "https://ddragon.leagueoflegends.com/cdn/15.14.1/img/item/3153.png"
+        },
+        {
+          "id": 6333,
+          "name": "Dança da Morte",
+          "iconUrl": "https://ddragon.leagueoflegends.com/cdn/15.14.1/img/item/6333.png"
+        },
+        {
+          "id": 3053,
+          "name": "Sinal de Sterak",
+          "iconUrl": "https://ddragon.leagueoflegends.com/cdn/15.14.1/img/item/3053.png"
+        },
+        {
+          "id": 3071,
+          "name": "Cutelo Negro",
+          "iconUrl": "https://ddragon.leagueoflegends.com/cdn/15.14.1/img/item/3071.png"
+        },
+        {
+          "id": 3139,
+          "name": "Cimitarra Mercurial",
+          "iconUrl": "https://ddragon.leagueoflegends.com/cdn/15.14.1/img/item/3139.png"
+        },
+        {
+          "id": 3364,
+          "name": "Lente do Oráculo",
+          "iconUrl": "https://ddragon.leagueoflegends.com/cdn/15.14.1/img/item/3364.png"
+        }
+      ],
+      "augments": [
+        {
+          "id": 228,
+          "name": "Atributos em Dose Tripla!",
+          "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/statsonstatsonstats_small.png",
+          "rarity": "prismatic"
+        },
+        {
+          "id": 234,
+          "name": "Bigorna de Aposta",
+          "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/thiefsgloves_small.png",
+          "rarity": "prismatic"
+        },
+        {
+          "id": 317,
+          "name": "Caixa de Pandora",
+          "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/pandoras_box_small.png",
+          "rarity": "gold"
+        },
+        {
+          "id": 323,
+          "name": "Cérbero",
+          "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/cerberus_small.png",
+          "rarity": "gold"
+        },
+        {
+          "id": 216,
+          "name": "Arauto do Pavor",
+          "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/plaguebearer_small.png",
+          "rarity": "silver"
+        },
+        {
+          "id": 405,
+          "name": "Aprimoramento 405",
+          "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/augment405_small.png",
+          "rarity": "silver"
+        }
+      ]
+    },
+    {
+      "items": [
+        {
+          "id": 3083,
+          "name": "Coração de Aço",
+          "iconUrl": "https://ddragon.leagueoflegends.com/cdn/15.14.1/img/item/3083.png"
+        },
+        {
+          "id": 3068,
+          "name": "Égide de Fogo Solar",
+          "iconUrl": "https://ddragon.leagueoflegends.com/cdn/15.14.1/img/item/3068.png"
+        },
+        {
+          "id": 3075,
+          "name": "Armadura de Espinhos",
+          "iconUrl": "https://ddragon.leagueoflegends.com/cdn/15.14.1/img/item/3075.png"
+        },
+        {
+          "id": 3065,
+          "name": "Semblante Espiritual",
+          "iconUrl": "https://ddragon.leagueoflegends.com/cdn/15.14.1/img/item/3065.png"
+        },
+        {
+          "id": 3110,
+          "name": "Coração Congelado",
+          "iconUrl": "https://ddragon.leagueoflegends.com/cdn/15.14.1/img/item/3110.png"
+        },
+        {
+          "id": 2504,
+          "name": "Desespero Eterno",
+          "iconUrl": "https://ddragon.leagueoflegends.com/cdn/15.14.1/img/item/2504.png"
+        },
+        {
+          "id": 3340,
+          "name": "Sentinela Invisível",
+          "iconUrl": "https://ddragon.leagueoflegends.com/cdn/15.14.1/img/item/3340.png"
+        }
+      ],
+      "augments": [
+        {
+          "id": 323,
+          "name": "Cérbero",
+          "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/cerberus_small.png",
+          "rarity": "prismatic"
+        },
+        {
+          "id": 216,
+          "name": "Arauto do Pavor",
+          "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/plaguebearer_small.png",
+          "rarity": "prismatic"
+        },
+        {
+          "id": 193,
+          "name": "Centro do Universo",
+          "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/centeroftheuniverse_small.png",
+          "rarity": "gold"
+        },
+        {
+          "id": 53,
+          "name": "Cientista Louco",
+          "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/madscientist_small.png",
+          "rarity": "gold"
+        },
+        {
+          "id": 27,
+          "name": "Abalos Sísmicos",
+          "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/earthwake_small.png",
+          "rarity": "silver"
+        },
+        {
+          "id": 115,
+          "name": "Armas Extensivas",
+          "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/scopiestweapons_small.png",
+          "rarity": "silver"
+        }
+      ]
+    }
+  ],
+  "players": [
+    {
+      "level": 18,
+      "rankLabel": "Gladiador · 2.070 PDL",
+      "kills": 18,
+      "deaths": 6,
+      "assists": 16,
+      "killParticipation": 74,
+      "damageToChampions": 76940,
+      "damagePerMinute": 3098,
+      "goldEarned": 18240,
+      "loadout": 0
+    },
+    {
+      "level": 18,
+      "rankLabel": "Gladiador · 1.922 PDL",
+      "kills": 8,
+      "deaths": 8,
+      "assists": 23,
+      "killParticipation": 68,
+      "damageToChampions": 52310,
+      "damagePerMinute": 2107,
+      "goldEarned": 16790,
+      "loadout": 2
+    },
+    {
+      "level": 17,
+      "rankLabel": "Gladiador · 2.002 PDL",
+      "kills": 13,
+      "deaths": 9,
+      "assists": 11,
+      "killParticipation": 61,
+      "damageToChampions": 64820,
+      "damagePerMinute": 2610,
+      "goldEarned": 17410,
+      "loadout": 1
+    },
+    {
+      "level": 18,
+      "rankLabel": "Gladiador · 1.872 PDL",
+      "kills": 6,
+      "deaths": 10,
+      "assists": 18,
+      "killParticipation": 58,
+      "damageToChampions": 44190,
+      "damagePerMinute": 1779,
+      "goldEarned": 15130,
+      "loadout": 0
+    },
+    {
+      "level": 16,
+      "rankLabel": "Ouro · 1.641 PDL",
+      "kills": 9,
+      "deaths": 11,
+      "assists": 9,
+      "killParticipation": 52,
+      "damageToChampions": 39770,
+      "damagePerMinute": 1601,
+      "goldEarned": 14680,
+      "loadout": 1
+    },
+    {
+      "level": 17,
+      "rankLabel": "Ouro · 1.508 PDL",
+      "kills": 4,
+      "deaths": 12,
+      "assists": 14,
+      "killParticipation": 49,
+      "damageToChampions": 33140,
+      "damagePerMinute": 1334,
+      "goldEarned": 13790,
+      "loadout": 2
+    }
+  ]
+}

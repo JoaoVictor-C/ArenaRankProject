@@ -1,0 +1,116 @@
+/* Popup de dados no hover de item/augment — mesmo padrão visual do
+   `.champ-pop` do leaderboard (routes/Leaderboard.css), mas `position: fixed`
+   porque é montado via portal (ver BuildHoverCard.tsx). */
+.bh-pop {
+  position: fixed;
+  transform: translate(-50%, calc(-100% - 9px));
+  z-index: 200;
+  width: 230px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  background: #191c24;
+  border: 1px solid #2a2f3a;
+  border-radius: 10px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.55);
+  pointer-events: none;
+  font-family: "Plus Jakarta Sans", system-ui, sans-serif;
+}
+.bh-pop::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 6px solid transparent;
+  border-top-color: #2a2f3a;
+}
+.bh-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+.bh-icon {
+  width: 24px;
+  height: 24px;
+  border-radius: 5px;
+  flex-shrink: 0;
+  object-fit: cover;
+}
+.bh-name {
+  font: 800 13px/1.25 "Plus Jakarta Sans", sans-serif;
+  color: #fff;
+  flex: 1;
+  min-width: 0;
+  /* Nome inteiro, sem truncar — pode quebrar em 2+ linhas. */
+  white-space: normal;
+  overflow-wrap: break-word;
+}
+.bh-badge {
+  flex-shrink: 0;
+  font: 800 10px/1 "Plus Jakarta Sans", sans-serif;
+  padding: 2px 6px;
+  border-radius: 5px;
+  color: #fff;
+}
+.bh-badge.tier-splus {
+  background: #ffcc00;
+  color: #241a00;
+}
+.bh-badge.tier-s {
+  background: #ff04dd;
+}
+.bh-badge.tier-a {
+  background: #9b5cff;
+}
+.bh-badge.tier-b {
+  background: #008cff;
+}
+.bh-badge.tier-c {
+  background: #5fa83a;
+}
+.bh-badge.tier-d {
+  background: #6b6b70;
+}
+.bh-badge.rarity-prismatic {
+  background: #a875e8;
+  color: #1a0f24;
+}
+.bh-badge.rarity-gold {
+  background: #d4a24c;
+  color: #241a00;
+}
+.bh-badge.rarity-silver {
+  background: #9aa4ad;
+  color: #12161a;
+}
+.bh-badge.rarity-unknown {
+  background: #5c5f66;
+}
+.bh-desc {
+  font: 500 11px/1.4 "Plus Jakarta Sans", sans-serif;
+  color: #b7bac2;
+}
+.bh-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding-top: 7px;
+  border-top: 1px solid #2a2f3a;
+}
+.bh-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+}
+.bh-k {
+  font: 500 11px/1.2 "Plus Jakarta Sans", sans-serif;
+  color: #9a9aa2;
+}
+.bh-v {
+  font: 800 12px/1.2 "Plus Jakarta Sans", sans-serif;
+  color: #fff;
+  font-variant-numeric: tabular-nums;
+}

@@ -1,39 +1,102 @@
-# arenarank — local development stack.
+# arenarank — LOCAL / TESTING stack. Self-contained: from an empty machine,
+# `docker compose up --build` gives you a migrated, seeded, running system.
+# Nothing external is required (a Riot key is optional — see `seed`).
 #
-#   postgres   TimescaleDB (pg16)            : direct DB endpoint (5432)
-#   redis      cache / locks / arq / token   : 6379
-#   pgbouncer  TRANSACTION pool (web/API)    : 6432   (Trinity #9 dual-pool)
-#   pgbouncer-session  SESSION pool (workers) : 6433   (Trinity #9 dual-pool)
-#   migrate    one-shot: alembic upgrade head : runs once, then exits
-#   seed       one-shot: idempotent dev seed  : runs once, then exits
-#              (ACTIVE season + the SEED_PLAYERS Riot IDs as tracked players)
-#   api        FastAPI (uvicorn)             : 8000  -> connects via tx pool
-#   worker-sweep / worker-priority-sweep / scheduler
-#              arq cron pools (discovery + maintenance)
-#   worker-standard / worker-priority
-#              arq continuous consumer pools (process_match, no cron)
-#   adminer    web DB viewer                 : 8080  -> direct postgres endpoint
-#   frontend   React + Vite dev server       : 5173  -> VITE_API_URL=:8000
-#   audit-missing-matches  one-shot, read-only coverage audit (profile: audit)
+#   postgres          TimescaleDB (pg16)              5432  direct endpoint
+#   redis             cache / locks / arq / bucket    6379
+#   pgbouncer         TRANSACTION pool (web/API)      6432
+#   pgbouncer-session SESSION pool (workers)          6433
+#   migrate           one-shot: alembic upgrade head
+#   seed              one-shot: idempotent dev seed (season + tracked players)
+#   api               FastAPI (uvicorn)               8000
+#   worker-sweep / worker-priority-sweep / scheduler  arq cron pools
+#   worker-standard / worker-priority                 arq continuous consumers
+#   adminer           web DB viewer                   8080
+#   frontend          React + Vite dev server         5173
+#   admin-console     operator UI (Vite dev server)   5174
+#   audit-missing-matches   one-shot coverage audit   (profile: audit)
 #
-# Trinity finding #9 (PgBouncer dual-pool): web requests use TRANSACTION mode
-# (short-lived, high-concurrency), workers use SESSION mode (they hold advisory
-# locks / prepared state across statements). We run two pgbouncer services so
-# each role gets the right pooling semantics. Alembic migrations target the
-# DIRECT postgres endpoint (5432) — DDL + TimescaleDB policy statements are not
-# transaction-pool safe.
+# PgBouncer dual-pool (Trinity #9): web requests use TRANSACTION mode (short,
+# high-concurrency), workers use SESSION mode (they hold advisory locks /
+# prepared state across statements). Alembic targets the DIRECT endpoint (5432)
+# — DDL + TimescaleDB policy statements are not transaction-pool safe.
 #
-# Bring up (does everything — migrate, seed, all services): docker compose up --build
-# Re-run migrate/seed manually only if you need to (both are idempotent):
+# The four compose files:
+#   docker-compose.yml              THIS — everything local, for dev/testing
+#   docker-compose.prod.yml         prod on one box (RDS external)
+#   docker-compose.prod-ec2.yml     prod: ONLY the public API (+ caddy + redis)
+#   docker-compose.prod-worker.yml  prod: everything else (ingestion + upkeep)
+#
+# Bring up (migrate + seed + everything):  docker compose up --build
+# Re-run either one-shot (both idempotent):
 #   docker compose run --rm migrate
 #   docker compose run --rm seed
+# Coverage audit (read-only, burns Riot budget, so opt-in):
+#   docker compose --profile audit run --rm audit-missing-matches
 
 name: arenarank
 
+# ---------------------------------------------------------------------- #
+# Shared blocks. Previously every service repeated MATCH_MIN_STARTED_AT_MS,
+# LOG_LEVEL, RIOT_API_KEY, REDIS_URL... so changing the season cutoff meant
+# eight edits with a real chance of missing one — exactly the silent drift
+# that makes one worker filter differently from another.
+# ---------------------------------------------------------------------- #
+x-build: &build
+  build:
+    context: ./backend
+    dockerfile: Dockerfile
+
+# Config every backend process must agree on.
+x-common-env: &common-env
+  ENVIRONMENT: development
+  LOG_LEVEL: ${LOG_LEVEL:-INFO}
+  RIOT_API_KEY: ${RIOT_API_KEY:-}
+  # Launch-window cutoff (Temporada 1, 2026-07-26): ignore any Arena match whose
+  # gameStartTimestamp is before 2026-07-17T00:00:00Z. Enforced in
+  # match_pipeline.before_cutoff and the backfill/sweep window floors.
+  MATCH_MIN_STARTED_AT_MS: ${MATCH_MIN_STARTED_AT_MS:-1784246400000}
+  REDIS_URL: redis://redis:6379/0
+  # Seeds for a season refill. Riot has no "all matches in region" endpoint, so
+  # with an empty players table nothing starts discovery. Defaults to the same
+  # accounts the dev seed uses, so a local refill works out of the box.
+  # NOTE: compose only injects what is listed here — a value sitting in .env is
+  # used for interpolation and does NOT reach the container by itself. That is
+  # exactly why this was empty everywhere and the refill button reported
+  # "Nenhuma semente configurada".
+  BOOTSTRAP_SEED_RIOT_IDS: ${BOOTSTRAP_SEED_RIOT_IDS:-Presente#1001,CrazzyBoy#Br2}
+  BOOTSTRAP_SEED_REGION: ${BOOTSTRAP_SEED_REGION:-americas}
+  # Match config.py's own warning: Arena payloads are ~135KB each, so the code
+  # default (24h) fills this box's Redis maxmemory during any bulk backfill
+  # (backfill_participant_telemetry.py, rerate_matches.py) — it re-fetches
+  # every match, one riot:match:* cache entry per fetch. Mirrors prod's value.
+  RIOT_MATCH_CACHE_TTL_SECONDS: ${RIOT_MATCH_CACHE_TTL_SECONDS:-600}
+
+# Workers use the SESSION pool (they hold locks / prepared state).
+x-worker-env: &worker-env
+  <<: *common-env
+  DATABASE_URL: postgresql+asyncpg://arena:arena@pgbouncer-session:6433/arena
+
+# The image's HEALTHCHECK curls :8000/healthz (the api role). Workers run arq,
+# not uvicorn — without disabling it they are permanently "unhealthy" and any
+# `depends_on: service_healthy` pointed at them would deadlock the stack.
+x-worker-svc: &worker-svc
+  <<: *build
+  healthcheck:
+    disable: true
+  restart: unless-stopped
+  depends_on:
+    redis:
+      condition: service_healthy
+    pgbouncer-session:
+      condition: service_started
+    seed:
+      condition: service_completed_successfully
+
 services:
   # ------------------------------------------------------------------ #
-  # PostgreSQL + TimescaleDB (pg16). The HA image ships the timescaledb
-  # extension; the initial migration guards `CREATE EXTENSION`.
+  # PostgreSQL + TimescaleDB (pg16). The HA image ships the extension; the
+  # initial migration guards `CREATE EXTENSION`.
   # ------------------------------------------------------------------ #
   postgres:
     image: timescale/timescaledb-ha:pg16
@@ -42,7 +105,7 @@ services:
       POSTGRES_PASSWORD: arena
       POSTGRES_DB: arena
     ports:
-      - "5432:5432"   # direct endpoint — use this for `alembic upgrade`.
+      - "5432:5432"   # direct endpoint — this is what alembic uses.
     volumes:
       - pgdata:/home/postgres/pgdata/data
     healthcheck:
@@ -55,19 +118,14 @@ services:
   # ------------------------------------------------------------------ #
   # Redis — cache, per-player locks, arq queues, Riot token-bucket.
   #
-  # 2gb + volatile-lru: mixes disposable cache (riot:match:*, has a TTL —
-  # see RIOT_MATCH_CACHE_TTL_SECONDS below) with queues/locks (no TTL).
-  # volatile-lru only ever evicts keys WITH a TTL, so under memory pressure
-  # the cache gives way first and the queues/locks stay intact — NEVER use
-  # plain allkeys-* or noeviction here, either would risk losing in-flight
-  # job data instead of failing loudly or evicting the disposable cache
-  # (same reasoning already applied in docker-compose.notebook.yml).
-  # mem_limit/cpus are an outer container-level backstop: without them a
-  # Redis memory blowup (this happened for real — 6.87GB during one backlog,
-  # crash-restarting Redis repeatedly and taking Docker Desktop's whole VM
-  # down with it) can starve every other container on the box. With them,
-  # the worst case is this ONE container getting OOM-killed and cleanly
-  # restarting (restart: unless-stopped), not the whole stack.
+  # 2gb + volatile-lru: mixes disposable cache (riot:match:*, HAS a TTL) with
+  # queues/locks (NO TTL). volatile-lru only evicts keys WITH a TTL, so under
+  # pressure the cache gives way and the queues stay intact — NEVER use
+  # allkeys-* or noeviction here: one loses in-flight job data, the other
+  # rejects writes and kills the pipeline. mem_limit is the outer backstop:
+  # Redis really did balloon to 6.87 GB during a backlog once and took Docker
+  # Desktop's whole VM down; with the limit the worst case is this one
+  # container being OOM-killed and cleanly restarting.
   # ------------------------------------------------------------------ #
   redis:
     image: redis:7
@@ -93,8 +151,13 @@ services:
 
   # ------------------------------------------------------------------ #
   # PgBouncer — TRANSACTION pool for the web/API tier (Trinity #9).
-  # Short transactions, max connection reuse. statement_cache_size=0 is set
-  # on the asyncpg side (arena/db/session.py) for tx-pool compatibility.
+  # statement_cache_size=0 is set on the asyncpg side (arena/db/session.py).
+  #
+  # LISTEN_PORT is EXPLICIT. It used to be omitted here and the image's default
+  # was relied on — which broke the moment edoburu/pgbouncer:latest started
+  # defaulting to 5432: the container listened on 5432 while api/adminer dialed
+  # pgbouncer:6432 and got ECONNREFUSED on every request. The session pool never
+  # hit this only because it always set the value. Pin it on both.
   # ------------------------------------------------------------------ #
   pgbouncer:
     image: edoburu/pgbouncer:latest
@@ -117,9 +180,7 @@ services:
     restart: unless-stopped
 
   # ------------------------------------------------------------------ #
-  # PgBouncer — SESSION pool for the worker tier (Trinity #9). Workers hold
-  # session-scoped state (advisory locks, prepared statements) so they need
-  # session mode, NOT transaction mode.
+  # PgBouncer — SESSION pool for the workers (Trinity #9).
   # ------------------------------------------------------------------ #
   pgbouncer-session:
     image: edoburu/pgbouncer:latest
@@ -132,13 +193,7 @@ services:
       POOL_MODE: session
       AUTH_TYPE: scram-sha-256
       MAX_CLIENT_CONN: "500"
-      # SESSION mode holds one server connection per client session, so this is
-      # the hard concurrency ceiling for the ENTIRE worker tier (sweep,
-      # priority-sweep, standard/priority processors, scheduler, audit all
-      # connect here) — not a per-service budget. 40 + the transaction pool's
-      # 25 = 65 of postgres' 100 max_connections, leaving headroom for
-      # migrations and adminer.
-      DEFAULT_POOL_SIZE: "40"
+      DEFAULT_POOL_SIZE: "20"
       LISTEN_PORT: "6433"
     ports:
       - "6433:6433"
@@ -148,15 +203,11 @@ services:
     restart: unless-stopped
 
   # ------------------------------------------------------------------ #
-  # Migrate — one-shot: alembic upgrade head against the DIRECT postgres
-  # port (DDL/Timescale policy statements are not tx-pool safe). Every
-  # other service waits for this to exit 0 before starting, so a plain
-  # `docker compose up --build` always boots against an up-to-date schema.
+  # Migrate — one-shot. DIRECT endpoint (5432): DDL and Timescale policy
+  # statements are not transaction-pool safe.
   # ------------------------------------------------------------------ #
   migrate:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
+    <<: *build
     command: ["alembic", "upgrade", "head"]
     environment:
       DATABASE_URL: postgresql+asyncpg://arena:arena@postgres:5432/arena
@@ -168,27 +219,22 @@ services:
     restart: "no"
 
   # ------------------------------------------------------------------ #
-  # Seed — one-shot: idempotent dev seed (ACTIVE season + tracked players).
-  # Safe to re-run any time via `docker compose run --rm seed`.
+  # Seed — one-shot, idempotent: an ACTIVE season + the SEED_PLAYERS Riot IDs
+  # as tracked players.
   #
-  # SEED_PLAYERS is a comma-separated list of Riot IDs (gameName#tagLine).
-  # Each is resolved to its REAL PUUID via account-v1 — the sweep workers poll
-  # Riot by PUUID, so a synthetic id would 404 on every tick. That means the
-  # seed needs RIOT_API_KEY and Redis (the Riot client's token bucket lives
-  # there). Without a key the season is still seeded and the players are
-  # skipped with a warning, so `compose up` never breaks.
+  # Each Riot ID is resolved to its REAL PUUID via account-v1 — the sweep polls
+  # Riot BY PUUID, so a synthetic id would 404 every tick. Hence the seed needs
+  # RIOT_API_KEY and Redis (the token bucket lives there). Without a key the
+  # season is still seeded and the players are skipped with a warning, so
+  # `compose up` never breaks on a machine with no key.
   # ------------------------------------------------------------------ #
   seed:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
+    <<: *build
     command: ["python", "-m", "arena.db.seed"]
     environment:
+      <<: *common-env
       DATABASE_URL: postgresql+asyncpg://arena:arena@postgres:5432/arena
-      REDIS_URL: redis://redis:6379/0
-      RIOT_API_KEY: ${RIOT_API_KEY}
-      SEED_PLAYERS: "${SEED_PLAYERS:-Presente#1001,CrazzyBoy#Br2}"
-      LOG_LEVEL: INFO
+      SEED_PLAYERS: ${SEED_PLAYERS:-Presente#1001,CrazzyBoy#Br2}
     healthcheck:
       disable: true
     depends_on:
@@ -199,31 +245,22 @@ services:
     restart: "no"
 
   # ------------------------------------------------------------------ #
-  # API — FastAPI (uvicorn). Default image CMD already runs uvicorn; we
-  # restate it for clarity. Connects through the TRANSACTION pool (6432).
+  # API — FastAPI (uvicorn), through the TRANSACTION pool (6432).
   # ------------------------------------------------------------------ #
   api:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
+    <<: *build
     command:
       ["uvicorn", "arena.api.app:app", "--host", "0.0.0.0", "--port", "8000"]
     environment:
+      <<: *common-env
       SERVICE_NAME: arenarank-api
-      ENVIRONMENT: development
-      # Launch-window cutoff (Temporada 1, 2026-07-26): ignore any Arena match
-      # whose gameStartTimestamp is before 2026-07-17T00:00:00Z. Enforced in
-      # match_pipeline.before_cutoff (worker-standard/priority) and backfill's
-      # window floor (worker-sweep); harmless elsewhere.
-      MATCH_MIN_STARTED_AT_MS: "1784246400000"
-      # Web tier → PgBouncer transaction pool.
       DATABASE_URL: postgresql+asyncpg://arena:arena@pgbouncer:6432/arena
-      REDIS_URL: redis://redis:6379/0
-      RIOT_API_KEY: ${RIOT_API_KEY}
-      # Browser runs on the host, so the Vite origin is localhost:5173.
-      CORS_ORIGINS: "http://localhost:5173,http://127.0.0.1:5173"
-      ADMIN_API_KEY: "8e6efe29ab1937c3e87ecd96c94cc737"
-      LOG_LEVEL: INFO
+      # The browser runs on the host, so the Vite origin is localhost:5173;
+      # 5174 is the admin console.
+      CORS_ORIGINS: "http://localhost:5173,http://127.0.0.1:5173,http://localhost:5174"
+      # DEV key with a safe default. No prod file carries an embedded secret —
+      # they all read env_file (see docker-compose.prod*.yml).
+      ADMIN_API_KEY: ${ADMIN_API_KEY:-dev-admin-key}
     ports:
       - "8000:8000"
     depends_on:
@@ -238,170 +275,72 @@ services:
     restart: unless-stopped
 
   # ------------------------------------------------------------------ #
-  # Worker — SweepWorker: rotating sweep over ALL tracked players. Discovers
-  # new match ids and enqueues them as process_match jobs on arena:standard
-  # (worker-standard/worker-priority below consume them). Independently
-  # start/stop (docker compose up/stop worker-sweep) or pause at runtime via the
-  # admin API (arena:worker:enabled:sweep flag).
+  # SweepWorker — rotating sweep over ALL tracked players. Discovers match ids
+  # and enqueues process_match on arena:standard. Also hosts the rearm /
+  # reconcile / history-backfill cron ticks.
+  # Pausable at runtime via the admin API (arena:worker:enabled:sweep).
   # ------------------------------------------------------------------ #
   worker-sweep:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
+    <<: *worker-svc
     command: ["arq", "arena.workers.main.SweepWorker", "--custom-log-dict", "arena.core.logging.ARQ_LOG_CONFIG"]
     environment:
+      <<: *worker-env
       SERVICE_NAME: arenarank-worker-sweep
-      ENVIRONMENT: development
-      MATCH_MIN_STARTED_AT_MS: "1784246400000"
-      DATABASE_URL: postgresql+asyncpg://arena:arena@pgbouncer-session:6433/arena
-      REDIS_URL: redis://redis:6379/0
-      RIOT_API_KEY: ${RIOT_API_KEY}
-      LOG_LEVEL: INFO
       SWEEP_INTERVAL_MINUTES: "5"
       SWEEP_BATCH_SIZE: "100"
       SWEEP_MATCHES_PER_PLAYER: "20"
-    healthcheck:
-      disable: true
-    depends_on:
-      redis:
-        condition: service_healthy
-      pgbouncer-session:
-        condition: service_started
-      seed:
-        condition: service_completed_successfully
-    restart: unless-stopped
 
   # ------------------------------------------------------------------ #
-  # Worker — PrioritySweepWorker: sweeps Top-1000 + admin-selected players and
-  # enqueues process_match jobs on arena:priority (consumed by worker-priority).
+  # PrioritySweepWorker — sweeps Top-1000 + admin-selected players, enqueues on
+  # arena:priority (sub-5-min SLA).
   # ------------------------------------------------------------------ #
   worker-priority-sweep:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
+    <<: *worker-svc
     command: ["arq", "arena.workers.main.PrioritySweepWorker", "--custom-log-dict", "arena.core.logging.ARQ_LOG_CONFIG"]
     environment:
+      <<: *worker-env
       SERVICE_NAME: arenarank-worker-priority-sweep
-      ENVIRONMENT: development
-      MATCH_MIN_STARTED_AT_MS: "1784246400000"
-      DATABASE_URL: postgresql+asyncpg://arena:arena@pgbouncer-session:6433/arena
-      REDIS_URL: redis://redis:6379/0
-      RIOT_API_KEY: ${RIOT_API_KEY}
-      LOG_LEVEL: INFO
-      PRIORITY_SWEEP_INTERVAL_MINUTES: "5"
-      PRIORITY_SWEEP_BATCH_SIZE: "200"
-      SWEEP_MATCHES_PER_PLAYER: "20"
-    healthcheck:
-      disable: true
-    depends_on:
-      redis:
-        condition: service_healthy
-      pgbouncer-session:
-        condition: service_started
-      seed:
-        condition: service_completed_successfully
-    restart: unless-stopped
 
   # ------------------------------------------------------------------ #
-  # Workers — StandardWorker / PriorityWorker: continuous arq consumers.
-  # sweep.py enqueues process_match jobs straight onto arena:standard /
-  # arena:priority (enqueue_job); these poll their queue forever, no cron
-  # tick and no idle window between batches. Replaces BulkProcessorWorker,
-  # which drained a Redis LIST on a timer with process_match called
-  # in-process against a hand-built fake arq ctx — the sweep pending lists
-  # and their manual retry-attempts hash are gone along with it.
+  # StandardWorker — continuous consumer of arena:standard (process_match).
   # ------------------------------------------------------------------ #
   worker-standard:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
+    <<: *worker-svc
     command: ["arq", "arena.workers.main.StandardWorker", "--custom-log-dict", "arena.core.logging.ARQ_LOG_CONFIG"]
     environment:
+      <<: *worker-env
       SERVICE_NAME: arenarank-worker-standard
-      ENVIRONMENT: development
-      MATCH_MIN_STARTED_AT_MS: "1784246400000"
-      DATABASE_URL: postgresql+asyncpg://arena:arena@pgbouncer-session:6433/arena
-      REDIS_URL: redis://redis:6379/0
-      RIOT_API_KEY: ${RIOT_API_KEY}
-      LOG_LEVEL: INFO
-      # Match payloads (~135KB) only ever get read again between fetch and
-      # rate — this process is the one that fetches+caches them via
-      # get_match(). Left at the 24h default, they're the single biggest
-      # Redis memory driver (was: 6.87GB and climbing during a big backlog,
-      # crash-restarting Redis and taking Docker Desktop with it). Same fix
-      # already applied in docker-compose.prod.yml.
-      RIOT_MATCH_CACHE_TTL_SECONDS: "600"
-    healthcheck:
-      disable: true
-    depends_on:
-      redis:
-        condition: service_healthy
-      pgbouncer-session:
-        condition: service_started
-      seed:
-        condition: service_completed_successfully
-    restart: unless-stopped
 
+  # ------------------------------------------------------------------ #
+  # PriorityWorker — continuous consumer of arena:priority.
+  # ------------------------------------------------------------------ #
   worker-priority:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
+    <<: *worker-svc
     command: ["arq", "arena.workers.main.PriorityWorker", "--custom-log-dict", "arena.core.logging.ARQ_LOG_CONFIG"]
     environment:
+      <<: *worker-env
       SERVICE_NAME: arenarank-worker-priority
-      ENVIRONMENT: development
-      MATCH_MIN_STARTED_AT_MS: "1784246400000"
-      DATABASE_URL: postgresql+asyncpg://arena:arena@pgbouncer-session:6433/arena
-      REDIS_URL: redis://redis:6379/0
-      RIOT_API_KEY: ${RIOT_API_KEY}
-      LOG_LEVEL: INFO
-      RIOT_MATCH_CACHE_TTL_SECONDS: "600"
-    healthcheck:
-      disable: true
-    depends_on:
-      redis:
-        condition: service_healthy
-      pgbouncer-session:
-        condition: service_started
-      seed:
-        condition: service_completed_successfully
-    restart: unless-stopped
 
   # ------------------------------------------------------------------ #
-  # Scheduler — cron-only pool: season transitions, leaderboard refresh
-  # (maintains TOP_PLAYERS_SET for priority routing), cache warm, cr-snapshot
-  # maintenance. Single replica. Run alongside the sweep workers.
+  # SchedulerWorker — maintenance cron: season transitions, leaderboard /
+  # Top-1000 refresh, cache warm, cr-snapshots, read-path rollups, refill
+  # backlog drain and chronological replay.
+  #
+  # Exactly ONE instance, always. Two schedulers would double-run season
+  # transitions and replay — it is the one pool that does not scale out.
   # ------------------------------------------------------------------ #
   scheduler:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
+    <<: *worker-svc
     command: ["arq", "arena.workers.main.SchedulerWorker", "--custom-log-dict", "arena.core.logging.ARQ_LOG_CONFIG"]
     environment:
+      <<: *worker-env
       SERVICE_NAME: arenarank-scheduler
-      ENVIRONMENT: development
-      MATCH_MIN_STARTED_AT_MS: "1784246400000"
-      DATABASE_URL: postgresql+asyncpg://arena:arena@pgbouncer-session:6433/arena
-      REDIS_URL: redis://redis:6379/0
-      RIOT_API_KEY: ${RIOT_API_KEY}
-      LOG_LEVEL: INFO
-    healthcheck:
-      disable: true
-    depends_on:
-      redis:
-        condition: service_healthy
-      pgbouncer-session:
-        condition: service_started
-      seed:
-        condition: service_completed_successfully
-    restart: unless-stopped
 
   # ------------------------------------------------------------------ #
-  # Adminer — lightweight web DB viewer for poking at Postgres in dev.
-  # Open http://localhost:8080 — System "PostgreSQL", Server "postgres",
-  # user / password / database all "arena". Connects to the DIRECT postgres
+  # Adminer — web DB viewer. http://localhost:8080, System "PostgreSQL",
+  # Server "postgres", user/password/database all "arena". Uses the DIRECT
   # endpoint (not PgBouncer) so schema inspection and DDL behave normally.
-  # Dev-only convenience; do not expose in production.
+  # Dev-only: deliberately absent from every prod file.
   # ------------------------------------------------------------------ #
   adminer:
     image: adminer:latest
@@ -416,9 +355,9 @@ services:
     restart: unless-stopped
 
   # ------------------------------------------------------------------ #
-  # Frontend — React + Vite dev server. The browser (on the host) calls the
-  # API directly at localhost:8000, so VITE_API_URL points there and the API
-  # CORS allowlist includes 5173. node_modules is kept inside the container.
+  # Frontend — React + Vite dev server. The browser (on the host) calls the API
+  # directly at localhost:8000. node_modules stays in a named volume so the
+  # host bind mount does not clobber the container's install.
   # ------------------------------------------------------------------ #
   frontend:
     image: node:20-slim
@@ -436,32 +375,52 @@ services:
     restart: unless-stopped
 
   # ------------------------------------------------------------------ #
-  # Audit — one-shot, READ-ONLY: walks every player, asks Riot for their
-  # match ids in the window, and reports who has matches we never computed.
-  # Splits the gap into "never ingested" (discovery missed it) vs "participant
-  # gap" (the match exists but this player has no row in it).
+  # Admin console — operator UI (Vite dev server, port 5174).
   #
-  # Behind a profile so `docker compose up` never starts it — it burns Riot
-  # budget. Run it explicitly, args after the service name:
-  #   docker compose run --rm audit-missing-matches
-  #   docker compose run --rm audit-missing-matches --since-days 30 --min-missing 10
-  #   docker compose run --rm audit-missing-matches --json /out/audit.json
-  #   docker compose run --rm audit-missing-matches --enqueue   # the only writing mode
+  # Runs the DEV server, not a static build, on purpose: the console's "local"
+  # backend preset uses an empty base so requests go to a relative `/api` and
+  # ride Vite's proxy (src/lib/backend.ts) — no CORS involved. A static build
+  # has no proxy and would force the operator onto an absolute-URL preset.
+  #
+  # VITE_LOCAL_API_TARGET must point at the API SERVICE, not 127.0.0.1: the
+  # proxy runs inside this container, where 127.0.0.1 is the console itself.
+  # The default in vite.config.ts (127.0.0.1:8000) is correct for running
+  # `npm run dev` on the host and wrong inside Docker.
+  # ------------------------------------------------------------------ #
+  admin-console:
+    image: node:20-slim
+    working_dir: /app
+    command: ["sh", "-lc", "npm install && npm run dev -- --host 0.0.0.0"]
+    environment:
+      VITE_LOCAL_API_TARGET: "http://api:8000"
+    ports:
+      - "5174:5174"
+    volumes:
+      - ./admin-console:/app
+      - admin_console_node_modules:/app/node_modules
+    depends_on:
+      - api
+    restart: unless-stopped
+
+  # ------------------------------------------------------------------ #
+  # Audit — one-shot, READ-ONLY: walks every player, asks Riot for their match
+  # ids in the window, and reports who has matches we never computed. Splits
+  # "never ingested" (discovery missed it) from "participant gap" (the match
+  # exists but this player has no row in it).
+  #
+  # Behind a profile so `compose up` never starts it — it burns Riot budget.
+  #   docker compose --profile audit run --rm audit-missing-matches
+  #   docker compose --profile audit run --rm audit-missing-matches --since-days 30
+  #   docker compose --profile audit run --rm audit-missing-matches --json /out/a.json
+  #   docker compose --profile audit run --rm audit-missing-matches --enqueue
   # ------------------------------------------------------------------ #
   audit-missing-matches:
+    <<: *build
     profiles: ["audit"]
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
     entrypoint: ["python", "-m", "scripts.audit_missing_matches"]
     environment:
+      <<: *worker-env   # worker-shaped job, not a web request -> SESSION pool
       SERVICE_NAME: arenarank-audit
-      ENVIRONMENT: development
-      # SESSION pool: this is a worker-shaped job, not a web request.
-      DATABASE_URL: postgresql+asyncpg://arena:arena@pgbouncer-session:6433/arena
-      REDIS_URL: redis://redis:6379/0
-      RIOT_API_KEY: ${RIOT_API_KEY}
-      LOG_LEVEL: INFO
       PYTHONIOENCODING: utf-8
     volumes:
       # --json lands on the host: `--json /out/audit.json` -> ./out/audit.json
@@ -479,3 +438,4 @@ volumes:
   pgdata:
   redisdata:
   frontend_node_modules:
+  admin_console_node_modules:

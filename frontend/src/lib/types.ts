@@ -11,9 +11,12 @@ export interface AvatarColors {
 }
 
 export interface PlayerTag {
-  kind: "global" | "region" | "hot" | "veteran" | "rookie" | "otp";
+  kind: "hot" | "otp" | "champrank";
   label: string;
-  icon: string; // nome do Material Symbol
+  icon: string; // nome do Material Symbol ("" nas tags de campeão)
+  /** Ícone ddragon do campeão da tag (otp/champrank) — o cliente extrai a cor
+   *  dominante dele p/ tingir o chip (ex. Vladimir → degradê vermelho). */
+  champIconUrl?: string | null;
 }
 
 /* ---------- 1. Leaderboard ---------- */
@@ -131,6 +134,8 @@ export interface Modifier {
   kind: string;
   label: string;
   value: number;
+  /** Impacto aditivo real do fator no resultado exibido, em PDL. */
+  pdlImpact?: number;
   icon: string;
 }
 /* ---------- 2-bis. Histórico paginado (GET /player/{riotId}/matches) ---------- */
@@ -171,6 +176,9 @@ export interface ChampStat {
   champion: AvatarColors;
   /** Ícone de campeão (ddragon — CDN oficial da Riot). Fallback: gradiente. */
   championIconUrl?: string;
+  /** championId numérico + splash-art (ddragon) — capa do banner de perfil. */
+  championId?: number | null;
+  championSplashUrl?: string | null;
   name: string;
   games: number;
   firstRate: number;
@@ -207,7 +215,42 @@ export interface SubTeam {
   placement: number;
   players: MatchPlayer[];
 }
-export interface MatchPlayer {
+export type AugmentRarity = "prismatic" | "gold" | "silver" | "unknown";
+
+/** Item ou augment já resolvido pelo backend — a tela mostra ícone e nome, não id. */
+export interface LoadoutEntry {
+  id: number;
+  name: string;
+  iconUrl: string | null;
+  /** Custo total de compra (itens) — sempre ausente em augments (escolha de
+      draft, não tem preço). */
+  gold?: number | null;
+  description?: string | null;
+}
+export interface AugmentEntry extends LoadoutEntry {
+  rarity: AugmentRarity;
+}
+
+/** Telemetria de combate, ingerida do detail da Riot.
+ *
+ *  TODO campo é opcional, e isso é permanente: partidas processadas antes da
+ *  ingestão de telemetria existir não têm como recuperá-la (o payload cru não é
+ *  guardado). Ausente ≠ zero — a UI degrada para "aguardando ingestão" em vez de
+ *  exibir 0/0/0. `killParticipation` e `damagePerMinute` são derivados no
+ *  backend a partir dos primitivos, nunca persistidos. */
+export interface CombatStats {
+  level?: number;
+  kills?: number;
+  deaths?: number;
+  assists?: number;
+  /** 0..100 — (abates + assistências) sobre os abates do subteam. */
+  killParticipation?: number;
+  damageToChampions?: number;
+  damagePerMinute?: number;
+  goldEarned?: number;
+}
+
+export interface MatchPlayer extends CombatStats {
   riotId: string;
   name: string;
   handle: string;
@@ -221,8 +264,13 @@ export interface MatchPlayer {
   crBefore: number;
   crAfter: number;
   crDelta: number;
+  premade?: boolean;
   modifiers: Modifier[];
   integrity?: { kind: "info" | "warn" | "critical"; label: string }[];
+  /** Inventário final (até 7 slots; vazios já vêm descartados). */
+  items?: LoadoutEntry[];
+  /** Augments escolhidos (até 6; vazios já vêm descartados). */
+  augments?: AugmentEntry[];
 }
 
 /* ---------- 4. Champion tierlist ---------- */
@@ -244,18 +292,289 @@ export interface ChampTier {
 }
 export interface ChampRow {
   rank: number;
+  championId: number;
   champion: AvatarColors;
+  championIconUrl?: string | null; // ícone real ddragon; ausente → só gradiente
   name: string;
-  /** Classe ddragon em PT-BR (Mago/Tanque/...) — Arena não tem lane/rota. Vazio se desconhecida. */
   role: string;
+  games: number; // partidas-campeão elegíveis amostradas na temporada
   top4: number;
   first: number;
   avgPlace: number;
   pickRate: number;
   banRate: number;
   tier: string;
-  /** Variação em pontos percentuais do top-half: últimos 7d vs os 7d anteriores. 0 = sem histórico. */
-  winrateDelta?: number;
+  /** Variação (pp) do top-half nos últimos 7d vs os 7d anteriores. 0 sem histórico. */
+  winrateDelta: number;
+  topPlayer?: ChampTopPlayer | null; // main de referência do campeão (mais jogado)
+}
+
+/** Um subteam (dupla/trio) de campeões por winrate — /champions/synergy/groups. */
+export interface ChampionSynergyGroup {
+  champions: SynergyChampion[];
+  games: number;
+  winRate: number; // 0..100 top-half
+  firstRate: number; // 0..100 1º lugar
+  avgPlace: number;
+}
+export interface ChampionSynergyGroupResponse {
+  updatedAt: string;
+  season: number;
+  format: string;
+  size: number; // 2 dupla, 3 trio
+  sampleSize: number;
+  minGames: number;
+  groups: ChampionSynergyGroup[];
+}
+export interface SynergyTier {
+  key: "S+" | "S" | "A" | "B" | "C" | "D";
+  label: string;
+  color: string;
+  comps: ChampionSynergyGroup[];
+}
+export interface SynergyTierlistResponse {
+  updatedAt: string;
+  season: number;
+  format: string;
+  size: number;
+  sampleSize: number;
+  minGames: number;
+  tiers: SynergyTier[];
+  table: ChampionSynergyGroup[];
+}
+
+/** Série diária de winrate/pick/top4 de um campeão — /champions/{id}/trend. */
+export interface ChampionTrendPoint {
+  date: string; // ISO "2026-07-20"
+  top4: number; // 0..100
+  first: number; // 0..100
+  pickRate: number; // 0..100
+  games: number;
+}
+export interface ChampionTrendResponse {
+  championId: number;
+  name: string;
+  championIconUrl?: string | null;
+  days: number;
+  series: ChampionTrendPoint[];
+}
+
+/** Força do campeão por estágio de draft ("power spike") — /champions/{id}/rounds.
+
+    NÃO é um round literal da partida: a Riot não publica timeline nenhuma
+    para a fila Arena (CHERRY) em nenhum endpoint, então força round-a-round
+    de verdade não é algo que dá pra medir (investigado e confirmado — não é
+    falta de ingestão, é buraco na API pública). O eixo usa os três estágios
+    reais do draft de augments (prata → ouro → prismático), que são os
+    spikes de força de fato definidos pelo próprio modo Arena. Cada ponto é
+    o top4 rate do MELHOR pick do campeão naquele estágio — honesto sobre o
+    que é: "o quanto esse estágio pode te elevar", não uma curva temporal. */
+export interface ChampionRoundPoint {
+  /** 1 prata, 2 ouro, 3 prismático. */
+  round: number;
+  label: string; // "Prata" | "Ouro" | "Prismático"
+  winRate: number; // 0..100 — top4 rate do melhor pick do campeão neste estágio
+  games: number; // amostra por trás desse melhor pick
+}
+export interface ChampionRoundsResponse {
+  championId: number;
+  name: string;
+  championIconUrl?: string | null;
+  season: number;
+  format: string;
+  sampleSize: number;
+  /** Piso de jogos por pick — abaixo dele o estágio não é servido. */
+  minGames: number;
+  /** Estágio de pico (1..3); 0 quando não há amostra. */
+  peakRound: number;
+  rounds: ChampionRoundPoint[];
+}
+
+/* ---------- Matchups & sinergia (grid de tiles do campeão) ----------
+   Duas leituras da mesma partida: com quem o campeão joga bem (`duo`,
+   dentro do subteam) e contra quem ele ganha (`versus`, entre subteams).
+   Cada uma precisa dos DOIS extremos — o agregado de build só devolve a
+   ponta boa, então a ponta ruim depende deste endpoint. */
+export type MatchupKind = "duo" | "versus";
+export interface MatchupEntry {
+  championId: number;
+  name: string;
+  championIconUrl?: string | null;
+  colors: AvatarColors;
+  games: number;
+  winRate: number; // 0..100 — top-half com/contra este campeão
+  /** Variação (pp) sobre o winrate-base do campeão da página. */
+  delta: number;
+  avgPlace: number;
+}
+export interface ChampionMatchupsResponse {
+  championId: number;
+  name: string;
+  season: number;
+  format: string;
+  kind: MatchupKind;
+  sampleSize: number;
+  minGames: number;
+  /** Winrate-base do campeão — origem do `delta` de cada entrada. */
+  baseWinRate: number;
+  best: MatchupEntry[];
+  worst: MatchupEntry[];
+}
+
+/* ---------- Variantes de build (a tabela de builds do campeão) ----------
+   Uma itemização só funciona com os augments que a sustentam — no Arena o
+   augment é pré-requisito, não enfeite. Cada variante entrega o par
+   completo: os itens na ordem e os augments SEM OS QUAIS ela não fecha. */
+export interface ChampionBuildVariant {
+  id: string;
+  name: string; // "Burst AP", "Drain Tank"…
+  tier: BuildTierKey; // ordenadas do maior tier ao pior
+  games: number;
+  pickRate: number; // 0..100 — fatia das partidas do campeão
+  top4: number;
+  top1: number;
+  avgPlace: number;
+  /** Itemização na ordem de compra. */
+  items: BuildEntry[];
+  /** Augments/prismáticos NECESSÁRIOS para essa itemização dar certo. */
+  requiredAugments: BuildEntry[];
+}
+export interface ChampionBuildVariantsResponse {
+  championId: number;
+  name: string;
+  patch: string;
+  updatedAt: string;
+  games: number;
+  minGames: number;
+  variants: ChampionBuildVariant[];
+}
+
+/** Jogador de referência (main) de um campeão — winrate = taxa top-half no campeão. */
+export interface ChampTopPlayer {
+  name: string;
+  handle: string; // "#TAG"
+  avatar: AvatarColors;
+  profileIconUrl?: string | null;
+  games: number;
+  winrate: number; // 0..100 (top-half / jogos no campeão)
+  avgPlace: number;
+}
+
+/** Um campeão dentro de um par de sinergia. */
+export interface SynergyChampion {
+  championId: number;
+  name: string;
+  championIconUrl?: string | null;
+  colors: AvatarColors;
+}
+export interface ChampionSynergy {
+  championA: SynergyChampion;
+  championB: SynergyChampion;
+  games: number;
+  winRate: number; // 0..100 (top-half do subteam)
+  firstRate: number; // 0..100 (1º lugar)
+  avgPlace: number;
+}
+export interface ChampionSynergyResponse {
+  updatedAt: string;
+  season: number;
+  format: string;
+  sampleSize: number;
+  /** Piso de partidas por dupla — a UI declara o critério do ranking. */
+  minGames: number;
+  pairs: ChampionSynergy[];
+}
+export interface ChampionMainsResponse {
+  championId: number;
+  name: string;
+  championIconUrl?: string | null;
+  players: ChampTopPlayer[];
+}
+
+/** Resposta adaptada da página OTP. `truncated` sinaliza a compatibilidade
+    temporária com backends que ainda limitam `/mains` a 20 jogadores. */
+export interface ChampionOtpsResponse extends ChampionMainsResponse {
+  limit: 20 | 100;
+  truncated: boolean;
+}
+
+/* Build de referência (PROVISÓRIO — agregado global externo por patch, não a
+   ladder BR; cai junto com champion_build_ref quando a ingestão nativa de
+   augments chegar). Stats placement-derived: nunca winrate cru de augment/item. */
+/** Rampa de 6 tiers. Item/augment NÃO expõe winrate em % (a Riot não permite
+    publicar taxa de vitória de item/augment) — a força vira TIER; só a taxa de
+    ESCOLHA sai como porcentagem. */
+export type BuildTierKey = "S+" | "S" | "A" | "B" | "C" | "D";
+export interface BuildEntry {
+  id: number;
+  name: string; // nome PT-BR (CDragon)
+  iconUrl?: string | null;
+  tier: BuildTierKey;
+  games: number;
+  avgPlace: number;
+  top1: number; // 0..100 — taxa de 1º lugar com essa escolha
+  top4: number; // 0..100 — taxa top-half com essa escolha
+  pickRate: number; // 0..100
+  /** Raridade do augment no draft — define a moldura colorida do tile. Só
+      dá para inferir pela lista quando o augment vem agrupado; em listas
+      soltas (ex.: `requiredAugments`) o backend precisa dizer. */
+  rarity?: "prismatic" | "gold" | "silver";
+  /** IDs dos campeões que mais rendem com essa escolha (top-N). Preenchido só
+      no rail de top augments; resolvido p/ face via tabela de campeões. */
+  champions?: number[];
+}
+export interface BuildTeammate {
+  championId: number;
+  name: string;
+  championIconUrl?: string | null;
+  colors: AvatarColors;
+  tier: BuildTierKey;
+  games: number;
+  avgPlace: number;
+  top1: number;
+  top4: number;
+  pickRate: number;
+}
+/** Augments agrupados pela raridade real do draft (3 rodadas de escolha). */
+export interface ChampionAugments {
+  prismatic: BuildEntry[];
+  gold: BuildEntry[];
+  silver: BuildEntry[];
+}
+/** Top global de augments/itens do patch (rail do /winrate). Ordem = games
+    desc ("em alta"); tier = bucket por colocação média ponderada; pickRate =
+    fatia dos games da categoria (0..100). */
+export interface TopBuildResponse {
+  updatedAt: string;
+  patch: string;
+  games: number; // 0 = sem snapshots ainda
+  champions: number;
+  minGames: number;
+  augments: BuildEntry[];
+  items: BuildEntry[];
+}
+
+export interface ChampionBuildResponse {
+  championId: number;
+  name: string;
+  championIconUrl?: string | null;
+  patch: string; // patch do agregado ("16.14"); "" sem snapshot
+  updatedAt: string; // data do snapshot ("2026-07-19"); "" sem snapshot
+  games: number; // amostra global do campeão no agregado (0 = sem snapshot)
+  avgPlace: number;
+  tier: BuildTierKey | null;
+  top1: number;
+  top4: number;
+  /** Piso de jogos por entrada — a UI declara o critério. */
+  minGames: number;
+  augments: ChampionAugments;
+  items: BuildEntry[];
+  /** Itens PRISMÁTICOS do campeão (os 9 itens marcantes exclusivos do Arena,
+      id 228xxx — ver build_ref_service.is_prismatic_item). Excluídos de
+      `items` acima, não duplicados nela. */
+  prismaticItems?: BuildEntry[];
+  boots: BuildEntry[];
+  teammates: BuildTeammate[];
 }
 
 /* ---------- 5. Tournaments ---------- */
@@ -449,8 +768,16 @@ export interface SeasonRecord {
   name: string;
   handle: string; // "#TAG"
   avatar: AvatarColors;
+  profileIconUrl?: string | null; // ícone real ddragon; ausente → só gradiente
   accent: string; // dica de cor de destaque
 }
 export interface RecordsResponse {
   records: SeasonRecord[];
+}
+
+/** Doação para a premiação da Season (InfinitePay). */
+export interface DonationResult {
+  orderNsu: string;
+  checkoutUrl: string;
+  amountCents: number;
 }

@@ -1,55 +1,49 @@
-# ArenaRank Frontend — briefing para agentes
+# ArenaRank Frontend — briefing para agentes de página
 
-Este é o app React do jogador (deployado), já com todas as páginas construídas
-(`Home`, `Leaderboard`, `Perfil`, `Partida`, `Duo`, `Winrate`, `Sistema`,
-`Campeonatos`/`Campeonatos2`, `Admin`). Ao editar ou adicionar uma página,
-**use a fundação compartilhada — não reinvente.**
+Você porta UMA página do protótipo de design para **React + Vite + TypeScript**, pixel-perfect e com animações, **wired na read-API real**. A fundação compartilhada já existe — **use-a, não reinvente**.
 
 ## Stack & comandos
-- React 18 + Vite 5 + TS (strict). Router: `react-router-dom` v6 (rotas em `src/App.tsx`).
-- Validar SEMPRE antes de terminar: `npm run build` (na pasta `frontend/`, relativa à raiz do repo) deve passar sem erros de tsc, e `npm run lint` + `npm run typecheck` devem passar.
+- React 18 + Vite 5 + TS (strict). Router: `react-router-dom` v6.
+- Validar SEMPRE antes de terminar: `npm run build` (na pasta `F:\arenarank\frontend`) deve passar **sem erros de tsc** e o Vite buildar. Rode também `npx tsc -b --noEmit` se quiser checagem rápida.
 - StrictMode está ON (effects rodam 2x em dev — escreva effects idempotentes).
 
-## Fonte do design (contexto atual — leia antes de mudanças visuais)
-- `PRODUCT.md` — registro do produto, plataforma, posicionamento e público.
-- `DESIGN.md` — sistema visual vivo (tema dark, cores, tipografia).
-- `.impeccable/live/config.json` — configuração do modo "live" do fluxo de design Impeccable.
-- Essas três fontes descrevem o sistema de design **atual**; não existe mais um
-  diretório de protótipos HTML para portar — as páginas já estão implementadas.
-
 ## Regras de ouro (NÃO QUEBRE)
-1. **CSS compartilhado com cuidado:** `src/styles/*`, `src/lib/*`, `src/hooks/*`, `src/components/*` são usados por múltiplas páginas — mudanças ali afetam todo o app. Prefira **criar** um componente/CSS novo e co-localizado à página quando o comportamento for específico dela.
-2. **Página = `src/routes/<Nome>.tsx`** + CSS co-localizado `src/routes/<Nome>.css` (importado no topo do `.tsx`). Todo CSS específico da página vai nesse arquivo.
-3. **Preserve os nomes de classe CSS usados pelo motor de animação** (`src/lib/animEngine.ts` + `anim.css`) — ex.: `.hero`, `.podium`, `.pod`, `.lb-table`, `.tbl`, `.metrics`, `.feed`, `.sec`, `.pbar`/`.bar`. O engine revela/anima blocos por *querySelector* nesses seletores; renomear sem atualizar o engine quebra a animação silenciosamente.
-4. **PT-BR** em todo texto visível e comentários de UI. Termos técnicos (nomes de função, tipos) no original.
-5. **Arte de campeão/ícone = placeholder gradiente** (proibido usar arte da Riot). Use `<PlayerAvatar colors={...} />` e `<ChampIcon colors size? />`.
-6. **ToS Riot:** NUNCA exiba winrate de augment/item de Arena (pick rate é OK). Nunca exponha μ/σ ou fórmulas cruas na UI — linguagem simples (CR / Pontos / PDL).
+1. **NÃO edite arquivos compartilhados:** `src/styles/*.css`, `src/lib/*`, `src/hooks/*`, `src/components/*` existentes. Você pode **CRIAR arquivos novos** (ex.: um componente só seu em `src/components/`, ou seu CSS de página). Isso evita conflito entre os agentes paralelos.
+2. **Sua página = `src/routes/<NomeDela>.tsx`** (substitua o stub) + **um CSS co-localizado** `src/routes/<NomeDela>.css` importado no topo do .tsx (`import "./<NomeDela>.css";`). Todo CSS específico da página vai nesse arquivo.
+3. **Preserve os nomes de classe CSS do design** (ex.: `.hero`, `.podium`, `.pod`, `.pod-fx`, `.pod-rank`, `.lb-table`, `.standings`, `.tbl`, `.metrics`, `.cards`, `.doc-sec`...). O motor de animação (`anim.css` + `animEngine.ts`) revela blocos por esses seletores e anima o pódio/sparklines/contadores automaticamente. Se renomear, perde a animação.
+4. **PT-BR** em todo texto visível e comentários. Termos técnicos no original.
+5. **Arte de campeão/ícone = placeholder gradiente** (proibido usar arte da Riot). Use `<PlayerAvatar colors={...} />` e `<ChampIcon colors={...} />`.
+6. **ToS Riot:** NUNCA exiba winrate de augment/item de Arena (pick rate é OK).
+7. **Sem μ/σ nem fórmulas cruas** na UI — linguagem simples (CR / Pontos / PDL).
 
 ## Fundação disponível (importe daqui)
-**Componentes** — `import { ... } from "../components";` (barrel em `src/components/index.ts`)
+**Componentes** — `import { ... } from "../components";`
 - `<Mi name="search" fill? />` — ícone Material Symbols.
-- `<PlayerAvatar colors={{c1,c2}} size? className? />` · `<ChampIcon colors size?("sm"|"lg"|"xl") />` — placeholders (`Avatar.tsx`).
-- `<TierBadge tier={TierKey} />` · `<Placement place={n} />` · `<Delta value={n} />` (sinal "−" real, sem seta) · `<Streak kind count />` · `<PlayerTagChip tag={PlayerTag} />` (`Badges.tsx`).
-- `<Sparkline values={number[]} className stroke? fill? />` — SVG que o motor de animação "desenha".
+- `<PlayerAvatar colors={{c1,c2}} size? className? />` · `<ChampIcon colors size?("sm"|"lg"|"xl") />` — placeholders.
+- `<TierBadge tier={TierKey} />` · `<Placement place={n} />` · `<Delta value={n} />` (sinal "−" real, sem seta) · `<Streak kind count />` · `<PlayerTagChip tag={PlayerTag} />`.
+- `<Sparkline values={number[]} className="rc-spark"|"spark" stroke? fill? />` — SVG que o FX "desenha".
 - `<StateBlock loading? error? empty?>{children}</StateBlock>` — estados de carregamento/erro/vazio.
-- `Header`, `Footer`, `Background`, `Layout`, `TweaksPanel` já estão no shell (`App.tsx`) — não os inclua de novo dentro de uma página.
+- (Header, Footer, Background, Layout, TweaksPanel já estão no shell — NÃO os inclua na página.)
 
 **Lib** — `import { api } from "../lib/api"; import type { ... } from "../lib/types";`
-- `api.leaderboard(opts)` · `api.player(riotId)` · `api.playerMatches(riotId, opts)` · `api.searchPlayers(opts)` · `api.match(matchId)` · `api.champions(opts)` · `api.tournaments()` / `api.tournament(id)` — veja `src/lib/api.ts` para a lista completa e assinaturas exatas (é o client tipado, espelha `src/lib/types.ts`).
-- `setAdminKey` / `getAdminKey` / `clearAdminKey` (também em `api.ts`) — chave admin usada pela rota `/admin` (`AdminGate.tsx`).
+- `api.leaderboard({format,scope,season,limit,offset})` · `api.player(riotId)` · `api.match(matchId)` · `api.champions({format,metric,patch,region})` · `api.tournaments()` · `api.tournament(id)` · `api.adminOverview()` · `api.lastUpdate(rank?)`.
+- Tipos em `src/lib/types.ts` (espelham `F:\arenarank\spec\api_contract_v1.md` — LEIA o contrato p/ os shapes).
 - `import { nf, signed, pct, deltaClass, tierBadgeClass, tierLabel, winrateBand, timeAgo, fmtCountdown, splitRiotId } from "../lib/format";` — helpers pt-BR.
 
-**Hooks** — `import { useApi } from "../hooks/useApi";` · `import { useIconColors } from "../hooks/useIconColors";`
+**Hooks** — `import { useApi } from "../hooks/useApi";`
 - `const { data, loading, error } = useApi(() => api.leaderboard({format:"3v3"}), [format]);`
 - Padrão: envolva o conteúdo em `<StateBlock loading={loading} error={error}>...usa data!...</StateBlock>`.
 
-**Design tokens** (CSS vars globais, ver `DESIGN.md` para a definição viva): superfícies `--bg --surface --surface-2 --surface-3 --line`; texto `--text --text-dim --text-faint`; marca `--primary --primary-bright --primary-dim`; ouro `--gold --gold-bright --gold-dim`; semântico `--green --red --amber`; raios `--r-sm/md/lg`; `--maxw:1240px`; `--shadow`.
-**Classes prontas** (em `base.css`): `.shell .sec .section-head .eyebrow .panel .panel-pad .badge .flag .place .streak .delta .tier .chip(s) .tabs .tab .btn(.primary/.gold/.lg/.ghost) .tbl .bar .pbar .ch-icon .pavatar .breadcrumb` etc.
+**Design tokens** (CSS vars já globais): superfícies `--bg --surface --surface-2 --surface-3 --line`; texto `--text --text-dim --text-faint`; marca `--primary --primary-bright --primary-dim`; ouro `--gold --gold-bright --gold-dim`; semântico `--green --red --amber`; raios `--r-sm/md/lg`; `--maxw:1240px`; `--shadow`.
+**Classes prontas** (em base.css): `.shell .sec .section-head .eyebrow .panel .panel-pad .badge .flag .place .streak .delta .tier .chip(s) .tabs .tab .btn(.primary/.gold/.lg/.ghost) .tbl .bar .pbar .ch-icon .pavatar .breadcrumb` etc.
+
+## Fonte do design (LEIA top-to-bottom antes de portar)
+Os protótipos estão em `F:\arenarank\_design_staging\arenarank\project\`. Cada página tem um `.html` (com `<style>` page-specific + markup) e geralmente um `.js` (dados + render). **O `<style>` vira seu `<Page>.css`; o markup vira JSX; o `.js` (dados/render/interatividade) vira React + chamadas à `api`.** Screenshots de referência em `project/screenshots/`.
 
 ## Dados
-Consuma a API real (`api.*`). Se um campo não existir no tipo, prefira o tipo já definido em `types.ts`; só estenda se necessário e deixe claro por quê. O backend devolve dados reais onde há tabela — alguns widgets (feed "Atividade ao vivo", tierlist de campeão em certas visões) servem amostra determinística por design de contrato, não bug; confira `README.md`/`CLAUDE.md` na raiz antes de assumir regressão. Não hardcode dados no JSX (exceto rótulos/textos fixos da UI).
+Consuma a API real (`api.*`). Se um campo do design não existir no tipo, prefira o tipo do contrato; só estenda se necessário e deixe claro. O backend já devolve dados (reais onde há tabela; sample determinístico p/ subsistemas não modelados) — sua página deve renderizar a partir de `data`, com `<StateBlock>` para loading/erro. Não hardcode os dados no JSX (exceto rótulos/textos fixos da UI).
 
 ## Entregue (texto final = resultado)
 1. Arquivos criados/modificados.
-2. Confirmação de que `npm run build` (e `lint`/`typecheck`) passou (cole as últimas linhas).
-3. Notas de fidelidade visual: o que ficou 1:1 com `DESIGN.md`/protótipo de referência, o que adaptou e por quê.
+2. Confirmação de que `npm run build` passou (cole as últimas linhas).
+3. Notas de fidelidade: o que ficou 1:1, o que adaptou e por quê.

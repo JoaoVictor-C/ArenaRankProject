@@ -54,6 +54,8 @@ export function fromLive(snap: LiveSnapshot): Telemetry {
   return {
     ts: snap.ts,
     source: "live",
+    dataSource: snap.source ?? "live",
+    ageSeconds: snap.ageSeconds ?? 0,
     redisAvailable: snap.redisAvailable,
     workers,
     queues,

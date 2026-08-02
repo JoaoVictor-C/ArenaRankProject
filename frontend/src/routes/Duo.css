@@ -99,3 +99,73 @@
   .duo-hero { grid-template-columns:1fr; }
   .dh-right { border-left:none; padding-left:0; border-top:1px solid var(--line-soft); padding-top:16px; }
 }
+
+/* ============================================================
+   RESPONSIVO — telefone e tablet retrato (a cascata desktop
+   acima permanece intacta). Os grids 3+col em cards já colapsam
+   no bloco 1060px; aqui empilhamos rooms, apertamos slots e
+   damos alvos de toque. Sem overflow-x band-aid: corrigido na
+   origem com min-width:0 e larguras fluidas.
+   ============================================================ */
+
+/* ── Tablet retrato / telefone grande: empilha rooms e reduz respiro ── */
+@media (max-width: 680px) {
+  .duo-top { gap:14px; margin-bottom:18px; }
+  .duo-title h1 { font-size:22px; }        /* heading que estourava reduzido */
+  .duo-title .sub { font-size:13.5px; margin-top:9px; }
+  .duo-main { gap:16px; }
+
+  .duo-hero { padding:20px 18px; gap:20px; }
+  .dh-copy { font-size:13.5px; }
+  /* CTAs dividem a largura em vez de encolher o texto */
+  .dh-actions { gap:10px; }
+  .dh-actions .btn { flex:1 1 0; min-width:0; }
+
+  .mr-head { padding:14px 16px; }
+  .mr-body { padding:16px 16px 18px; }
+  .slots { gap:10px; }
+
+  .duo-section-head h2 { font-size:17px; }
+
+  /* salas: 2 col → 1 col, empilhado */
+  .duo-rooms { grid-template-columns:1fr; gap:12px; }
+  .room-card { padding:16px; }
+}
+
+/* ── Telefone: ajuste fino, empilha CTAs e aperta os 3 slots ── */
+@media (max-width: 440px) {
+  .duo-title h1 { font-size:20px; }
+
+  .duo-hero { padding:18px 15px; gap:18px; }
+  .dh-you { gap:11px; margin-bottom:14px; }
+  .dh-id .nm { font-size:17px; }
+  .dh-copy { margin-bottom:16px; }
+
+  /* CTAs empilhados ocupam a largura toda (toque confortável) */
+  .dh-actions { flex-direction:column; }
+  .dh-actions .btn { width:100%; }
+
+  .dh-stats { gap:8px; }
+  .dh-stat { padding:11px 12px; }
+  .dh-stat b { font-size:20px; }
+
+  /* os 3 slots seguem lado a lado (é o time 3v3); só apertamos.
+     min-width:0 garante que o track do grid encolha sem estourar */
+  .slots { gap:7px; }
+  .slot { min-height:112px; padding:13px 7px; gap:7px; min-width:0; }
+  .slot .sl-nm { font-size:12px; }
+  .slot .wlabel { font-size:10px; }
+
+  .mr-head { padding:13px 14px; gap:9px; }
+  .mr-body { padding:14px 14px 16px; }
+
+  .duo-section-head h2 { font-size:16px; }
+  .room-card { padding:15px; gap:11px; }
+  .rc-head { gap:10px; }
+}
+
+/* ── Toque grosso: CTAs principais com alvo ≥44px ──
+   (chips/btn base já recebem folga em base.css sob pointer:coarse) */
+@media (pointer: coarse) {
+  .dh-actions .btn { min-height:44px; }
+}

@@ -35,12 +35,32 @@ export interface LivePipeline {
   topPlayersPool: number;
   totalBacklog: number;
 }
+/** De onde um frame de telemetria veio.
+ *
+ *  Num deploy dividido (API pública no EC2, workers no notebook) as duas caixas
+ *  têm Redis SEPARADOS: filas, heartbeats e o token-bucket da Riot só existem na
+ *  caixa de workers. Sem este campo um frame do snapshot é indistinguível de um
+ *  ao vivo — e foi exatamente assim que o console passou a mostrar "fila 0" e
+ *  "workers parados" com toda a confiança, quando na verdade não enxergava nada.
+ *
+ *  live        — Redis desta mesma caixa (dev, e prod numa caixa só)
+ *  snapshot    — publicado pela caixa de workers via banco (ver ageSeconds)
+ *  unavailable — nada publicado, ou velho demais para valer como estado atual
+ */
+export type TelemetrySource = "live" | "snapshot" | "unavailable";
+
 export interface LiveSnapshot {
   ts: string;
   redisAvailable: boolean;
   workers: LiveWorker[];
   queues: LiveQueue[];
   pipeline: LivePipeline;
+  /** Ausente num backend antigo — tratar como "live". */
+  source?: TelemetrySource;
+  /** Quando o frame foi CAPTURADO (ISO). Igual a `ts` ao vivo. */
+  asOf?: string | null;
+  /** Idade do frame em segundos. 0 ao vivo. */
+  ageSeconds?: number | null;
 }
 
 /* ---- GET /admin/overview ---- */
@@ -245,6 +265,10 @@ export interface RiotUsage {
   errorsLastHour: number;
   /** Empty/absent is healthy; non-empty means the key is being over-driven. */
   driftWarnings?: string[];
+  /** Ver TelemetrySource. Ausente num backend antigo — tratar como "live". */
+  source?: TelemetrySource;
+  asOf?: string | null;
+  ageSeconds?: number | null;
 }
 
 /* ---- GET /admin/stats/series ---- */
@@ -446,7 +470,14 @@ export interface NormPipeline {
 
 export interface Telemetry {
   ts: string;
+  /** Qual ENDPOINT serviu este frame (workers/live vs overview). NÃO confundir
+   *  com `dataSource`, que diz de onde o DADO veio. */
   source: "live" | "overview";
+  /** Procedência do dado: Redis desta caixa, snapshot da caixa de workers, ou
+   *  indisponível. Ver TelemetrySource. */
+  dataSource?: TelemetrySource;
+  /** Idade do frame em segundos quando veio de snapshot. */
+  ageSeconds?: number | null;
   redisAvailable: boolean | null;
   workers: NormWorker[];
   queues: NormQueue[];

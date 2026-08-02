@@ -143,18 +143,56 @@ async def main() -> None:
                         m.MatchParticipant.team_id,
                         m.MatchParticipant.placement,
                         m.MatchParticipant.eligible,
+                        m.MatchParticipant.is_premade,
+                        m.MatchParticipant.party_id,
+                        m.MatchParticipant.augments,
+                        m.MatchParticipant.items,
+                        m.MatchParticipant.kills,
+                        m.MatchParticipant.deaths,
+                        m.MatchParticipant.assists,
+                        m.MatchParticipant.damage_to_champions,
+                        m.MatchParticipant.gold_earned,
+                        m.MatchParticipant.champion_level,
+                        m.MatchParticipant.damage_taken,
+                        m.MatchParticipant.total_heal,
+                        m.MatchParticipant.damage_self_mitigated,
+                        m.MatchParticipant.largest_multi_kill,
+                        m.MatchParticipant.killing_sprees,
+                        m.MatchParticipant.time_spent_dead,
                     ).where(m.MatchParticipant.match_id == mr.id)
                 )
             ).all()
             if not parts:
                 continue
             ineligible = {str(p.player_id) for p in parts if p.eligible is False}
+            # is_premade/party_id/augments/items/combat telemetry are immutable
+            # facts about the match, not rating outputs — _persist rewrites the
+            # whole row on every rerate, so leaving these out here silently
+            # resets them to False/None/[]/0 on every run (see
+            # arena/services/replay.py, which carries the same fields for
+            # exactly this reason).
             raw_parts = [
                 RawParticipant(
                     player_id=str(p.player_id),
                     champion_id=p.champion_id,
                     team_id=p.team_id,
                     placement=p.placement,
+                    is_premade=bool(p.is_premade),
+                    party_id=p.party_id,
+                    augments=list(p.augments or []),
+                    items=list(p.items or []),
+                    kills=int(p.kills or 0),
+                    deaths=int(p.deaths or 0),
+                    assists=int(p.assists or 0),
+                    damage_to_champions=int(p.damage_to_champions or 0),
+                    gold_earned=int(p.gold_earned or 0),
+                    champion_level=int(p.champion_level or 0),
+                    damage_taken=int(p.damage_taken or 0),
+                    total_heal=int(p.total_heal or 0),
+                    damage_self_mitigated=int(p.damage_self_mitigated or 0),
+                    largest_multi_kill=int(p.largest_multi_kill or 0),
+                    killing_sprees=int(p.killing_sprees or 0),
+                    time_spent_dead=int(p.time_spent_dead or 0),
                 )
                 for p in parts
             ]

@@ -1,10 +1,12 @@
-/* Fundo do site: grade de pontos + blob multicolor borrado.
+import { ParticleField } from "./ParticleField";
+
+/* Fundo do site: poeira em suspensão + blob multicolor borrado.
    SVG fiel ao design original (arena project / Leaderboard.html): gradiente radial
    roxo→amarelo→magenta→azul (opacity 0.7) num path orgânico, viewBox 1400×530. */
 export function Background() {
   return (
     <>
-      <div className="dot-grid" />
+      <ParticleField />
       <div className="blob-wrap" aria-hidden="true">
         <svg viewBox="0 0 1400 530" preserveAspectRatio="none">
           <defs>

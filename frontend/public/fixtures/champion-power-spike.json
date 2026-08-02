@@ -1,0 +1,31 @@
+{
+  "$meta": {
+    "purpose": "Power Spike ilustrativo para validar a página antes do endpoint real existir.",
+    "scope": "development-only; habilitado por ?mock=1",
+    "replication": "devMock retargeta championId para qualquer campeão solicitado"
+  },
+  "$endpoint": "GET /api/v1/champions/{championId}/rounds?season=3&format=3v3",
+  "championId": 50,
+  "name": "Campeão",
+  "championIconUrl": null,
+  "season": 3,
+  "format": "3v3",
+  "sampleSize": 53457,
+  "minGames": 50,
+  "peakRound": 6,
+  "rounds": [
+    { "round": 1, "label": "R1", "winRate": 46.8, "games": 6037 },
+    { "round": 2, "label": "R2", "winRate": 49.1, "games": 6037 },
+    { "round": 3, "label": "R3", "winRate": 52.4, "games": 6021 },
+    { "round": 4, "label": "R4", "winRate": 55.9, "games": 5904 },
+    { "round": 5, "label": "R5", "winRate": 58.7, "games": 5622 },
+    { "round": 6, "label": "R6", "winRate": 60.2, "games": 5188 },
+    { "round": 7, "label": "R7", "winRate": 59.4, "games": 4611 },
+    { "round": 8, "label": "R8", "winRate": 57.6, "games": 3944 },
+    { "round": 9, "label": "R9", "winRate": 55.1, "games": 3210 },
+    { "round": 10, "label": "R10", "winRate": 52.8, "games": 2487 },
+    { "round": 11, "label": "R11", "winRate": 50.3, "games": 1806 },
+    { "round": 12, "label": "R12", "winRate": 48.6, "games": 1188 },
+    { "round": 13, "label": "R13+", "winRate": 46.9, "games": 1402 }
+  ]
+}

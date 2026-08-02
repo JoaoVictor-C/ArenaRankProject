@@ -47,6 +47,7 @@ from arena.api.rbac import require_scope
 from arena.core.config import settings
 from arena.core.logging import get_logger
 from arena.schemas.common import ArenaModel
+from arena.services import telemetry_snapshot
 from arena.workers import queues as Q
 
 _log = get_logger("arena.api.admin.telemetry")
@@ -109,6 +110,14 @@ class LivePipeline(ArenaModel):
     total_backlog: int
 
 
+#: De onde um frame de telemetria veio. O console PRECISA disto: sem ele um
+#: frame lido do snapshot é indistinguível de um ao vivo, e um snapshot velho
+#: vira um número errado apresentado com confiança.
+SOURCE_LIVE = "live"          # Redis deste processo (divide com os workers)
+SOURCE_SNAPSHOT = "snapshot"  # tabela worker_telemetry, publicada pela outra caixa
+SOURCE_UNAVAILABLE = "unavailable"  # nada publicado ainda, ou velho demais
+
+
 class LiveSnapshot(ArenaModel):
     """A single real-time telemetry frame."""
 
@@ -117,6 +126,13 @@ class LiveSnapshot(ArenaModel):
     workers: list[LiveWorker]
     queues: list[LiveQueue]
     pipeline: LivePipeline
+    #: live | snapshot | unavailable — ver as constantes SOURCE_* acima.
+    source: str = SOURCE_LIVE
+    #: Quando o frame foi CAPTURADO. Igual a ``ts`` ao vivo; mais antigo quando
+    #: vem do snapshot. É o que permite a UI dizer "visto há N min".
+    as_of: str | None = None
+    #: Idade do frame em segundos (0 ao vivo). ``None`` quando não há frame.
+    age_seconds: int | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -332,8 +348,131 @@ async def _snapshot() -> LiveSnapshot:
     summary="Snapshot ao vivo dos workers e filas (Redis)",
 )
 async def workers_live() -> LiveSnapshot:
-    """Return one real-time telemetry frame from Redis."""
-    return await _snapshot()
+    """Um frame de telemetria — ao vivo, ou do snapshot publicado pela caixa de
+    workers quando esta API não divide o Redis com eles.
+
+    Sem essa bifurcação a API do EC2 lia o PRÓPRIO Redis (que não tem fila,
+    heartbeat nem token-bucket) e respondia zeros: fila vazia, todo worker
+    ``active: false``. Nunca ficava sem resposta — ficava com a resposta errada.
+    """
+    if telemetry_snapshot.reads_from_db():
+        return await _live_from_snapshot()
+    frame = await _snapshot()
+    frame.source = SOURCE_LIVE
+    frame.as_of = frame.ts
+    frame.age_seconds = 0
+    return frame
+
+
+# ---------------------------------------------------------------------------
+# Leitura via snapshot (caixa que NÃO divide o Redis com os workers)
+# ---------------------------------------------------------------------------
+
+
+def _empty_live(source: str, age: int | None, as_of: str | None) -> LiveSnapshot:
+    """Frame vazio marcado como indisponível.
+
+    Deliberadamente NÃO é um frame de zeros: ``source`` diz à UI que não há
+    dado, para ela mostrar "indisponível" em vez de desenhar uma fila vazia e
+    workers mortos que não existem.
+    """
+    return LiveSnapshot(
+        ts=_now_iso(),
+        redis_available=False,
+        workers=[],
+        queues=[],
+        pipeline=LivePipeline(
+            priority_queue=0, standard_queue=0, dlq=0, top_players_pool=0, total_backlog=0
+        ),
+        source=source,
+        as_of=as_of,
+        age_seconds=age,
+    )
+
+
+async def _read_snapshot() -> Any:
+    """Último snapshot publicado, ou ``None`` (banco fora / nada publicado)."""
+    try:
+        from arena.db.session import get_sessionmaker
+
+        async with get_sessionmaker()() as session:
+            return await telemetry_snapshot.read_snapshot(session)
+    except Exception:  # noqa: BLE001 - telemetria nunca derruba o console
+        _log.warning("telemetry.snapshot_read_failed", exc_info=True)
+        return None
+
+
+async def _live_from_snapshot() -> LiveSnapshot:
+    snap = await _read_snapshot()
+    if snap is None:
+        return _empty_live(SOURCE_UNAVAILABLE, None, None)
+    as_of = snap.as_of.isoformat()
+    if snap.stale:
+        # Existe, mas é velho demais para passar por estado atual. A idade vai
+        # junto para a UI poder dizer há quanto tempo a caixa sumiu.
+        return _empty_live(SOURCE_UNAVAILABLE, snap.age_seconds, as_of)
+    raw = (snap.payload or {}).get(telemetry_snapshot.LIVE_KEY)
+    if not raw:
+        return _empty_live(SOURCE_UNAVAILABLE, snap.age_seconds, as_of)
+    try:
+        frame = LiveSnapshot.model_validate(raw)
+    except Exception:  # noqa: BLE001 - payload de uma versão incompatível
+        _log.warning("telemetry.snapshot_live_invalid", exc_info=True)
+        return _empty_live(SOURCE_UNAVAILABLE, snap.age_seconds, as_of)
+    frame.source = SOURCE_SNAPSHOT
+    frame.as_of = as_of
+    frame.age_seconds = snap.age_seconds
+    return frame
+
+
+async def _riot_usage_from_snapshot() -> RiotUsage:
+    snap = await _read_snapshot()
+    empty = RiotUsage(
+        ts=_now_iso(),
+        key_suffix="—",
+        key_configured=False,
+        headroom=settings.riot_bucket_headroom,
+        buckets=[],
+        requests_last_minute=0,
+        requests_last_hour=0,
+        rate_limited_last_hour=0,
+        errors_last_hour=0,
+        source=SOURCE_UNAVAILABLE,
+    )
+    if snap is None:
+        return empty
+    empty.as_of = snap.as_of.isoformat()
+    empty.age_seconds = snap.age_seconds
+    if snap.stale:
+        return empty
+    raw = (snap.payload or {}).get(telemetry_snapshot.RIOT_KEY)
+    if not raw:
+        return empty
+    try:
+        usage = RiotUsage.model_validate(raw)
+    except Exception:  # noqa: BLE001
+        _log.warning("telemetry.snapshot_riot_invalid", exc_info=True)
+        return empty
+    usage.source = SOURCE_SNAPSHOT
+    usage.as_of = snap.as_of.isoformat()
+    usage.age_seconds = snap.age_seconds
+    return usage
+
+
+async def build_publish_payload() -> dict[str, Any]:
+    """Frame completo para a caixa de workers publicar (scheduler).
+
+    Reusa EXATAMENTE os mesmos construtores das rotas ao vivo, para o que o EC2
+    lê não poder divergir do que a caixa de workers mostraria de si mesma.
+    """
+    live = await _snapshot()
+    live.source = SOURCE_SNAPSHOT
+    riot = await _build_riot_usage()
+    riot.source = SOURCE_SNAPSHOT
+    return {
+        telemetry_snapshot.LIVE_KEY: live.model_dump(by_alias=True, mode="json"),
+        telemetry_snapshot.RIOT_KEY: riot.model_dump(by_alias=True, mode="json"),
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -459,6 +598,10 @@ class RiotUsage(ArenaModel):
     #: Every bucket whose configuration disagrees with Riot's headers. Empty is
     #: the healthy state; non-empty means the key is being over-driven.
     drift_warnings: list[str] = []
+    #: live | snapshot | unavailable — mesma semântica de LiveSnapshot.source.
+    source: str = SOURCE_LIVE
+    as_of: str | None = None
+    age_seconds: int | None = None
 
 
 _BUCKET_LABELS: dict[str, str] = {
@@ -469,13 +612,7 @@ _BUCKET_LABELS: dict[str, str] = {
 }
 
 
-@router.get(
-    "/riot/usage",
-    response_model=RiotUsage,
-    response_model_by_alias=True,
-    summary="Consumo da chave da Riot (buckets de rate limit + chamadas recentes)",
-)
-async def riot_usage() -> RiotUsage:
+async def _build_riot_usage() -> RiotUsage:
     """Report Riot key consumption without ever exposing the key itself.
 
     Bucket fill is read straight from the limiter's Redis hashes (the same state
@@ -573,6 +710,24 @@ async def riot_usage() -> RiotUsage:
     finally:
         if redis is not None:
             await _close_redis(redis)
+
+
+@router.get(
+    "/riot/usage",
+    response_model=RiotUsage,
+    response_model_by_alias=True,
+    summary="Consumo da chave da Riot (buckets de rate limit + chamadas recentes)",
+)
+async def riot_usage() -> RiotUsage:
+    """Uso da chave da Riot — ao vivo, ou do snapshot publicado pela caixa de
+    workers quando esta API não divide o Redis com eles (ver
+    ``services/telemetry_snapshot``)."""
+    if telemetry_snapshot.reads_from_db():
+        return await _riot_usage_from_snapshot()
+    usage = await _build_riot_usage()
+    usage.source = SOURCE_LIVE
+    usage.as_of = usage.ts
+    return usage
 
 
 # ---------------------------------------------------------------------------

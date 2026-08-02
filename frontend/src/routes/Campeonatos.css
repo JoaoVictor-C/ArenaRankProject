@@ -86,6 +86,15 @@
   font-weight: 700;
 }
 
+.pill.live .blip {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--red);
+  box-shadow: 0 0 8px var(--red);
+  animation: blip 1.4s ease-in-out infinite;
+}
+
 @keyframes blip {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.35; }
@@ -272,6 +281,15 @@
   color: var(--red);
 }
 
+.m-status.live .blip {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--red);
+  box-shadow: 0 0 6px var(--red);
+  animation: blip 1.4s ease-in-out infinite;
+}
+
 .m-status.upcoming {
   background: rgba(255, 255, 255, 0.05);
   color: var(--text-dim);
@@ -328,7 +346,8 @@
   justify-content: center;
 }
 
-.m-winner-label {
+.m-winner-label,
+.m-countdown-label {
   font: 600 10px/1 "Plus Jakarta Sans";
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -400,6 +419,13 @@
   border-radius: 999px;
   background: var(--red);
   transition: width 0.4s ease;
+}
+
+.m-countdown {
+  font: 800 32px/1 "Plus Jakarta Sans";
+  color: var(--text);
+  letter-spacing: 0.01em;
+  font-variant-numeric: tabular-nums;
 }
 
 .m-foot {
@@ -1140,6 +1166,19 @@
   padding: 18px;
 }
 
+.pp-card-empty {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  text-align: center;
+}
+
+.pp-card-empty p {
+  font: 600 12.5px/1.4 "Plus Jakarta Sans";
+  color: var(--text-dim);
+  margin: 0;
+}
+
 .pp-top {
   display: flex;
   align-items: center;
@@ -1317,6 +1356,19 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
+}
+
+.hist-empty {
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  padding: 13px;
+}
+
+.hist-empty p {
+  font: 600 11.5px/1.4 "Plus Jakarta Sans";
+  color: var(--text-faint);
+  margin: 0;
 }
 
 .hist-row {
@@ -1666,4 +1718,255 @@
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+/* ============================================================
+   RESPONSIVO MOBILE — telas verticais (phones 320–560) + tablets.
+   Complementa o @media (max-width:1040px) acima SEM removê-lo.
+   Identidade visual (dark esports, tokens) preservada.
+   ============================================================ */
+
+/* -------- guardas de overflow (sempre ativas) --------
+   Itens de grid/flex têm min-width:auto por padrão e ESTOURAM o
+   container quando o filho tem conteúdo largo (nome longo, nowrap,
+   tabela). Zeramos o min-width nos itens que carregam esse conteúdo.
+   Invisível no desktop (as colunas já cabem). */
+.page-camp > *,
+.thero > *,
+.log-item .li-info,
+.hist-row > div:first-child,
+.hm-row .hm-name,
+.prize-row .plabel,
+.rt-team,
+.rt-players {
+  min-width: 0;
+}
+
+/* -------- tablet: ≤1024px -------- */
+@media (max-width: 1024px) {
+  .page-camp {
+    padding: 22px 18px 60px;
+  }
+
+  .thero {
+    padding: 20px 20px;
+    gap: 18px;
+  }
+
+  /* grid de regras (2 col) segue até o telefone; só reduz o respiro */
+  .rules-grid {
+    gap: 14px;
+  }
+
+  /* saguão do modal: 6 col fixas -> preenche conforme largura */
+  .lobby-grid {
+    grid-template-columns: repeat(auto-fill, minmax(46px, 1fr));
+  }
+}
+
+/* -------- telefone (retrato) + phablet: ≤680px -------- */
+@media (max-width: 680px) {
+  .page-camp {
+    padding: 20px 16px 56px;
+    gap: 16px;
+  }
+
+  /* hero: já vira 1 coluna no 1040; aqui só aperta padding/tipografia */
+  .thero {
+    padding: 18px 16px;
+    gap: 14px;
+    margin-bottom: 14px;
+  }
+  .thero h1 {
+    font: 800 22px/1.15 "Plus Jakarta Sans";
+    margin-bottom: 12px;
+  }
+  /* título longo (1 palavra) não estoura o breadcrumb */
+  .thero .crumbs {
+    overflow-wrap: anywhere;
+  }
+  .prize-block .amt {
+    font-size: 30px;
+  }
+
+  /* abas: barra rolável horizontalmente em vez de espremer/quebrar */
+  .sub-tabs {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+  .sub-tabs::-webkit-scrollbar {
+    display: none;
+  }
+  .sub-tabs button {
+    flex: 0 0 auto;
+    white-space: nowrap;
+    padding: 13px 15px;
+  }
+
+  /* cabeçalho de seção: a dica desce para a linha de baixo */
+  .sec-h {
+    flex-wrap: wrap;
+    gap: 6px 12px;
+    margin: 22px 0 14px;
+  }
+  .sec-h .hint {
+    margin-left: 0;
+    flex-basis: 100%;
+  }
+
+  /* carrossel de partidas: swipe no touch; escondemos as setas */
+  .mc-arrow {
+    display: none;
+  }
+
+  /* classificação: tabela larga (9 colunas) rola DENTRO de si mesma,
+     sem estourar a página (opção b — tabela muito larga). */
+  .rank-table {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .rt-row {
+    min-width: 600px;
+    padding: 12px 14px;
+  }
+
+  /* legenda da tabela quebra em vez de estourar */
+  .table-foot {
+    flex-wrap: wrap;
+    gap: 10px 16px;
+  }
+
+  /* regras e inscritos: multi-coluna -> 1 coluna */
+  .rules-grid {
+    grid-template-columns: 1fr;
+  }
+  .rcard.tall {
+    grid-row: auto;
+  }
+  .rcard {
+    padding: 18px;
+  }
+  .ins-grid {
+    grid-template-columns: 1fr;
+  }
+
+  /* premiação: painéis lado-a-lado empilham */
+  .prize-hero {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 18px 18px;
+  }
+  .prize-hero .ph-amt {
+    font-size: 30px;
+  }
+
+  /* nomes longos truncam em vez de empurrar a linha */
+  .hm-row .hm-name,
+  .hist-row .h-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* modal do saguão: menos padding no telefone */
+  .modal-scrim {
+    padding: 14px;
+  }
+  .modal-body {
+    padding: 18px;
+  }
+}
+
+/* -------- ajuste fino de telefone: ≤440px -------- */
+@media (max-width: 440px) {
+  .page-camp {
+    padding: 16px 12px 48px;
+  }
+
+  .thero h1 {
+    font-size: 20px;
+  }
+  .prize-block .amt {
+    font-size: 26px;
+  }
+  .prize-hero .ph-amt {
+    font-size: 26px;
+  }
+  .sec-h h2 {
+    font-size: 16px;
+  }
+
+  /* linha de premiação: reflow para 2 níveis (rótulo + valor / detalhe) */
+  .prize-row {
+    grid-template-columns: 40px 1fr auto;
+    grid-template-areas:
+      "medal label amt"
+      "medal ppl   ppl";
+    gap: 6px 12px;
+    padding: 12px 14px;
+  }
+  .prize-row .medal {
+    grid-area: medal;
+    align-self: start;
+  }
+  .prize-row .plabel {
+    grid-area: label;
+  }
+  .prize-row .pamt {
+    grid-area: amt;
+  }
+  .prize-row .ppl {
+    grid-area: ppl;
+    text-align: left;
+  }
+
+  /* saguão do modal: cartões um pouco menores */
+  .modal-scrim {
+    padding: 12px;
+  }
+  .modal-head {
+    padding: 14px 16px;
+  }
+  .modal-body {
+    padding: 16px;
+  }
+
+  /* toasts ocupam a largura útil com folga das bordas */
+  .toast-wrap {
+    left: 12px;
+    right: 12px;
+  }
+  .toast {
+    max-width: none;
+  }
+}
+
+/* -------- alvos de toque ≥44px em dispositivos de toque -------- */
+@media (pointer: coarse) {
+  .sub-tabs button {
+    min-height: 44px;
+  }
+  .mc-arrow {
+    width: 44px;
+    height: 44px;
+  }
+  .magnet-btn,
+  .btn-enter,
+  .btn-copy {
+    min-height: 44px;
+  }
+  .mh-close {
+    width: 40px;
+    height: 40px;
+  }
+  /* elenco truncado é clicável (leva aos inscritos) */
+  .rt-roster.truncated {
+    min-height: 44px;
+  }
+  .roster-more {
+    padding: 6px 10px;
+  }
 }

@@ -3,12 +3,19 @@
   <head>
     <meta charset="utf-8" />
     <link rel="icon" type="image/png" href="/assets/logo.png" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+    />
     <title>ArenaRank — O ranking competitivo do Arena</title>
+    <!-- A read-API é cross-origin: abrir DNS+TLS já no parse do <head> tira um
+         RTT do primeiro fetch. `crossorigin` porque api.ts busca em modo CORS
+         sem credenciais — sem o atributo a conexão aberta não é reaproveitada. -->
+    <link rel="preconnect" href="https://api.arenarank.lol" crossorigin />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&family=Anton&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&family=Anton&family=Inter:wght@300..800&display=swap"
       rel="stylesheet"
     />
     <link

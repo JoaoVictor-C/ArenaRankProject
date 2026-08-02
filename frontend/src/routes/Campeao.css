@@ -1,0 +1,1331 @@
+/* ============================================================
+   Campeao.css — página do campeão (/campeao/:id)
+   Mundo "handoff" ESCOPADO à página (.cmp-page), mesmo bloco de
+   tokens do /winrate: palco quase-preto, luz ambiente + poeira suspensa,
+   rampa de 6 tiers colorida, accent roxo. Não toca os tokens
+   globais — o resto do site segue no mundo azul/ouro.
+   ============================================================ */
+.cmp-page {
+  --wr-bg: #0a0a0c;
+  --wr-panel: #101014;
+  --wr-panel-2: #0c0c0f;
+  --wr-panel-3: #16161b;
+  --wr-line: #242429;
+  --wr-line-soft: #1b1b20;
+  --wr-text: #f3f3f5;
+  --wr-dim: #9a9aa2;
+  --wr-faint: #6f7079;
+  --wr-gold: #ffcc00;
+  --wr-gold-deep: #d5a038;
+  --wr-purple: #9b5cff;
+  --wr-green: #25e05a;
+  --wr-red: #ff6a6a;
+  --wr-wr: #5aa9ff;
+  --t-splus: #ffcc00;
+  --t-s: #ff04dd;
+  --t-a: #9b5cff;
+  --t-b: #008cff;
+  --t-c: #5fa83a;
+  --t-d: #6b6b70;
+  --wr-r-sm: 8px;
+  --wr-r-md: 11px;
+  --wr-r-lg: 14px;
+
+  position: relative;
+  background: var(--wr-bg);
+  color: var(--wr-text);
+  min-height: 100vh;
+  font-family: "Plus Jakarta Sans", system-ui, sans-serif;
+  padding: 18px 20px 56px;
+}
+.cmp-page .tnum {
+  font-variant-numeric: tabular-nums;
+}
+.cmp-page .mi {
+  vertical-align: middle;
+}
+
+/* luz ambiente + poeira suspensa */
+.cmp-amb {
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 540px;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(760px 320px at 60% -80px, rgba(155, 92, 255, 0.16), transparent 70%),
+    radial-gradient(560px 260px at 26% -40px, rgba(0, 140, 255, 0.12), transparent 72%),
+    radial-gradient(620px 300px at 90% -30px, rgba(255, 140, 60, 0.1), transparent 72%);
+}
+.cmp-page > .pfield--route {
+  -webkit-mask-image: linear-gradient(180deg, #000, transparent 640px);
+  mask-image: linear-gradient(180deg, #000, transparent 640px);
+}
+
+.cmp-wrap {
+  position: relative;
+  z-index: 2;
+  max-width: 1280px;
+  margin: 0 auto;
+}
+
+/* ── superfícies ─────────────────────────────────────────────── */
+.cmp-panel {
+  background: var(--wr-panel);
+  border: 1px solid var(--wr-line);
+  border-radius: var(--wr-r-lg);
+}
+.cmp-card {
+  padding: 13px 14px 14px;
+}
+.cmp-ph {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-bottom: 14px;
+}
+.cmp-ph .mi {
+  font-size: 18px;
+  color: var(--wr-gold-deep);
+}
+.cmp-ph-t {
+  font: 800 12px/1 "Plus Jakarta Sans";
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: #e7e7ea;
+}
+.cmp-ph-s {
+  margin-left: auto;
+  font: 600 11px/1 "Plus Jakarta Sans";
+  color: var(--wr-faint);
+  letter-spacing: 0.03em;
+}
+.cmp-empty {
+  margin: 4px 0 0;
+  font: 500 12px/1.55 "Plus Jakarta Sans";
+  color: var(--wr-faint);
+}
+.cmp-note,
+.cmp-foot {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 12px 0 0;
+  font: 600 10px/1.5 "Plus Jakarta Sans";
+  letter-spacing: 0.03em;
+  color: var(--wr-faint);
+}
+.cmp-note .mi,
+.cmp-foot .mi {
+  font-size: 14px;
+  color: var(--wr-gold-deep);
+  flex: none;
+}
+.cmp-foot {
+  margin-top: 18px;
+  max-width: 92ch;
+}
+
+/* ── breadcrumb ──────────────────────────────────────────────── */
+.cmp-crumb {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font: 700 11px/1 "Plus Jakarta Sans";
+  letter-spacing: 0.05em;
+  color: var(--wr-faint);
+  text-transform: uppercase;
+  margin: 2px 0 16px;
+}
+.cmp-crumb a {
+  color: var(--wr-faint);
+  text-decoration: none;
+}
+.cmp-crumb a:is(:hover, :focus-visible) {
+  color: var(--wr-dim);
+}
+.cmp-crumb a:focus-visible {
+  border-radius: 3px;
+  outline: 2px solid var(--wr-purple);
+  outline-offset: 3px;
+}
+.cmp-crumb .mi {
+  font-size: 15px;
+}
+.cmp-crumb b {
+  color: var(--wr-dim);
+}
+
+/* ── HERO ────────────────────────────────────────────────────── */
+.cmp-hero {
+  position: relative;
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid var(--wr-line);
+  margin-bottom: 14px;
+  min-height: 180px;
+  display: flex;
+  align-items: center;
+}
+.cmp-hero-bg {
+  position: absolute;
+  inset: 0;
+  display: block;
+  background: #101018;
+}
+.cmp-hero-bg img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 52% 26%;
+  filter: saturate(1.05);
+  display: block;
+}
+.cmp-hero-veil {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(90deg, rgba(8, 9, 12, 0.94) 30%, rgba(8, 9, 12, 0.72) 58%, rgba(8, 9, 12, 0.42) 100%),
+    linear-gradient(0deg, rgba(8, 9, 12, 0.7), transparent 70%);
+}
+.cmp-hero-inner {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  padding: 22px 26px;
+  width: 100%;
+}
+.cmp-hero-por {
+  width: 96px;
+  height: 96px;
+  flex: none;
+  border-radius: 16px;
+  display: block;
+  overflow: hidden;
+  background: #12121a;
+  box-shadow:
+    inset 0 0 0 2.5px var(--tc, var(--t-d)),
+    0 0 0 1px rgba(0, 0, 0, 0.6),
+    0 0 22px -2px color-mix(in oklab, var(--tc, var(--t-d)) 62%, transparent);
+}
+.cmp-hero-por img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.cmp-hero-id {
+  min-width: 0;
+}
+.cmp-hero-role {
+  font: 700 11px/1 "Plus Jakarta Sans";
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--wr-dim);
+}
+.cmp-hero-name {
+  margin: 9px 0 11px;
+  font: 800 40px/1 "Plus Jakarta Sans";
+  letter-spacing: 0.01em;
+}
+.cmp-hero-tags {
+  display: flex;
+  gap: 7px;
+  flex-wrap: wrap;
+}
+.cmp-tag {
+  font: 800 10px/1 "Plus Jakarta Sans";
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #cfd3d8;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  padding: 6px 9px;
+  border-radius: 7px;
+  font-variant-numeric: tabular-nums;
+}
+.cmp-tag-up {
+  color: #8ef0ae;
+  background: rgba(37, 224, 90, 0.14);
+  border-color: rgba(37, 224, 90, 0.32);
+}
+.cmp-tag-down {
+  color: #ffa8a8;
+  background: rgba(255, 106, 106, 0.14);
+  border-color: rgba(255, 106, 106, 0.32);
+}
+.cmp-tierbadge {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 74px;
+  height: 74px;
+  flex: none;
+  border-radius: 14px;
+  background: color-mix(in oklab, var(--tc) 20%, #0b0d12);
+  box-shadow:
+    inset 0 0 0 1.6px color-mix(in oklab, var(--tc) 70%, transparent),
+    0 0 16px -4px var(--tc);
+}
+.cmp-tierbadge b {
+  font: 800 26px/1 "Plus Jakarta Sans";
+  color: var(--tc);
+}
+.cmp-tierbadge span {
+  margin-top: 5px;
+  font: 800 8px/1 "Plus Jakarta Sans";
+  letter-spacing: 0.14em;
+  color: var(--wr-faint);
+}
+.cmp-kstats {
+  margin-left: auto;
+  display: grid;
+  grid-template-columns: repeat(4, auto);
+  gap: 26px;
+  align-items: center;
+}
+.cmp-k {
+  text-align: right;
+}
+.cmp-k-v {
+  font: 800 26px/1 "Plus Jakarta Sans";
+}
+.cmp-k-v.gold {
+  color: var(--wr-gold);
+}
+.cmp-k-v.green {
+  color: var(--wr-green);
+}
+.cmp-k-l {
+  margin-top: 7px;
+  font: 700 9px/1 "Plus Jakarta Sans";
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--wr-faint);
+}
+.cmp-hero-meta {
+  position: absolute;
+  right: 22px;
+  bottom: 16px;
+  z-index: 3;
+  display: flex;
+  gap: 7px;
+}
+.cmp-fchip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(10, 12, 16, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: #dfe2e6;
+  font: 700 10px/1 "Plus Jakarta Sans";
+  letter-spacing: 0.04em;
+  padding: 8px 10px;
+  border-radius: 8px;
+  backdrop-filter: blur(4px);
+}
+.cmp-fchip .mi {
+  font-size: 15px;
+  color: var(--wr-faint);
+}
+
+/* ── DUPLAS ──────────────────────────────────────────────────── */
+.cmp-mcard {
+  padding: 15px 16px 16px;
+  margin-bottom: 14px;
+}
+.cmp-mtop {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+.cmp-mtitle {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font: 800 13px/1 "Plus Jakarta Sans";
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.cmp-mtitle .mi {
+  color: var(--wr-gold-deep);
+  font-size: 18px;
+}
+.cmp-tabs {
+  display: flex;
+  background: var(--wr-panel-3);
+  border: 1px solid var(--wr-line);
+  border-radius: 9px;
+  padding: 3px;
+}
+.cmp-tabs button {
+  background: none;
+  border: none;
+  color: var(--wr-dim);
+  font: 800 11px/1 "Plus Jakarta Sans";
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 9px 16px;
+  border-radius: 7px;
+  cursor: pointer;
+}
+.cmp-tabs button:is(:hover, :focus-visible) {
+  color: #fff;
+}
+.cmp-tabs button:focus-visible {
+  outline: 2px solid var(--wr-purple);
+  outline-offset: 2px;
+}
+.cmp-tabs button.on {
+  background: rgba(155, 92, 255, 0.18);
+  color: #fff;
+  box-shadow: inset 0 0 0 1px rgba(155, 92, 255, 0.5);
+}
+/* abas + busca viajam juntas, empurradas para a direita do título */
+.cmp-mtools {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.cmp-msearch {
+  position: relative;
+  display: block;
+}
+.cmp-msearch input {
+  width: 200px;
+  background: var(--wr-panel-3);
+  border: 1px solid var(--wr-line);
+  color: var(--wr-text);
+  font: 500 12px/1 "Plus Jakarta Sans";
+  padding: 9px 11px 9px 30px;
+  border-radius: 8px;
+  outline: none;
+}
+.cmp-msearch input:focus {
+  border-color: var(--wr-purple);
+}
+.cmp-msearch .mi {
+  position: absolute;
+  left: 9px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--wr-faint);
+  font-size: 16px;
+  pointer-events: none;
+}
+.cmp-mlabels {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  font: 800 12px/1 "Plus Jakarta Sans";
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.cmp-mlabels .good {
+  color: var(--wr-green);
+}
+.cmp-mlabels .bad {
+  color: var(--wr-red);
+}
+/* 5 bons · saída para a lista · 5 ruins */
+.cmp-mgrid {
+  display: grid;
+  grid-template-columns: repeat(11, minmax(0, 1fr));
+  gap: 8px;
+}
+.cmp-mtile {
+  position: relative;
+  height: 170px;
+  border-radius: var(--wr-r-md);
+  overflow: hidden;
+  background: #0c0e14;
+  border: 1px solid var(--wr-line);
+  text-decoration: none;
+  display: block;
+}
+.cmp-mtile:is(:hover, :focus-visible) {
+  border-color: #3a3a44;
+}
+.cmp-mtile:focus-visible {
+  outline: 2px solid var(--wr-purple);
+  outline-offset: 3px;
+}
+.cmp-mtile-art {
+  position: absolute;
+  inset: 0;
+  display: block;
+}
+.cmp-mtile-art img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 52% 20%;
+  display: block;
+}
+.cmp-mtile-shade {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(183deg, rgba(6, 8, 12, 0.05) 30%, rgba(6, 8, 12, 0.55) 60%, rgba(6, 8, 12, 0.95) 100%);
+}
+.cmp-mtile-body {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 8px 7px 9px;
+  text-align: center;
+  display: block;
+}
+.cmp-mtile-d {
+  display: block;
+  font: 800 17px/1 "Plus Jakarta Sans";
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
+}
+.cmp-mtile-pos .cmp-mtile-d {
+  color: var(--wr-green);
+}
+.cmp-mtile-neg .cmp-mtile-d {
+  color: var(--wr-red);
+}
+.cmp-mtile-g {
+  display: block;
+  margin-top: 5px;
+  font: 600 10px/1 "Plus Jakarta Sans";
+  color: #c4c9ce;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+}
+.cmp-mtile-nm {
+  display: block;
+  margin-top: 7px;
+  font: 700 8px/1.2 "Plus Jakarta Sans";
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 4px 3px;
+  border-radius: 5px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cmp-mtile-pos .cmp-mtile-nm {
+  background: rgba(37, 224, 90, 0.16);
+  color: #7cf0a2;
+}
+.cmp-mtile-neg .cmp-mtile-nm {
+  background: rgba(255, 74, 74, 0.16);
+  color: #ff9a9a;
+}
+/* saída para a lista completa — ocupa o slot central do grid */
+.cmp-mtile-more {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 170px;
+  border-radius: var(--wr-r-md);
+  background: var(--wr-panel-3);
+  border: 1px dashed #34343c;
+  color: var(--wr-dim);
+  text-align: center;
+  text-decoration: none;
+}
+.cmp-mtile-more:is(:hover, :focus-visible) {
+  border-color: var(--wr-purple);
+  color: #cdb6ff;
+}
+.cmp-mtile-more .mi {
+  font-size: 26px;
+}
+.cmp-mtile-more small {
+  font: 800 10px/1.3 "Plus Jakarta Sans";
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 0 8px;
+}
+/* lacuna declarada: ocupa os 5 slots do lado que ainda não tem dado */
+.cmp-mtile-void {
+  grid-column: span 5;
+  height: 170px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 18px;
+  text-align: center;
+  border-radius: var(--wr-r-md);
+  border: 1px dashed var(--wr-line);
+  background: var(--wr-panel-2);
+  font: 600 11px/1.5 "Plus Jakarta Sans";
+  color: var(--wr-faint);
+}
+.cmp-mtile-void .mi {
+  font-size: 22px;
+  color: #3a3a44;
+}
+
+/* ── CHARTS ──────────────────────────────────────────────────── */
+.cmp-charts {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 14px;
+  align-items: stretch;
+}
+.cmp-chart {
+  padding: 12px 13px 8px;
+  display: flex;
+  flex-direction: column;
+}
+.cmp-chart-plot {
+  width: 100%;
+  min-width: 0;
+}
+.cmp-chart h3 {
+  margin: 0 0 5px;
+  font: 800 13px/1.2 "Plus Jakarta Sans";
+  color: #e7e7ea;
+}
+.cmp-chart-sub {
+  font: 600 10px/1 "Plus Jakarta Sans";
+  color: var(--wr-faint);
+  letter-spacing: 0.04em;
+  margin-bottom: 6px;
+}
+.cmp-chart svg,
+.cmp-wtime svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 300 / 158;
+  overflow: visible;
+}
+.cmp-axis {
+  font: 600 9px/1 "Plus Jakarta Sans";
+  fill: var(--wr-faint);
+}
+.cmp-axis-day {
+  font-size: 6px;
+  letter-spacing: -0.03em;
+}
+.cmp-axis-month {
+  font-size: 6px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+/* rótulo do round de pico — o mesmo ouro do marcador */
+.cmp-axis-peak {
+  font-weight: 800;
+  fill: var(--wr-gold);
+}
+/* legenda do pico sob a curva de power spike */
+.cmp-peak {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-top: 6px;
+  padding: 0 4px;
+  font: 600 10px/1 "Plus Jakarta Sans";
+  letter-spacing: 0.03em;
+  color: var(--wr-faint);
+}
+.cmp-peak b {
+  font: 800 12px/1 "Plus Jakarta Sans";
+  color: var(--wr-gold);
+}
+.cmp-peak span {
+  font: 800 12px/1 "Plus Jakarta Sans";
+  color: var(--wr-purple);
+}
+.cmp-peak em {
+  margin-left: auto;
+  font-style: normal;
+  color: var(--wr-faint);
+}
+/* painel que declara a ausência do dado no lugar de estimá-lo */
+.cmp-chart-span2 {
+  grid-column: span 2;
+}
+.cmp-soon {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 168px;
+  padding: 0 6px 8px;
+  font: 500 12px/1.6 "Plus Jakarta Sans";
+  color: var(--wr-faint);
+}
+.cmp-soon .mi {
+  font-size: 22px;
+  color: var(--wr-purple);
+  flex: none;
+}
+.cmp-dates {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 4px;
+  padding: 0 4px;
+  font: 600 9px/1 "Plus Jakarta Sans";
+  color: var(--wr-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── ROW3 — duas faixas ──────────────────────────────────────
+   faixa 1: prismáticos · ouro · prata
+   faixa 2: itens (largura dos dois primeiros) · botas (sob os prateados) */
+.cmp-row3 {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 14px;
+  /* stretch (e não start): os cards de uma mesma faixa casam a altura —
+     é o que faz "Itens prismáticos" e "Botas" fecharem na mesma linha. */
+  align-items: stretch;
+}
+.cmp-row3 > .cmp-itemsbox {
+  grid-column: span 2;
+}
+
+/* tiles de augment por raridade real do draft */
+.cmp-augt {
+  position: relative;
+  border-radius: var(--wr-r-md);
+  padding: 2px;
+  background: #2a2a32;
+  flex: none;
+  display: grid;
+}
+.cmp-augt-prism {
+  background: linear-gradient(135deg, #e9c6ff, #8ad7ff 40%, #ffe08a 72%, #ff9ad0);
+}
+.cmp-augt-gold {
+  background: linear-gradient(135deg, #ffe08a, #d19a2e);
+}
+.cmp-augt-silver {
+  background: linear-gradient(135deg, #eef2f6, #98a2ab);
+}
+.cmp-augt-in {
+  border-radius: 9px;
+  background: #0b0e14;
+  width: 100%;
+  height: 100%;
+  display: block;
+  overflow: hidden;
+  box-shadow: inset 0 0 14px rgba(0, 0, 0, 0.5);
+}
+.cmp-augt-in img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.cmp-augt-big {
+  width: 46px;
+  height: 46px;
+}
+.cmp-augt-md {
+  width: 40px;
+  height: 40px;
+}
+.cmp-augrid {
+  display: grid;
+  grid-template-columns: repeat(var(--cols, 3), minmax(0, 1fr));
+  gap: 10px;
+}
+.cmp-augcell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.cmp-augcell-wr {
+  font: 800 13px/1 "Plus Jakarta Sans";
+  color: var(--wr-wr);
+}
+.cmp-augcell-pk {
+  font: 600 9px/1 "Plus Jakarta Sans";
+  color: var(--wr-faint);
+  text-align: center;
+}
+.cmp-augcell:hover .cmp-augt-in img {
+  filter: brightness(1.12);
+}
+
+/* botas — auto-fit para as trilhas vazias colapsarem: com 4 botas num grid
+   de 6 colunas fixas sobrava um vão morto à direita. */
+.cmp-boots {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(52px, 1fr));
+  gap: 8px;
+  align-content: start;
+}
+
+/* ── ITENS + RAIL ────────────────────────────────────────────── */
+.cmp-dash {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 306px;
+  gap: 12px;
+  align-items: start;
+}
+.cmp-itemsbox {
+  min-width: 0;
+}
+/* 10 prismáticos: mesma regra das botas, uma faixa só — as duas grades
+   ficam com uma linha de células, então os dois cards fecham na mesma altura. */
+.cmp-bcells {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(52px, 1fr));
+  gap: 8px;
+  align-content: start;
+}
+.cmp-bcell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 4px;
+  border-radius: 9px;
+  min-width: 0;
+}
+.cmp-bcell:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+.cmp-it {
+  width: 38px;
+  height: 38px;
+  border-radius: 7px;
+  background: #12121a;
+  display: block;
+  overflow: hidden;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.07);
+}
+.cmp-it img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.cmp-bcell-top .cmp-it {
+  box-shadow:
+    inset 0 0 0 1.5px var(--wr-wr),
+    0 0 10px -3px var(--wr-wr);
+}
+.cmp-bcell-pk {
+  font: 600 9px/1 "Plus Jakarta Sans";
+  color: var(--wr-dim);
+}
+
+/* selo de tier de item/augment — substitui o winrate em %, que a Riot
+   não permite publicar para item/augment. Fundo sólido do tier, texto escuro. */
+.cmp-tierpill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  padding: 2px 5px;
+  border-radius: 5px;
+  font: 800 10px/1 "Plus Jakarta Sans";
+  letter-spacing: 0.02em;
+  color: #0a0a0a;
+  background: var(--tc, var(--t-d));
+}
+.cmp-tierpill.t-splus {
+  --tc: var(--t-splus);
+  color: #241a00;
+}
+.cmp-tierpill.t-s {
+  --tc: var(--t-s);
+  color: #2a0024;
+}
+.cmp-tierpill.t-a {
+  --tc: var(--t-a);
+  color: #17092b;
+}
+.cmp-tierpill.t-b {
+  --tc: var(--t-b);
+  color: #001428;
+}
+.cmp-tierpill.t-c {
+  --tc: var(--t-c);
+  color: #0b1806;
+}
+.cmp-tierpill.t-d {
+  --tc: var(--t-d);
+  color: #f3f3f5;
+}
+/* ── BUILDS (variantes por tier) ─────────────────────────────
+   A linha é uma unidade de leitura: selo de tier · identidade · KPIs,
+   depois duas faixas rotuladas (itens / augments) separadas por um fio
+   tracejado — o fio é o argumento visual de que o augment é requisito. */
+.cmp-builds {
+  min-width: 0;
+}
+.cmp-bvars {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.cmp-bvar {
+  position: relative;
+  border: 1px solid var(--wr-line);
+  border-radius: var(--wr-r-md);
+  background: var(--wr-panel-2);
+  padding: 13px 14px 14px;
+  overflow: hidden;
+}
+.cmp-bvar-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.cmp-seal {
+  width: 34px;
+  height: 34px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9px;
+  font: 800 15px/1 "Plus Jakarta Sans";
+  color: var(--tc, var(--t-d));
+  background: color-mix(in oklab, var(--tc, var(--t-d)) 18%, #0b0d12);
+  box-shadow: inset 0 0 0 1.5px color-mix(in oklab, var(--tc, var(--t-d)) 65%, transparent);
+}
+.cmp-seal.t-splus {
+  --tc: var(--t-splus);
+}
+.cmp-seal.t-s {
+  --tc: var(--t-s);
+}
+.cmp-seal.t-a {
+  --tc: var(--t-a);
+}
+.cmp-seal.t-b {
+  --tc: var(--t-b);
+}
+.cmp-seal.t-c {
+  --tc: var(--t-c);
+}
+.cmp-seal.t-d {
+  --tc: var(--t-d);
+}
+.cmp-bvar-id {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+.cmp-bvar-nm {
+  font: 800 14px/1 "Plus Jakarta Sans";
+  color: var(--wr-text);
+}
+.cmp-bvar-sub {
+  font: 600 10px/1 "Plus Jakarta Sans";
+  color: var(--wr-faint);
+  letter-spacing: 0.03em;
+}
+.cmp-bvar-kpis {
+  margin-left: auto;
+  display: flex;
+  gap: 22px;
+}
+.cmp-bvar-kpi {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 5px;
+}
+.cmp-bvar-kpi b {
+  font: 800 15px/1 "Plus Jakarta Sans";
+  color: #e9eaed;
+}
+.cmp-bvar-kpi b.green {
+  color: var(--wr-green);
+}
+.cmp-bvar-kpi b.gold {
+  color: var(--wr-gold);
+}
+.cmp-bvar-kpi em {
+  font: 700 8px/1 "Plus Jakarta Sans";
+  font-style: normal;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--wr-faint);
+}
+/* numeral da ordem: marca d'água, não competindo com os KPIs */
+.cmp-bvar-rank {
+  position: absolute;
+  right: 12px;
+  bottom: 4px;
+  font: 800 44px/1 "Plus Jakarta Sans";
+  color: rgba(255, 255, 255, 0.03);
+  pointer-events: none;
+}
+
+.cmp-track {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+}
+.cmp-track-l {
+  flex: none;
+  width: 128px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding-top: 12px;
+  font: 700 9px/1.3 "Plus Jakarta Sans";
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--wr-faint);
+}
+.cmp-track-l .mi {
+  font-size: 13px;
+  color: var(--wr-gold-deep);
+}
+.cmp-track-aug {
+  margin-top: 12px;
+  padding-top: 4px;
+  border-top: 1px dashed #2a2a33;
+}
+.cmp-track-aug .cmp-track-l {
+  color: #cfd3d8;
+}
+.cmp-track-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  min-width: 0;
+}
+.cmp-track-slot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  padding-top: 6px;
+  max-width: 76px;
+}
+.cmp-track-slot em {
+  font: 700 9px/1 "Plus Jakarta Sans";
+  font-style: normal;
+  color: var(--wr-faint);
+}
+.cmp-track-nm {
+  text-align: center;
+  line-height: 1.3;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+/* esqueleto: mostra a forma, não finge o número */
+.cmp-bskel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.cmp-bvar-skel {
+  opacity: 0.55;
+}
+.cmp-bvar-skel .cmp-seal {
+  opacity: 0.5;
+}
+.cmp-skel-bar {
+  display: block;
+  height: 11px;
+  border-radius: 4px;
+  background: var(--wr-panel-3);
+}
+.cmp-skel-slot {
+  width: 38px;
+  height: 38px;
+  border-radius: 7px;
+  background: var(--wr-panel-3);
+  border: 1px dashed #2c2c35;
+}
+.cmp-skel-slot-aug {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--wr-r-md);
+}
+
+/* rail */
+.cmp-side {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+.cmp-otp {
+  display: flex;
+  flex-direction: column;
+}
+.cmp-otp-head {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr) 46px 54px;
+  gap: 10px;
+  padding: 0 4px 8px;
+  font: 700 9px/1 "Plus Jakarta Sans";
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--wr-faint);
+}
+.cmp-otp-head .r {
+  text-align: right;
+}
+.cmp-otpr {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr) 46px 54px;
+  gap: 10px;
+  align-items: center;
+  padding: 8px 4px;
+  border-top: 1px solid var(--wr-line-soft);
+  text-decoration: none;
+  color: inherit;
+  border-radius: 7px;
+}
+.cmp-otpr-link:is(:hover, :focus-visible) {
+  background: rgba(255, 255, 255, 0.03);
+}
+.cmp-otpr-link:focus-visible {
+  outline: 2px solid var(--wr-purple);
+  outline-offset: 2px;
+}
+.cmp-otp-pos {
+  font: 800 12px/1 "Plus Jakarta Sans";
+  color: var(--wr-faint);
+  text-align: center;
+}
+.cmp-otpr:nth-of-type(2) .cmp-otp-pos {
+  color: var(--wr-gold);
+}
+.cmp-otp-who {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+}
+.cmp-otp-nm {
+  font: 700 12px/1 "Plus Jakarta Sans";
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cmp-otp-w {
+  font: 800 12px/1 "Plus Jakarta Sans";
+  color: var(--wr-green);
+  text-align: right;
+}
+.cmp-otp-gm {
+  font: 600 11px/1 "Plus Jakarta Sans";
+  color: var(--wr-faint);
+  text-align: right;
+}
+.cmp-fullbtn {
+  margin-top: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 38px;
+  border-radius: 9px;
+  background: var(--wr-panel-3);
+  border: 1px solid var(--wr-line);
+  color: #cfd3d8;
+  font: 800 10px/1 "Plus Jakarta Sans";
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  text-decoration: none;
+}
+.cmp-fullbtn:is(:hover, :focus-visible) {
+  border-color: #3a3a44;
+  color: #fff;
+}
+.cmp-fullbtn:focus-visible {
+  outline: 2px solid var(--wr-purple);
+  outline-offset: 2px;
+}
+.cmp-fullbtn .mi {
+  font-size: 16px;
+}
+
+/* stats do rail */
+.cmp-srow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  padding: 8px 0;
+  border-top: 1px solid var(--wr-line-soft);
+}
+.cmp-srow:first-of-type {
+  border-top: none;
+}
+.cmp-srow .k {
+  font: 600 12px/1.3 "Plus Jakarta Sans";
+  color: var(--wr-dim);
+}
+.cmp-srow .v {
+  font: 800 13px/1 "Plus Jakarta Sans";
+  color: #e9eaed;
+}
+.cmp-srow .v.green {
+  color: var(--wr-green);
+}
+.cmp-srow .v.red {
+  color: var(--wr-red);
+}
+.cmp-sdiv {
+  height: 1px;
+  background: var(--wr-line);
+  margin: 8px 0;
+}
+
+/* ── responsivo ──────────────────────────────────────────────── */
+@media (max-width: 1180px) {
+  .cmp-dash {
+    grid-template-columns: 1fr;
+  }
+  .cmp-bvar-kpis {
+    gap: 16px;
+  }
+}
+/* abaixo de 11 colunas o grid vira 6: 5 bons + saída, depois os 5 ruins */
+@media (max-width: 980px) {
+  .cmp-mgrid {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+  .cmp-mtile-void {
+    grid-column: span 6;
+    height: 108px;
+  }
+  .cmp-track-l {
+    width: 96px;
+  }
+}
+@media (max-width: 1000px) {
+  .cmp-hero-inner {
+    flex-wrap: wrap;
+    gap: 16px 18px;
+  }
+  .cmp-hero-id {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+  .cmp-hero-name {
+    font-size: 34px;
+  }
+  .cmp-kstats {
+    order: 6;
+    margin-left: 0;
+    width: 100%;
+    gap: 0;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    justify-items: start;
+    padding-top: 15px;
+    border-top: 1px solid var(--wr-line-soft);
+  }
+  .cmp-k {
+    text-align: left;
+  }
+  .cmp-hero-meta {
+    top: 18px;
+    bottom: auto;
+  }
+  .cmp-charts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .cmp-row3 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .cmp-row3 > .cmp-itemsbox {
+    grid-column: span 2;
+  }
+  .cmp-bvar-head {
+    flex-wrap: wrap;
+  }
+  .cmp-bvar-kpis {
+    width: 100%;
+    margin-left: 0;
+    justify-content: flex-start;
+    gap: 26px;
+  }
+  .cmp-bvar-kpi {
+    align-items: flex-start;
+  }
+}
+@media (max-width: 760px) {
+  .cmp-page {
+    padding: 14px 12px 48px;
+  }
+  .cmp-charts,
+  .cmp-row3 {
+    grid-template-columns: 1fr;
+  }
+  .cmp-row3 > .cmp-itemsbox {
+    grid-column: span 1;
+  }
+  .cmp-mgrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .cmp-mtile,
+  .cmp-mtile-more {
+    height: 140px;
+  }
+  .cmp-mtile-void {
+    grid-column: span 3;
+    height: 96px;
+  }
+  .cmp-mtools {
+    width: 100%;
+  }
+  .cmp-track {
+    flex-direction: column;
+    gap: 8px;
+  }
+  .cmp-track-l {
+    width: auto;
+    padding-top: 0;
+  }
+  .cmp-hero-name {
+    font-size: 28px;
+  }
+  .cmp-hero-por {
+    width: 72px;
+    height: 72px;
+  }
+  .cmp-msearch {
+    margin-left: 0;
+    width: 100%;
+  }
+  .cmp-msearch input {
+    width: 100%;
+  }
+  .cmp-hero {
+    flex-wrap: wrap;
+  }
+  .cmp-hero-meta {
+    position: static;
+    width: 100%;
+    padding: 0 16px 16px;
+    flex-wrap: wrap;
+  }
+}
+@media (max-width: 440px) {
+  .cmp-kstats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    row-gap: 14px;
+  }
+}

@@ -76,6 +76,13 @@ async def replay_chronological(
             raw_parts.append(RawParticipant(
                 player_id=pid, champion_id=pp.champion_id,
                 team_id=st.subteam_id, placement=st.placement,
+                augments=pp.augments, items=pp.items,
+                kills=pp.kills, deaths=pp.deaths, assists=pp.assists,
+                damage_to_champions=pp.damage_to_champions, gold_earned=pp.gold_earned,
+                champion_level=pp.champion_level, damage_taken=pp.damage_taken,
+                total_heal=pp.total_heal, damage_self_mitigated=pp.damage_self_mitigated,
+                largest_multi_kill=pp.largest_multi_kill, killing_sprees=pp.killing_sprees,
+                time_spent_dead=pp.time_spent_dead,
             ))
         rating_service._integrity = PremadeIntegrity(ineligible, party_store)
         played_at = (

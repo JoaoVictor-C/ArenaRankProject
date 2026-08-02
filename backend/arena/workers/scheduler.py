@@ -231,6 +231,112 @@ async def champion_combo_maintenance(ctx: dict[str, Any]) -> dict[str, Any]:
         return {"status": "error"}
 
 
+async def champion_versus_maintenance(ctx: dict[str, Any]) -> dict[str, Any]:
+    """Recompute ``champion_versus_stats`` — the cross-subteam matchup rollup.
+
+    Backs ``/champions/{id}/matchups?kind=versus``. NOT a SQL self-join (see
+    :meth:`StatsService.rebuild_champion_versus`'s docstring — a cross-subteam
+    self-join across ``matches``'/``match_participants``' incompatible
+    partition schemes plans in the BILLIONS of estimated rows); instead one
+    plain participant scan aggregated in Python. Measured live: ~19s for the
+    full season. Same cumulative-per-season shape as the other rollups in
+    this series (cannot be windowed), so it gets its own off-peak hourly
+    minute, away from combo/build/daily/records.
+
+    Best-effort, same contract as :func:`champion_daily_maintenance`.
+    """
+    try:
+        from arena.db.session import get_sessionmaker
+        from arena.services.stats_service import StatsService
+
+        season_id = await _current_season_id()
+        if season_id is None:
+            _log.info("scheduler.champion_versus.skipped", reason="no season")
+            return {"status": "skipped", "reason": "no season"}
+
+        async with get_sessionmaker()() as session:
+            rows = await StatsService().rebuild_champion_versus(session, season_id=season_id)
+            await session.commit()
+        _log.info("scheduler.champion_versus.done", rows=rows, season=season_id)
+        return {"status": "ok", "rows": rows}
+    except Exception:
+        _log.warning("scheduler.champion_versus.failed", exc_info=True)
+        return {"status": "error"}
+
+
+async def champion_build_variant_maintenance(ctx: dict[str, Any]) -> dict[str, Any]:
+    """Recompute ``champion_build_variant_stats`` — build variants by prismatic
+    augment (the ``/campeao`` "BUILDS DE {campeão} por tier" panel).
+
+    Needs the current prismatic-augment id set from ``BuildRefService``
+    (HTTP-cached CDragon catalog, 12h TTL) to know which of each participant's
+    3 draft picks is the round-3 (build-defining) one — not something SQL can
+    derive on its own, so this fetches that first, then delegates to
+    :meth:`StatsService.rebuild_champion_build_variants` (same Python-
+    aggregation shape as :func:`champion_versus_maintenance`, same reasoning).
+
+    Best-effort, same contract as :func:`champion_daily_maintenance`.
+    """
+    try:
+        from arena.db.session import get_sessionmaker
+        from arena.services.build_ref_service import get_build_ref_service
+        from arena.services.stats_service import StatsService
+
+        season_id = await _current_season_id()
+        if season_id is None:
+            _log.info("scheduler.champion_build_variant.skipped", reason="no season")
+            return {"status": "skipped", "reason": "no season"}
+
+        catalog = await get_build_ref_service().augment_catalog()
+        prismatic_ids = {e.id for e in catalog if e.rarity == "prismatic"}
+        if not prismatic_ids:
+            _log.info("scheduler.champion_build_variant.skipped", reason="no prismatic augments")
+            return {"status": "skipped", "reason": "no prismatic augments"}
+
+        async with get_sessionmaker()() as session:
+            rows = await StatsService().rebuild_champion_build_variants(
+                session, season_id=season_id, prismatic_augment_ids=prismatic_ids
+            )
+            await session.commit()
+        _log.info("scheduler.champion_build_variant.done", rows=rows, season=season_id)
+        return {"status": "ok", "rows": rows}
+    except Exception:
+        _log.warning("scheduler.champion_build_variant.failed", exc_info=True)
+        return {"status": "error"}
+
+
+async def champion_build_stats_maintenance(ctx: dict[str, Any]) -> dict[str, Any]:
+    """Recompute ``champion_build_stats`` — the NATIVE augment/item rollup.
+
+    Backs the ``/winrate`` "Build recomendada" panel, the "Augments em alta"
+    rail, and the augment catalog's tier/champions fields — replacing
+    ``champion_build_ref`` (an external third-party aggregate; see
+    ``build_ref_service.py``'s module docstring). Same cumulative-per-season
+    shape as :func:`champion_combo_maintenance` (unnest over an ARRAY column
+    instead of a self-join, but no windowing either way), so it gets its own
+    off-peak hourly minute.
+
+    Best-effort, same contract as :func:`champion_daily_maintenance`.
+    """
+    try:
+        from arena.db.session import get_sessionmaker
+        from arena.services.stats_service import StatsService
+
+        season_id = await _current_season_id()
+        if season_id is None:
+            _log.info("scheduler.champion_build_stats.skipped", reason="no season")
+            return {"status": "skipped", "reason": "no season"}
+
+        async with get_sessionmaker()() as session:
+            rows = await StatsService().rebuild_champion_build_stats(session, season_id=season_id)
+            await session.commit()
+        _log.info("scheduler.champion_build_stats.done", rows=rows, season=season_id)
+        return {"status": "ok", "rows": rows}
+    except Exception:
+        _log.warning("scheduler.champion_build_stats.failed", exc_info=True)
+        return {"status": "error"}
+
+
 async def season_records_maintenance(ctx: dict[str, Any]) -> dict[str, Any]:
     """Recompute ``season_record_cache`` — the materialized ``/meta/records``.
 
@@ -273,19 +379,23 @@ async def backlog_drain_tick(ctx: dict[str, Any]) -> dict[str, Any]:
     fronteira de descoberta é quem decide isso (ver ``workers/bootstrap.py``).
     Um backlog vazio só significa "nada estacionado neste instante", e a
     descoberta pode muito bem estar a meio caminho.
+
+    Drena INDEPENDENTE do modo. O modo decide se partidas NOVAS são estacionadas;
+    o que já está estacionado tem de ser avaliado de qualquer forma. Havia um
+    ``skip`` quando o modo não era ``catching_up``, e ele encalhava o backlog
+    para sempre no instante em que o operador encerrava o refill — 215 partidas
+    descobertas ficavam paradas sem nunca virar rating, exatamente o oposto do
+    que ``stop_bootstrap`` promete ("o drenador continua esvaziando em ordem").
     """
     try:
-        from arena.db import models as db
         from arena.db.session import get_sessionmaker
-        from arena.services import ingest_state, replay
+        from arena.services import replay
 
         season_id = await _current_season_id()
         if season_id is None:
             return {"status": "skipped", "reason": "no season"}
 
         async with get_sessionmaker()() as session:
-            if await ingest_state.get_mode(session, season_id) is not db.IngestMode.catching_up:
-                return {"status": "skipped", "reason": "not catching up"}
             result = await replay.drain_backlog(
                 session, season_id, redis=ctx.get("redis")
             )
@@ -349,6 +459,43 @@ async def rating_replay_tick(ctx: dict[str, Any]) -> dict[str, Any]:
         return result
     except Exception:
         _log.warning("scheduler.replay.failed", exc_info=True)
+        return {"status": "error"}
+
+
+async def telemetry_publish_tick(ctx: dict[str, Any]) -> dict[str, Any]:
+    """Publica a telemetria desta caixa em ``worker_telemetry`` (RDS).
+
+    Existe por causa do deploy dividido: a API pública (EC2) tem um Redis
+    PRÓPRIO, sem filas, heartbeats nem token-bucket da Riot. Lendo o próprio
+    Redis ela não ficava sem resposta — respondia ZERO: fila vazia, todo worker
+    ``active: false``, chave da Riot ausente. Medido lado a lado, 0 contra 166 de
+    profundidade real. Um operador conclui que a ingestão caiu.
+
+    Publicar via banco usa o único canal que as duas caixas já compartilham, e
+    o sentido é de dentro para fora — nada precisa alcançar o notebook, que fica
+    atrás de NAT e às vezes desligado.
+
+    Só roda onde este processo divide o Redis com os workers (ou seja, onde
+    ``worker_telemetry_source`` NÃO é 'db'); do contrário a caixa publicaria de
+    volta o snapshot que acabou de ler.
+
+    Best-effort: telemetria nunca pode derrubar o scheduler.
+    """
+    try:
+        from arena.api.routers.admin_telemetry import build_publish_payload
+        from arena.db.session import get_sessionmaker
+        from arena.services import telemetry_snapshot
+
+        if telemetry_snapshot.reads_from_db():
+            return {"status": "skipped", "reason": "this box reads telemetry from db"}
+
+        payload = await build_publish_payload()
+        async with get_sessionmaker()() as session:
+            await telemetry_snapshot.publish(session, payload)
+            await session.commit()
+        return {"status": "ok", "source": settings.worker_telemetry_publish_source}
+    except Exception:
+        _log.warning("scheduler.telemetry_publish.failed", exc_info=True)
         return {"status": "error"}
 
 
@@ -476,6 +623,17 @@ CRON_JOBS = [
     # champion_combo_stats — hourly at :41. The heaviest tick (full-season
     # recompute of a 2- and 3-way self-join); parked away from every other job.
     cron(champion_combo_maintenance, minute={41}, run_at_startup=True),
+    # champion_build_stats — hourly at :56. Native augment/item rollup (unnest
+    # over an ARRAY column); own off-peak minute, away from combo/daily/records.
+    cron(champion_build_stats_maintenance, minute={56}, run_at_startup=True),
+    # champion_versus_stats — hourly at :26. Cross-subteam matchup rollup
+    # (~19s measured); own off-peak minute, away from every other tick.
+    cron(champion_versus_maintenance, minute={26}, run_at_startup=True),
+    # champion_build_variant_stats — hourly at :11. Build-variant rollup
+    # (grouped by prismatic augment) — heaviest tick after versus (~99s
+    # measured: 2 ARRAY columns per row + Python-side Counter work per
+    # participant); own off-peak minute.
+    cron(champion_build_variant_maintenance, minute={11}, run_at_startup=True),
     # Drenagem do match_backlog — de minuto em minuto durante um refill. Só faz
     # algo em ``catching_up``, e é serial de propósito.
     cron(backlog_drain_tick, minute=set(range(0, 60)), run_at_startup=True),
@@ -488,6 +646,10 @@ CRON_JOBS = [
     # Outage-gap heartbeat — every minute, AND at startup so a restart detects
     # the gap immediately instead of waiting up to a minute.
     cron(heartbeat_tick, minute=set(range(0, 60)), run_at_startup=True),
+    # Telemetria para a caixa da API pública — de minuto em minuto. Precisa ser
+    # bem mais frequente que worker_telemetry_stale_after_seconds (180s) para um
+    # tick perdido não marcar tudo como obsoleto.
+    cron(telemetry_publish_tick, minute=set(range(0, 60)), run_at_startup=True),
 ]
 
 
@@ -498,10 +660,14 @@ __all__ = [
     "cr_snapshot_maintenance",
     "champion_daily_maintenance",
     "champion_combo_maintenance",
+    "champion_build_stats_maintenance",
+    "champion_versus_maintenance",
+    "champion_build_variant_maintenance",
     "season_records_maintenance",
     "backlog_drain_tick",
     "bootstrap_tick",
     "rating_replay_tick",
+    "telemetry_publish_tick",
     "heartbeat_tick",
     "CRON_JOBS",
 ]

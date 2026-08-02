@@ -1,0 +1,6790 @@
+{
+  "updatedAt": "2026-07-26T19:08:42.377Z",
+  "patch": "16.14",
+  "mockedFields": [
+    "tier",
+    "champions"
+  ],
+  "augments": [
+    {
+      "id": 27,
+      "name": "Abalos Sísmicos",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/earthwake_small.png",
+      "rarity": "prismatic",
+      "description": "Suas Habilidades de avanço e teleporte deixam um rastro que detona depois de 1s.",
+      "tier": "B",
+      "champions": [
+        {
+          "championId": 103,
+          "name": "Ahri"
+        },
+        {
+          "championId": 1,
+          "name": "Annie"
+        },
+        {
+          "championId": 127,
+          "name": "Lissandra"
+        },
+        {
+          "championId": 14,
+          "name": "Sion"
+        },
+        {
+          "championId": 143,
+          "name": "Zyra"
+        }
+      ]
+    },
+    {
+      "id": 219,
+      "name": "Agouro",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/doomsayer_small.png",
+      "rarity": "prismatic",
+      "description": "Acertar um Campeão inimigo com uma habilidade concede a você Poder Amaldiçoado permanente. Recebe Força Adaptativa com base no seu Poder Amaldiçoado.",
+      "tier": "B",
+      "champions": [
+        {
+          "championId": 143,
+          "name": "Zyra"
+        },
+        {
+          "championId": 45,
+          "name": "Veigar"
+        },
+        {
+          "championId": 201,
+          "name": "Braum"
+        },
+        {
+          "championId": 68,
+          "name": "Rumble"
+        },
+        {
+          "championId": 526,
+          "name": "Rell"
+        }
+      ]
+    },
+    {
+      "id": 405,
+      "name": "Aprimoramento 405",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/augment405_small.png",
+      "rarity": "prismatic",
+      "description": "Recebe 5% de dano por Chapéu que estiver sendo usado.",
+      "tier": "B",
+      "champions": [
+        {
+          "championId": 201,
+          "name": "Braum"
+        },
+        {
+          "championId": 68,
+          "name": "Rumble"
+        },
+        {
+          "championId": 526,
+          "name": "Rell"
+        },
+        {
+          "championId": 90,
+          "name": "Malzahar"
+        },
+        {
+          "championId": 876,
+          "name": "Lillia"
+        }
+      ]
+    },
+    {
+      "id": 216,
+      "name": "Arauto do Pavor",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/plaguebearer_small.png",
+      "rarity": "prismatic",
+      "description": "Recebe uma aura que coleta continuamente Poder Amaldiçoado permanente a cada Campeão inimigo dentro dela. Recebe Vida máxima com base no seu Poder Amaldiçoado.",
+      "tier": "S+",
+      "champions": [
+        {
+          "championId": 134,
+          "name": "Syndra"
+        },
+        {
+          "championId": 36,
+          "name": "Dr. Mundo"
+        },
+        {
+          "championId": 163,
+          "name": "Taliyah"
+        },
+        {
+          "championId": 63,
+          "name": "Brand"
+        },
+        {
+          "championId": 516,
+          "name": "Ornn"
+        }
+      ]
+    },
+    {
+      "id": 115,
+      "name": "Armas Extensivas",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/scopiestweapons_small.png",
+      "rarity": "prismatic",
+      "description": null,
+      "tier": "S",
+      "champions": [
+        {
+          "championId": 63,
+          "name": "Brand"
+        },
+        {
+          "championId": 516,
+          "name": "Ornn"
+        },
+        {
+          "championId": 69,
+          "name": "Cassiopeia"
+        },
+        {
+          "championId": 711,
+          "name": "Vex"
+        },
+        {
+          "championId": 103,
+          "name": "Ahri"
+        }
+      ]
+    },
+    {
+      "id": 225,
+      "name": "Ataque Duplo",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/dualwield_small.png",
+      "rarity": "prismatic",
+      "description": "Ao atacar, você lança um projétil que causa 40% do dano e aplica efeitos ao contato com 40% de eficácia. Recebe 45% de Velocidade de Ataque total.",
+      "tier": "B",
+      "champions": [
+        {
+          "championId": 201,
+          "name": "Braum"
+        },
+        {
+          "championId": 68,
+          "name": "Rumble"
+        },
+        {
+          "championId": 526,
+          "name": "Rell"
+        },
+        {
+          "championId": 90,
+          "name": "Malzahar"
+        },
+        {
+          "championId": 876,
+          "name": "Lillia"
+        }
+      ]
+    },
+    {
+      "id": 228,
+      "name": "Atributos em Dose Tripla!",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/statsonstatsonstats_small.png",
+      "rarity": "prismatic",
+      "description": "Recebe 9 Bigornas de Atributo!",
+      "tier": "S+",
+      "champions": [
+        {
+          "championId": 516,
+          "name": "Ornn"
+        },
+        {
+          "championId": 69,
+          "name": "Cassiopeia"
+        },
+        {
+          "championId": 711,
+          "name": "Vex"
+        },
+        {
+          "championId": 103,
+          "name": "Ahri"
+        },
+        {
+          "championId": 1,
+          "name": "Annie"
+        }
+      ]
+    },
+    {
+      "id": 234,
+      "name": "Bigorna de Aposta",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/thiefsgloves_small.png",
+      "rarity": "prismatic",
+      "description": "Recebe +1000 de ouro e reduz o preço de todas as Bigornas. Bigornas Prismáticas: -2000 de ouro Bigornas Lendárias: -750 de ouro Bigornas de Atributo: -300 de ouro Itens obtidos de Bigornas são revendidos por 500 de ouro a menos.",
+      "tier": "S+",
+      "champions": [
+        {
+          "championId": 711,
+          "name": "Vex"
+        },
+        {
+          "championId": 103,
+          "name": "Ahri"
+        },
+        {
+          "championId": 1,
+          "name": "Annie"
+        },
+        {
+          "championId": 127,
+          "name": "Lissandra"
+        },
+        {
+          "championId": 14,
+          "name": "Sion"
+        }
+      ]
+    },
+    {
+      "id": 317,
+      "name": "Caixa de Pandora",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/pandoras_box_small.png",
+      "rarity": "prismatic",
+      "description": "Transforma todos os seus Aprimoramentos em Aprimoramentos Prismáticos aleatórios.",
+      "tier": "D",
+      "champions": [
+        {
+          "championId": 876,
+          "name": "Lillia"
+        },
+        {
+          "championId": 113,
+          "name": "Sejuani"
+        },
+        {
+          "championId": 11,
+          "name": "Mestre Yi"
+        },
+        {
+          "championId": 134,
+          "name": "Syndra"
+        },
+        {
+          "championId": 36,
+          "name": "Dr. Mundo"
+        }
+      ]
+    },
+    {
+      "id": 193,
+      "name": "Centro do Universo",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/centeroftheuniverse_small.png",
+      "rarity": "prismatic",
+      "description": "Estrelas orbitam você, causando Dano Mágico aos inimigos que atravessam.",
+      "tier": "S",
+      "champions": [
+        {
+          "championId": 127,
+          "name": "Lissandra"
+        },
+        {
+          "championId": 14,
+          "name": "Sion"
+        },
+        {
+          "championId": 143,
+          "name": "Zyra"
+        },
+        {
+          "championId": 45,
+          "name": "Veigar"
+        },
+        {
+          "championId": 201,
+          "name": "Braum"
+        }
+      ]
+    },
+    {
+      "id": 323,
+      "name": "Cérbero",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/cerberus_small.png",
+      "rarity": "prismatic",
+      "description": "Recebe as Runas Essenciais Chuva de Lâminas e Pressione o Ataque.",
+      "tier": "D",
+      "champions": [
+        {
+          "championId": 11,
+          "name": "Mestre Yi"
+        },
+        {
+          "championId": 134,
+          "name": "Syndra"
+        },
+        {
+          "championId": 36,
+          "name": "Dr. Mundo"
+        },
+        {
+          "championId": 163,
+          "name": "Taliyah"
+        },
+        {
+          "championId": 63,
+          "name": "Brand"
+        }
+      ]
+    },
+    {
+      "id": 53,
+      "name": "Cientista Louco",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/madscientist_small.png",
+      "rarity": "prismatic",
+      "description": "A cada rodada, você aumenta (Força Adaptativa e Vida) ou diminui (Aceleração de Habilidade e Velocidade de Movimento) de tamanho.",
+      "tier": "D",
+      "champions": [
+        {
+          "championId": 127,
+          "name": "Lissandra"
+        },
+        {
+          "championId": 14,
+          "name": "Sion"
+        },
+        {
+          "championId": 143,
+          "name": "Zyra"
+        },
+        {
+          "championId": 45,
+          "name": "Veigar"
+        },
+        {
+          "championId": 201,
+          "name": "Braum"
+        }
+      ]
+    },
+    {
+      "id": 15,
+      "name": "Círculo da Morte",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/circleofdeath_small.png",
+      "rarity": "prismatic",
+      "description": "A Cura e a Regeneração de Vida concedidas por você causam uma parte do valor como Dano Mágico ao Campeão inimigo mais próximo.",
+      "tier": "B",
+      "champions": [
+        {
+          "championId": 63,
+          "name": "Brand"
+        },
+        {
+          "championId": 516,
+          "name": "Ornn"
+        },
+        {
+          "championId": 69,
+          "name": "Cassiopeia"
+        },
+        {
+          "championId": 711,
+          "name": "Vex"
+        },
+        {
+          "championId": 103,
+          "name": "Ahri"
+        }
+      ]
+    },
+    {
+      "id": 66,
+      "name": "Computação Quântica",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/quantumcomputing_small.png",
+      "rarity": "prismatic",
+      "description": "Periodicamente, conjura automaticamente um corte enorme ao redor de si, causando Dano Físico. Inimigos atingidos pela borda externa sofrem Lentidão e dano adicional, além de curar você.",
+      "tier": "S+",
+      "champions": [
+        {
+          "championId": 14,
+          "name": "Sion"
+        },
+        {
+          "championId": 143,
+          "name": "Zyra"
+        },
+        {
+          "championId": 45,
+          "name": "Veigar"
+        },
+        {
+          "championId": 201,
+          "name": "Braum"
+        },
+        {
+          "championId": 68,
+          "name": "Rumble"
+        }
+      ]
+    },
+    {
+      "id": 45,
+      "name": "Condutor Infernal",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/infernalconduit_small.png",
+      "rarity": "prismatic",
+      "description": "Suas Habilidades aplicam uma Queimadura que acumula infinitamente, causando Dano Mágico ao longo do tempo. Seus efeitos de Queimadura reduzem o Tempo de Recarga das suas habilidades básicas.",
+      "tier": "B",
+      "champions": [
+        {
+          "championId": 201,
+          "name": "Braum"
+        },
+        {
+          "championId": 68,
+          "name": "Rumble"
+        },
+        {
+          "championId": 526,
+          "name": "Rell"
+        },
+        {
+          "championId": 90,
+          "name": "Malzahar"
+        },
+        {
+          "championId": 876,
+          "name": "Lillia"
+        }
+      ]
+    },
+    {
+      "id": 18,
+      "name": "Coragem do Colosso",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/courageofthecolossus_small.png",
+      "rarity": "prismatic",
+      "description": null,
+      "tier": "S+",
+      "champions": [
+        {
+          "championId": 68,
+          "name": "Rumble"
+        },
+        {
+          "championId": 526,
+          "name": "Rell"
+        },
+        {
+          "championId": 90,
+          "name": "Malzahar"
+        },
+        {
+          "championId": 876,
+          "name": "Lillia"
+        },
+        {
+          "championId": 113,
+          "name": "Sejuani"
+        }
+      ]
+    },
+    {
+      "id": 30,
+      "name": "Eureca",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/eureka_small.png",
+      "rarity": "prismatic",
+      "description": "Recebe Aceleração de Habilidade equivalente a 45% do Poder de Habilidade.",
+      "tier": "S+",
+      "champions": [
+        {
+          "championId": 113,
+          "name": "Sejuani"
+        },
+        {
+          "championId": 11,
+          "name": "Mestre Yi"
+        },
+        {
+          "championId": 134,
+          "name": "Syndra"
+        },
+        {
+          "championId": 36,
+          "name": "Dr. Mundo"
+        },
+        {
+          "championId": 163,
+          "name": "Taliyah"
+        }
+      ]
+    },
+    {
+      "id": 310,
+      "name": "Faculdade de Palhaço",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/clowncollege_small.png",
+      "rarity": "prismatic",
+      "description": "Recebe o Feitiço de Invocador Enganar. Enganar: você se teleporta e fica Invisível. Seu próximo Ataque enquanto estiver Invisível causará Dano Físico adicional. Quando você morre, faz surgir uma caixinha explosiva que causa uma grande quantidade de Dano Mágico e Temor aos inimigos próximos.",
+      "tier": "C",
+      "champions": [
+        {
+          "championId": 113,
+          "name": "Sejuani"
+        },
+        {
+          "championId": 11,
+          "name": "Mestre Yi"
+        },
+        {
+          "championId": 134,
+          "name": "Syndra"
+        },
+        {
+          "championId": 36,
+          "name": "Dr. Mundo"
+        },
+        {
+          "championId": 163,
+          "name": "Taliyah"
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "name": "Feitiçaria Aceleradora",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/acceleratingsorcery_small.png",
+      "rarity": "prismatic",
+      "description": "Usar habilidades concede acúmulos de Aceleração de Habilidade. Redefine a cada rodada.",
+      "tier": "S",
+      "champions": [
+        {
+          "championId": 69,
+          "name": "Cassiopeia"
+        },
+        {
+          "championId": 711,
+          "name": "Vex"
+        },
+        {
+          "championId": 103,
+          "name": "Ahri"
+        },
+        {
+          "championId": 1,
+          "name": "Annie"
+        },
+        {
+          "championId": 127,
+          "name": "Lissandra"
+        }
+      ]
+    },
+    {
+      "id": 75,
+      "name": "Fogo Baixo",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/slowcooker_small.png",
+      "rarity": "prismatic",
+      "description": "A cada segundo, aplica uma Queimadura que acumula infinitamente a Campeões inimigos próximos, escalando com sua Vida Máxima.",
+      "tier": "B",
+      "champions": [
+        {
+          "championId": 63,
+          "name": "Brand"
+        },
+        {
+          "championId": 516,
+          "name": "Ornn"
+        },
+        {
+          "championId": 69,
+          "name": "Cassiopeia"
+        },
+        {
+          "championId": 711,
+          "name": "Vex"
+        },
+        {
+          "championId": 103,
+          "name": "Ahri"
+        }
+      ]
+    },
+    {
+      "id": 343,
+      "name": "Fúria Íntegra",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/righteous_fury_small.png",
+      "rarity": "prismatic",
+      "description": "Curar ou conceder Escudo aumenta seu Dano de Habilidade em 8%, acumulando infinitamente na rodada.",
+      "tier": "S",
+      "champions": [
+        {
+          "championId": 11,
+          "name": "Mestre Yi"
+        },
+        {
+          "championId": 134,
+          "name": "Syndra"
+        },
+        {
+          "championId": 36,
+          "name": "Dr. Mundo"
+        },
+        {
+          "championId": 163,
+          "name": "Taliyah"
+        },
+        {
+          "championId": 63,
+          "name": "Brand"
+        }
+      ]
+    },
+    {
+      "id": 345,
+      "name": "Garota Mágica",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/magic_girl_small.png",
+      "rarity": "prismatic",
+      "description": "A cada rodada, uma estrela cai. Pegá-la transforma você em uma poderosa Garota Mágica. Como uma Garota Mágica, estrelas caem perto de você e de seus inimigos, causando Dano Mágico.",
+      "tier": "B",
+      "champions": [
+        {
+          "championId": 201,
+          "name": "Braum"
+        },
+        {
+          "championId": 68,
+          "name": "Rumble"
+        },
+        {
+          "championId": 526,
+          "name": "Rell"
+        },
+        {
+          "championId": 90,
+          "name": "Malzahar"
+        },
+        {
+          "championId": 876,
+          "name": "Lillia"
+        }
+      ]
+    },
+    {
+      "id": 41,
+      "name": "Golias",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/goliath_small.png",
+      "rarity": "prismatic",
+      "description": "Aumenta de tamanho, recebendo 75% de Vida e 60% de Força Adaptativa.",
+      "tier": "D",
+      "champions": [
+        {
+          "championId": 69,
+          "name": "Cassiopeia"
+        },
+        {
+          "championId": 711,
+          "name": "Vex"
+        },
+        {
+          "championId": 103,
+          "name": "Ahri"
+        },
+        {
+          "championId": 1,
+          "name": "Annie"
+        },
+        {
+          "championId": 127,
+          "name": "Lissandra"
+        }
+      ]
+    },
+    {
+      "id": 125,
+      "name": "Investida Implacável",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/raidboss_small.png",
+      "rarity": "prismatic",
+      "description": "Você começa cada rodada em uma prisão. Na prisão, você tem muita redução de dano e acumula tamanho e poder ao longo do tempo. Ao escapar, Empurra para trás os inimigos e recebe um Escudo.",
+      "tier": "D",
+      "champions": [
+        {
+          "championId": 201,
+          "name": "Braum"
+        },
+        {
+          "championId": 68,
+          "name": "Rumble"
+        },
+        {
+          "championId": 526,
+          "name": "Rell"
+        },
+        {
+          "championId": 90,
+          "name": "Malzahar"
+        },
+        {
+          "championId": 876,
+          "name": "Lillia"
+        }
+      ]
+    },
+    {
+      "id": 208,
+      "name": "Laser Orbital",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/orbitallaser_small.png",
+      "rarity": "prismatic",
+      "description": null,
+      "tier": "C",
+      "champions": [
+        {
+          "championId": 516,
+          "name": "Ornn"
+        },
+        {
+          "championId": 69,
+          "name": "Cassiopeia"
+        },
+        {
+          "championId": 711,
+          "name": "Vex"
+        },
+        {
+          "championId": 103,
+          "name": "Ahri"
+        },
+        {
+          "championId": 1,
+          "name": "Annie"
+        }
+      ]
+    },
+    {
+      "id": 135,
+      "name": "Magia Desperta",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/spellwake_small.png",
+      "rarity": "prismatic",
+      "description": "Atingir inimigos com Habilidades cria uma explosão que causa Dano Mágico a partir de você até o local em que você os atingiu.",
+      "tier": "B",
+      "champions": [
+        {
+          "championId": 63,
+          "name": "Brand"
+        },
+        {
+          "championId": 516,
+          "name": "Ornn"
+        },
+        {
+          "championId": 69,
+          "name": "Cassiopeia"
+        },
+        {
+          "championId": 711,
+          "name": "Vex"
+        },
+        {
+          "championId": 103,
+          "name": "Ahri"
+        }
+      ]
+    },
+    {
+      "id": 194,
+      "name": "Magia Feérica",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/feymagic_small.png",
+      "rarity": "prismatic",
+      "description": "Causar dano com a ultimate Polimorfa os inimigos por alguns segundos.",
+      "tier": "A",
+      "champions": [
+        {
+          "championId": 711,
+          "name": "Vex"
+        },
+        {
+          "championId": 103,
+          "name": "Ahri"
+        },
+        {
+          "championId": 1,
+          "name": "Annie"
+        },
+        {
+          "championId": 127,
+          "name": "Lissandra"
+        },
+        {
+          "championId": 14,
+          "name": "Sion"
+        }
+      ]
+    },
+    {
+      "id": 48,
+      "name": "Manopla Adornada",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/jeweledgauntlet_small.png",
+      "rarity": "prismatic",
+      "description": null,
+      "tier": "S+",
+      "champions": [
+        {
+          "championId": 516,
+          "name": "Ornn"
+        },
+        {
+          "championId": 69,
+          "name": "Cassiopeia"
+        },
+        {
+          "championId": 711,
+          "name": "Vex"
+        },
+        {
+          "championId": 103,
+          "name": "Ahri"
+        },
+        {
+          "championId": 1,
+          "name": "Annie"
+        }
+      ]
+    },
+    {
+      "id": 220,
+      "name": "Mãos Velozes",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/fanthehammer_small.png",
+      "rarity": "prismatic",
+      "description": "Ao atacar, lança 5 projéteis. Cada um causa Dano Físico e aplica efeitos ao contato.",
+      "tier": "C",
+      "champions": [
+        {
+          "championId": 1,
+          "name": "Annie"
+        },
+        {
+          "championId": 127,
+          "name": "Lissandra"
+        },
+        {
+          "championId": 14,
+          "name": "Sion"
+        },
+        {
+          "championId": 143,
+          "name": "Zyra"
+        },
+        {
+          "championId": 45,
+          "name": "Veigar"
+        }
+      ]
+    },
+    {
+      "id": 195,
+      "name": "Mata-Gigantes",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/giantslayer_small.png",
+      "rarity": "prismatic",
+      "description": "Diminui o tamanho, recebe Velocidade de Movimento e dano adicional contra Campeões com base no quanto eles são maiores que você.",
+      "tier": "B",
+      "champions": [
+        {
+          "championId": 63,
+          "name": "Brand"
+        },
+        {
+          "championId": 516,
+          "name": "Ornn"
+        },
+        {
+          "championId": 69,
+          "name": "Cassiopeia"
+        },
+        {
+          "championId": 711,
+          "name": "Vex"
+        },
+        {
+          "championId": 103,
+          "name": "Ahri"
+        }
+      ]
+    },
+    {
+      "id": 177,
+      "name": "Matriosca",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/nesting_doll_small.png",
+      "rarity": "prismatic",
+      "description": "Recebe mais 4 Ressurreições e começa a ressuscitar após morrer. Ao Ressuscitar, você Empurra os inimigos ao seu redor e volta menor, com menos Vida máxima.",
+      "tier": "B",
+      "champions": [
+        {
+          "championId": 876,
+          "name": "Lillia"
+        },
+        {
+          "championId": 113,
+          "name": "Sejuani"
+        },
+        {
+          "championId": 11,
+          "name": "Mestre Yi"
+        },
+        {
+          "championId": 134,
+          "name": "Syndra"
+        },
+        {
+          "championId": 36,
+          "name": "Dr. Mundo"
+        }
+      ]
+    },
+    {
+      "id": 338,
+      "name": "Mente Coletiva",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/hive_mind_small.png",
+      "rarity": "prismatic",
+      "description": null,
+      "tier": "A",
+      "champions": [
+        {
+          "championId": 68,
+          "name": "Rumble"
+        },
+        {
+          "championId": 526,
+          "name": "Rell"
+        },
+        {
+          "championId": 90,
+          "name": "Malzahar"
+        },
+        {
+          "championId": 876,
+          "name": "Lillia"
+        },
+        {
+          "championId": 113,
+          "name": "Sejuani"
+        }
+      ]
+    },
+    {
+      "id": 54,
+      "name": "Mestre da Dualidade",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/masterofduality_small.png",
+      "rarity": "prismatic",
+      "description": "Seus ataques concedem Poder de Habilidade ao contato, e suas habilidades concedem Dano de Ataque até o fim da rodada.",
+      "tier": "S+",
+      "champions": [
+        {
+          "championId": 711,
+          "name": "Vex"
+        },
+        {
+          "championId": 103,
+          "name": "Ahri"
+        },
+        {
+          "championId": 1,
+          "name": "Annie"
+        },
+        {
+          "championId": 127,
+          "name": "Lissandra"
+        },
+        {
+          "championId": 14,
+          "name": "Sion"
+        }
+      ]
+    },
+    {
+      "id": 156,
+      "name": "Missão: Chapéu Mágico de Wooglet",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/quest_woogletswitchcap_small.png",
+      "rarity": "prismatic",
+      "description": "Imediato: recebe um Bastão Desnecessariamente Grande. Requisito: ter Capuz da Morte de Rabadon e Ampulheta de Zhonya. Recompensa: recebe Chapéu Mágico de Wooglet.",
+      "tier": "S+",
+      "champions": [
+        {
+          "championId": 134,
+          "name": "Syndra"
+        },
+        {
+          "championId": 36,
+          "name": "Dr. Mundo"
+        },
+        {
+          "championId": 163,
+          "name": "Taliyah"
+        },
+        {
+          "championId": 63,
+          "name": "Brand"
+        },
+        {
+          "championId": 516,
+          "name": "Ornn"
+        }
+      ]
+    },
+    {
+      "id": 333,
+      "name": "Missão: Rito do Deus da Forja",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/quest_rite_of_the_forge_god_small.png",
+      "rarity": "prismatic",
+      "description": "Requisito: comprar 2 Bigornas de Item. Recompensa: todos os seus itens se tornam Magistrais, o que aumenta os atributos deles em 40%.",
+      "tier": "B",
+      "champions": [
+        {
+          "championId": 127,
+          "name": "Lissandra"
+        },
+        {
+          "championId": 14,
+          "name": "Sion"
+        },
+        {
+          "championId": 143,
+          "name": "Zyra"
+        },
+        {
+          "championId": 45,
+          "name": "Veigar"
+        },
+        {
+          "championId": 201,
+          "name": "Braum"
+        }
+      ]
+    },
+    {
+      "id": 14,
+      "name": "Motorista",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/chauffeur_small.png",
+      "rarity": "prismatic",
+      "description": "Você está conectado ao seu aliado e não pode se mover sozinho. Sua Velocidade de Movimento adicional também é concedida para seu aliado e você recebe Aceleração de Habilidade e Velocidade de Ataque.",
+      "tier": "A",
+      "champions": [
+        {
+          "championId": 711,
+          "name": "Vex"
+        },
+        {
+          "championId": 103,
+          "name": "Ahri"
+        },
+        {
+          "championId": 1,
+          "name": "Annie"
+        },
+        {
+          "championId": 127,
+          "name": "Lissandra"
+        },
+        {
+          "championId": 14,
+          "name": "Sion"
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "name": "Não Encosta",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/canttouchthis_small.png",
+      "rarity": "prismatic",
+      "description": "Conjurar sua ultimate torna você Invulnerável por um breve período.",
+      "tier": "D",
+      "champions": [
+        {
+          "championId": 526,
+          "name": "Rell"
+        },
+        {
+          "championId": 90,
+          "name": "Malzahar"
+        },
+        {
+          "championId": 876,
+          "name": "Lillia"
+        },
+        {
+          "championId": 113,
+          "name": "Sejuani"
+        },
+        {
+          "championId": 11,
+          "name": "Mestre Yi"
+        }
+      ]
+    },
+    {
+      "id": 174,
+      "name": "Olhos de Laser",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/lasereyes_small.png",
+      "rarity": "prismatic",
+      "description": "Dispara um laser na direção em que está olhando, o qual causa Dano Mágico contínuo.",
+      "tier": "S+",
+      "champions": [
+        {
+          "championId": 711,
+          "name": "Vex"
+        },
+        {
+          "championId": 103,
+          "name": "Ahri"
+        },
+        {
+          "championId": 1,
+          "name": "Annie"
+        },
+        {
+          "championId": 127,
+          "name": "Lissandra"
+        },
+        {
+          "championId": 14,
+          "name": "Sion"
+        }
+      ]
+    },
+    {
+      "id": 62,
+      "name": "Omnialma",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/omnisoul_small.png",
+      "rarity": "prismatic",
+      "description": "Recebe 7 Almas de Dragões aleatórias.",
+      "tier": "A",
+      "champions": [
+        {
+          "championId": 163,
+          "name": "Taliyah"
+        },
+        {
+          "championId": 63,
+          "name": "Brand"
+        },
+        {
+          "championId": 516,
+          "name": "Ornn"
+        },
+        {
+          "championId": 69,
+          "name": "Cassiopeia"
+        },
+        {
+          "championId": 711,
+          "name": "Vex"
+        }
+      ]
+    },
+    {
+      "id": 224,
+      "name": "Ovo Prismático",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/quest_prismaticegg_small.png",
+      "rarity": "prismatic",
+      "description": "Recebe 1 acúmulo ao eliminar, uma vez por Campeão por rodada. Após 5 acúmulos, eclode e se torna uma Bigorna de Item Prismática, um Aprimoramento Prismático e uma Bigorna de Atributo Prismática.",
+      "tier": "A",
+      "champions": [
+        {
+          "championId": 90,
+          "name": "Malzahar"
+        },
+        {
+          "championId": 876,
+          "name": "Lillia"
+        },
+        {
+          "championId": 113,
+          "name": "Sejuani"
+        },
+        {
+          "championId": 11,
+          "name": "Mestre Yi"
+        },
+        {
+          "championId": 134,
+          "name": "Syndra"
+        }
+      ]
+    },
+    {
+      "id": 86,
+      "name": "Prodígio Incendiário",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/trueshotprodigy_small.png",
+      "rarity": "prismatic",
+      "description": "Ao causar dano a um inimigo distante, dispara uma Barragem Incendiária nele.",
+      "tier": "A",
+      "champions": [
+        {
+          "championId": 14,
+          "name": "Sion"
+        },
+        {
+          "championId": 143,
+          "name": "Zyra"
+        },
+        {
+          "championId": 45,
+          "name": "Veigar"
+        },
+        {
+          "championId": 201,
+          "name": "Braum"
+        },
+        {
+          "championId": 68,
+          "name": "Rumble"
+        }
+      ]
+    },
+    {
+      "id": 88,
+      "name": "Revolução das Ultimates",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/ultimaterevolution_small.png",
+      "rarity": "prismatic",
+      "description": "Uma vez por rodada, redefine sua ultimate depois de conjurá-la.",
+      "tier": "C",
+      "champions": [
+        {
+          "championId": 516,
+          "name": "Ornn"
+        },
+        {
+          "championId": 69,
+          "name": "Cassiopeia"
+        },
+        {
+          "championId": 711,
+          "name": "Vex"
+        },
+        {
+          "championId": 103,
+          "name": "Ahri"
+        },
+        {
+          "championId": 1,
+          "name": "Annie"
+        }
+      ]
+    },
+    {
+      "id": 233,
+      "name": "Roleta de Ultimates",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/ultimaterevolution_small.png",
+      "rarity": "prismatic",
+      "description": "Substitui Fuga por uma ultimate aleatória. Depois de conjurar a ultimate, ela é substituída por uma nova ultimate aleatória.",
+      "tier": "D",
+      "champions": [
+        {
+          "championId": 127,
+          "name": "Lissandra"
+        },
+        {
+          "championId": 14,
+          "name": "Sion"
+        },
+        {
+          "championId": 143,
+          "name": "Zyra"
+        },
+        {
+          "championId": 45,
+          "name": "Veigar"
+        },
+        {
+          "championId": 201,
+          "name": "Braum"
+        }
+      ]
+    },
+    {
+      "id": 123,
+      "name": "Roleta do Invocador",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/summonersroulette_small.png",
+      "rarity": "prismatic",
+      "description": "Substitui seus Feitiços de Invocador por feitiços aleatórios. Ao usar um Feitiço de Invocador, substitua-o por um feitiço aleatório com 4s de Tempo de Recarga.",
+      "tier": "B",
+      "champions": [
+        {
+          "championId": 11,
+          "name": "Mestre Yi"
+        },
+        {
+          "championId": 134,
+          "name": "Syndra"
+        },
+        {
+          "championId": 36,
+          "name": "Dr. Mundo"
+        },
+        {
+          "championId": 163,
+          "name": "Taliyah"
+        },
+        {
+          "championId": 63,
+          "name": "Brand"
+        }
+      ]
+    },
+    {
+      "id": 96,
+      "name": "Sabedoria das Eras",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/wisdomofages_small.png",
+      "rarity": "prismatic",
+      "description": "Recebe 1 nível agora e 1 nível adicional em rodadas alternadas. Seu limite de nível é removido. Se escolhido após a rodada 4, recebe 2 níveis a mais.",
+      "tier": "S+",
+      "champions": [
+        {
+          "championId": 134,
+          "name": "Syndra"
+        },
+        {
+          "championId": 36,
+          "name": "Dr. Mundo"
+        },
+        {
+          "championId": 163,
+          "name": "Taliyah"
+        },
+        {
+          "championId": 63,
+          "name": "Brand"
+        },
+        {
+          "championId": 516,
+          "name": "Ornn"
+        }
+      ]
+    },
+    {
+      "id": 304,
+      "name": "Sacrifício: por Prismáticos",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/gohsacrificefor_small.png",
+      "rarity": "prismatic",
+      "description": "Sacrifica 50% da sua Vida atual. Depois de 7 rodadas, recebe um Aprimoramento Prismático adicional e restaura Vida.",
+      "tier": "C",
+      "champions": [
+        {
+          "championId": 90,
+          "name": "Malzahar"
+        },
+        {
+          "championId": 876,
+          "name": "Lillia"
+        },
+        {
+          "championId": 113,
+          "name": "Sejuani"
+        },
+        {
+          "championId": 11,
+          "name": "Mestre Yi"
+        },
+        {
+          "championId": 134,
+          "name": "Syndra"
+        }
+      ]
+    },
+    {
+      "id": 346,
+      "name": "Sanduíche",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/bread_sandwhich_small.png",
+      "rarity": "prismatic",
+      "description": "Recebe 400 de Aceleração de Habilidade. Conjurar uma habilidade concede 40% por 2s.",
+      "tier": "C",
+      "champions": [
+        {
+          "championId": 14,
+          "name": "Sion"
+        },
+        {
+          "championId": 143,
+          "name": "Zyra"
+        },
+        {
+          "championId": 45,
+          "name": "Veigar"
+        },
+        {
+          "championId": 201,
+          "name": "Braum"
+        },
+        {
+          "championId": 68,
+          "name": "Rumble"
+        }
+      ]
+    },
+    {
+      "id": 81,
+      "name": "Sapateado",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/tapdancer_small.png",
+      "rarity": "prismatic",
+      "description": "Seus ataques concedem 18 de Velocidade de Movimento ao contato. Recebe Velocidade de Ataque equivalente a 10% da sua Velocidade de Movimento.",
+      "tier": "B",
+      "champions": [
+        {
+          "championId": 69,
+          "name": "Cassiopeia"
+        },
+        {
+          "championId": 711,
+          "name": "Vex"
+        },
+        {
+          "championId": 103,
+          "name": "Ahri"
+        },
+        {
+          "championId": 1,
+          "name": "Annie"
+        },
+        {
+          "championId": 127,
+          "name": "Lissandra"
+        }
+      ]
+    },
+    {
+      "id": 134,
+      "name": "Saque sua Espada",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/drawyoursword_small.png",
+      "rarity": "prismatic",
+      "description": "Agora você é atacante corpo a corpo. Recebe Dano de Ataque, Vida, Velocidade de Ataque, Roubo de Vida e Velocidade de Movimento com base no Alcance de Ataque perdido.",
+      "tier": "A",
+      "champions": [
+        {
+          "championId": 711,
+          "name": "Vex"
+        },
+        {
+          "championId": 103,
+          "name": "Ahri"
+        },
+        {
+          "championId": 1,
+          "name": "Annie"
+        },
+        {
+          "championId": 127,
+          "name": "Lissandra"
+        },
+        {
+          "championId": 14,
+          "name": "Sion"
+        }
+      ]
+    },
+    {
+      "id": 79,
+      "name": "Sinfonia da Guerra",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/symphonyofwar_small.png",
+      "rarity": "prismatic",
+      "description": "Recebe as Runas Essenciais Ritmo Fatal e Conquistador.",
+      "tier": "S",
+      "champions": [
+        {
+          "championId": 143,
+          "name": "Zyra"
+        },
+        {
+          "championId": 45,
+          "name": "Veigar"
+        },
+        {
+          "championId": 201,
+          "name": "Braum"
+        },
+        {
+          "championId": 68,
+          "name": "Rumble"
+        },
+        {
+          "championId": 526,
+          "name": "Rell"
+        }
+      ]
+    },
+    {
+      "id": 35,
+      "name": "Sinta Queimar",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/feeltheburn_small.png",
+      "rarity": "prismatic",
+      "description": "Recebe o Feitiço de Invocador Sinta Queimar. Sinta Queimar conjura Incendiar e Exaustão em todos os Campeões inimigos próximos.",
+      "tier": "D",
+      "champions": [
+        {
+          "championId": 63,
+          "name": "Brand"
+        },
+        {
+          "championId": 516,
+          "name": "Ornn"
+        },
+        {
+          "championId": 69,
+          "name": "Cassiopeia"
+        },
+        {
+          "championId": 711,
+          "name": "Vex"
+        },
+        {
+          "championId": 103,
+          "name": "Ahri"
+        }
+      ]
+    },
+    {
+      "id": 58,
+      "name": "Soco Místico",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/mysticpunch_small.png",
+      "rarity": "prismatic",
+      "description": "ao contato reduz o Tempo de Recarga das suas Habilidades em 1,25s .",
+      "tier": "C",
+      "champions": [
+        {
+          "championId": 68,
+          "name": "Rumble"
+        },
+        {
+          "championId": 526,
+          "name": "Rell"
+        },
+        {
+          "championId": 90,
+          "name": "Malzahar"
+        },
+        {
+          "championId": 876,
+          "name": "Lillia"
+        },
+        {
+          "championId": 113,
+          "name": "Sejuani"
+        }
+      ]
+    },
+    {
+      "id": 243,
+      "name": "Transmutar: Caos",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/transmutechaos_small.png",
+      "rarity": "prismatic",
+      "description": "Recebe 2 Aprimoramento(s) aleatório(s).",
+      "tier": "B",
+      "champions": [
+        {
+          "championId": 11,
+          "name": "Mestre Yi"
+        },
+        {
+          "championId": 134,
+          "name": "Syndra"
+        },
+        {
+          "championId": 36,
+          "name": "Dr. Mundo"
+        },
+        {
+          "championId": 163,
+          "name": "Taliyah"
+        },
+        {
+          "championId": 63,
+          "name": "Brand"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "name": "Valsa da Lâmina",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/bladewaltz_small.png",
+      "rarity": "prismatic",
+      "description": "Recebe o Feitiço de Invocador Valsa da Lâmina. Valsa da Lâmina faz com que você fique inalvejável enquanto avança e causa dano aos inimigos 12 vezes.",
+      "tier": "S+",
+      "champions": [
+        {
+          "championId": 14,
+          "name": "Sion"
+        },
+        {
+          "championId": 143,
+          "name": "Zyra"
+        },
+        {
+          "championId": 45,
+          "name": "Veigar"
+        },
+        {
+          "championId": 201,
+          "name": "Braum"
+        },
+        {
+          "championId": 68,
+          "name": "Rumble"
+        }
+      ]
+    },
+    {
+      "id": 19,
+      "name": "Veloz",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/dashing_small.png",
+      "rarity": "prismatic",
+      "description": "Suas habilidades de avanço, salto e teleporte recebem 825 de Aceleração de Habilidade.",
+      "tier": "S",
+      "champions": [
+        {
+          "championId": 143,
+          "name": "Zyra"
+        },
+        {
+          "championId": 45,
+          "name": "Veigar"
+        },
+        {
+          "championId": 201,
+          "name": "Braum"
+        },
+        {
+          "championId": 68,
+          "name": "Rumble"
+        },
+        {
+          "championId": 526,
+          "name": "Rell"
+        }
+      ]
+    },
+    {
+      "id": 78,
+      "name": "Vínculo Espiritual",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/spiritlink_small.png",
+      "rarity": "prismatic",
+      "description": null,
+      "tier": "S+",
+      "champions": [
+        {
+          "championId": 68,
+          "name": "Rumble"
+        },
+        {
+          "championId": 526,
+          "name": "Rell"
+        },
+        {
+          "championId": 90,
+          "name": "Malzahar"
+        },
+        {
+          "championId": 876,
+          "name": "Lillia"
+        },
+        {
+          "championId": 113,
+          "name": "Sejuani"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "name": "Voltando ao Básico",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/backtobasics_small.png",
+      "rarity": "prismatic",
+      "description": "Recebe Dano de Habilidade, cura, Escudo e Aceleração de Habilidade aumentados, mas você não pode usar sua ultimate.",
+      "tier": "C",
+      "champions": [
+        {
+          "championId": 90,
+          "name": "Malzahar"
+        },
+        {
+          "championId": 876,
+          "name": "Lillia"
+        },
+        {
+          "championId": 113,
+          "name": "Sejuani"
+        },
+        {
+          "championId": 11,
+          "name": "Mestre Yi"
+        },
+        {
+          "championId": 134,
+          "name": "Syndra"
+        }
+      ]
+    },
+    {
+      "id": 314,
+      "name": "Abjugado",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/unshackled_small.png",
+      "rarity": "gold",
+      "description": "Agora você pode Usurpar a ultimate de um aliado. Ao realizar uma eliminação, reduz o bloqueio e o Tempo de Recarga de Usurpar em 20%. Recebe 60 de Aceleração da Ultimate.",
+      "tier": "S",
+      "champions": [
+        {
+          "championId": 711,
+          "name": "Vex"
+        },
+        {
+          "championId": 103,
+          "name": "Ahri"
+        },
+        {
+          "championId": 1,
+          "name": "Annie"
+        },
+        {
+          "championId": 127,
+          "name": "Lissandra"
+        },
+        {
+          "championId": 14,
+          "name": "Sion"
+        }
+      ]
+    },
+    {
+      "id": 67,
+      "name": "Algazarra Animada",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/rabblerousing_small.png",
+      "rarity": "gold",
+      "description": null,
+      "tier": "S+",
+      "champions": [
+        {
+          "championId": 103,
+          "name": "Ahri"
+        },
+        {
+          "championId": 1,
+          "name": "Annie"
+        },
+        {
+          "championId": 127,
+          "name": "Lissandra"
+        },
+        {
+          "championId": 14,
+          "name": "Sion"
+        },
+        {
+          "championId": 143,
+          "name": "Zyra"
+        }
+      ]
+    },
+    {
+      "id": 72,
+      "name": "Alvorada Flamejante",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/searingdawn_small.png",
+      "rarity": "gold",
+      "description": "Suas habilidades marcam inimigos, fazendo-os sofrer Dano Mágico adicional do próximo ataque ou habilidade do seu aliado.",
+      "tier": "D",
+      "champions": [
+        {
+          "championId": 45,
+          "name": "Veigar"
+        },
+        {
+          "championId": 201,
+          "name": "Braum"
+        },
+        {
+          "championId": 68,
+          "name": "Rumble"
+        },
+        {
+          "championId": 526,
+          "name": "Rell"
+        },
+        {
+          "championId": 90,
+          "name": "Malzahar"
+        }
+      ]
+    },
+    {
+      "id": 29,
+      "name": "Arma Etérea",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/etherealweapon_small.png",
+      "rarity": "gold",
+      "description": "Suas habilidades aplicam efeitos ao contato.",
+      "tier": "C",
+      "champions": [
+        {
+          "championId": 36,
+          "name": "Dr. Mundo"
+        },
+        {
+          "championId": 163,
+          "name": "Taliyah"
+        },
+        {
+          "championId": 63,
+          "name": "Brand"
+        },
+        {
+          "championId": 516,
+          "name": "Ornn"
+        },
+        {
+          "championId": 69,
+          "name": "Cassiopeia"
+        }
+      ]
+    },
+    {
+      "id": 227,
+      "name": "Atributos em Dose Dupla!",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/statsonstats_small.png",
+      "rarity": "gold",
+      "description": "Recebe 8 Bigornas de Atributo!",
+      "tier": "C",
+      "champions": [
+        {
+          "championId": 103,
+          "name": "Ahri"
+        },
+        {
+          "championId": 1,
+          "name": "Annie"
+        },
+        {
+          "championId": 127,
+          "name": "Lissandra"
+        },
+        {
+          "championId": 14,
+          "name": "Sion"
+        },
+        {
+          "championId": 143,
+          "name": "Zyra"
+        }
+      ]
+    },
+    {
+      "id": 215,
+      "name": "Bênção Sombria",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/darkblessing_small.png",
+      "rarity": "gold",
+      "description": "Conceder curas ou Escudos a um aliado concede a você Poder Amaldiçoado permanente. Recebe Aceleração de Habilidade com base no seu Poder Amaldiçoado.",
+      "tier": "C",
+      "champions": [
+        {
+          "championId": 63,
+          "name": "Brand"
+        },
+        {
+          "championId": 516,
+          "name": "Ornn"
+        },
+        {
+          "championId": 69,
+          "name": "Cassiopeia"
+        },
+        {
+          "championId": 711,
+          "name": "Vex"
+        },
+        {
+          "championId": 103,
+          "name": "Ahri"
+        }
+      ]
+    },
+    {
+      "id": 33,
+      "name": "Braço Extensor",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/extendoarm_small.png",
+      "rarity": "gold",
+      "description": "Conjura automaticamente um puxão do Blitzcrank a cada 12s na direção de um Campeão inimigo próximo.",
+      "tier": "A",
+      "champions": [
+        {
+          "championId": 127,
+          "name": "Lissandra"
+        },
+        {
+          "championId": 14,
+          "name": "Sion"
+        },
+        {
+          "championId": 143,
+          "name": "Zyra"
+        },
+        {
+          "championId": 45,
+          "name": "Veigar"
+        },
+        {
+          "championId": 201,
+          "name": "Braum"
+        }
+      ]
+    },
+    {
+      "id": 63,
+      "name": "Bravura do Foragido",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/outlawsgrit_small.png",
+      "rarity": "gold",
+      "description": "Após usar uma habilidade de avanço ou teleporte, você recebe Armadura e Resistência Mágica.",
+      "tier": "A",
+      "champions": [
+        {
+          "championId": 11,
+          "name": "Mestre Yi"
+        },
+        {
+          "championId": 134,
+          "name": "Syndra"
+        },
+        {
+          "championId": 36,
+          "name": "Dr. Mundo"
+        },
+        {
+          "championId": 163,
+          "name": "Taliyah"
+        },
+        {
+          "championId": 63,
+          "name": "Brand"
+        }
+      ]
+    },
+    {
+      "id": 116,
+      "name": "Brilhante",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/flashy_small.png",
+      "rarity": "gold",
+      "description": "Seu Flash tem 7 carga(s) e 2s de Tempo de Recarga.",
+      "tier": "S",
+      "champions": [
+        {
+          "championId": 134,
+          "name": "Syndra"
+        },
+        {
+          "championId": 36,
+          "name": "Dr. Mundo"
+        },
+        {
+          "championId": 163,
+          "name": "Taliyah"
+        },
+        {
+          "championId": 63,
+          "name": "Brand"
+        },
+        {
+          "championId": 516,
+          "name": "Ornn"
+        }
+      ]
+    },
+    {
+      "id": 61,
+      "name": "Bumerangue OK",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/okboomerang_small.png",
+      "rarity": "gold",
+      "description": "Conjura automaticamente um bumerangue arremessado em um inimigo próximo a cada 7s.",
+      "tier": "S+",
+      "champions": [
+        {
+          "championId": 69,
+          "name": "Cassiopeia"
+        },
+        {
+          "championId": 711,
+          "name": "Vex"
+        },
+        {
+          "championId": 103,
+          "name": "Ahri"
+        },
+        {
+          "championId": 1,
+          "name": "Annie"
+        },
+        {
+          "championId": 127,
+          "name": "Lissandra"
+        }
+      ]
+    },
+    {
+      "id": 50,
+      "name": "Conjurador de Runas Essenciais",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/keystoneconjurer_small.png",
+      "rarity": "gold",
+      "description": "Recebe as Runas Essenciais Invocar Aery e Cometa Arcano.",
+      "tier": "S",
+      "champions": [
+        {
+          "championId": 113,
+          "name": "Sejuani"
+        },
+        {
+          "championId": 11,
+          "name": "Mestre Yi"
+        },
+        {
+          "championId": 134,
+          "name": "Syndra"
+        },
+        {
+          "championId": 36,
+          "name": "Dr. Mundo"
+        },
+        {
+          "championId": 163,
+          "name": "Taliyah"
+        }
+      ]
+    },
+    {
+      "id": 13,
+      "name": "Corpo Celestial",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/celestialbody_small.png",
+      "rarity": "gold",
+      "description": "Recebe 6000 de Vida, mas causa 0% a menos de dano.",
+      "tier": "S+",
+      "champions": [
+        {
+          "championId": 127,
+          "name": "Lissandra"
+        },
+        {
+          "championId": 14,
+          "name": "Sion"
+        },
+        {
+          "championId": 143,
+          "name": "Zyra"
+        },
+        {
+          "championId": 45,
+          "name": "Veigar"
+        },
+        {
+          "championId": 201,
+          "name": "Braum"
+        }
+      ]
+    },
+    {
+      "id": 98,
+      "name": "Correria",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/withhaste_small.png",
+      "rarity": "gold",
+      "description": "Recebe Velocidade de Movimento equivalente a 225% da sua Aceleração de Habilidade.",
+      "tier": "S",
+      "champions": [
+        {
+          "championId": 68,
+          "name": "Rumble"
+        },
+        {
+          "championId": 526,
+          "name": "Rell"
+        },
+        {
+          "championId": 90,
+          "name": "Malzahar"
+        },
+        {
+          "championId": 876,
+          "name": "Lillia"
+        },
+        {
+          "championId": 113,
+          "name": "Sejuani"
+        }
+      ]
+    },
+    {
+      "id": 47,
+      "name": "Crítico e Crucial",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/itscritical_small.png",
+      "rarity": "gold",
+      "description": "Recebe 100% de Chance de Crítico.",
+      "tier": "C",
+      "champions": [
+        {
+          "championId": 103,
+          "name": "Ahri"
+        },
+        {
+          "championId": 1,
+          "name": "Annie"
+        },
+        {
+          "championId": 127,
+          "name": "Lissandra"
+        },
+        {
+          "championId": 14,
+          "name": "Sion"
+        },
+        {
+          "championId": 143,
+          "name": "Zyra"
+        }
+      ]
+    },
+    {
+      "id": 118,
+      "name": "Cura Crítica",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/criticalhealing_small.png",
+      "rarity": "gold",
+      "description": null,
+      "tier": "B",
+      "champions": [
+        {
+          "championId": 68,
+          "name": "Rumble"
+        },
+        {
+          "championId": 526,
+          "name": "Rell"
+        },
+        {
+          "championId": 90,
+          "name": "Malzahar"
+        },
+        {
+          "championId": 876,
+          "name": "Lillia"
+        },
+        {
+          "championId": 113,
+          "name": "Sejuani"
+        }
+      ]
+    },
+    {
+      "id": 23,
+      "name": "Dança Demoníaca",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/demonsdance_small.png",
+      "rarity": "gold",
+      "description": "Recebe as Runas Essenciais Agilidade nos Pés e Aperto dos Mortos-Vivos.",
+      "tier": "C",
+      "champions": [
+        {
+          "championId": 11,
+          "name": "Mestre Yi"
+        },
+        {
+          "championId": 134,
+          "name": "Syndra"
+        },
+        {
+          "championId": 36,
+          "name": "Dr. Mundo"
+        },
+        {
+          "championId": 163,
+          "name": "Taliyah"
+        },
+        {
+          "championId": 63,
+          "name": "Brand"
+        }
+      ]
+    },
+    {
+      "id": 236,
+      "name": "Demônio Trapaceiro",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/tricksterdemon_small.png",
+      "rarity": "gold",
+      "description": null,
+      "tier": "S",
+      "champions": [
+        {
+          "championId": 134,
+          "name": "Syndra"
+        },
+        {
+          "championId": 36,
+          "name": "Dr. Mundo"
+        },
+        {
+          "championId": 163,
+          "name": "Taliyah"
+        },
+        {
+          "championId": 63,
+          "name": "Brand"
+        },
+        {
+          "championId": 516,
+          "name": "Ornn"
+        }
+      ]
+    },
+    {
+      "id": 89,
+      "name": "Desaparecer",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/vanish_small.png",
+      "rarity": "gold",
+      "description": "Recebe o Feitiço de Invocador Desaparecimento. Desaparecimento deixa você Invisível.",
+      "tier": "C",
+      "champions": [
+        {
+          "championId": 36,
+          "name": "Dr. Mundo"
+        },
+        {
+          "championId": 163,
+          "name": "Taliyah"
+        },
+        {
+          "championId": 63,
+          "name": "Brand"
+        },
+        {
+          "championId": 516,
+          "name": "Ornn"
+        },
+        {
+          "championId": 69,
+          "name": "Cassiopeia"
+        }
+      ]
+    },
+    {
+      "id": 20,
+      "name": "Determinação do Emissário da Luz",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/dawnbringersresolve_small.png",
+      "rarity": "gold",
+      "description": null,
+      "tier": "S",
+      "champions": [
+        {
+          "championId": 1,
+          "name": "Annie"
+        },
+        {
+          "championId": 127,
+          "name": "Lissandra"
+        },
+        {
+          "championId": 14,
+          "name": "Sion"
+        },
+        {
+          "championId": 143,
+          "name": "Zyra"
+        },
+        {
+          "championId": 45,
+          "name": "Veigar"
+        }
+      ]
+    },
+    {
+      "id": 250,
+      "name": "Devagar e Sempre",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/slowandsteady_small.png",
+      "rarity": "gold",
+      "description": "Sua Velocidade de Ataque não pode ultrapassar 0,65. Toda a Velocidade de Ataque adicional é convertida em Dano de Ataque.",
+      "tier": "B",
+      "champions": [
+        {
+          "championId": 113,
+          "name": "Sejuani"
+        },
+        {
+          "championId": 11,
+          "name": "Mestre Yi"
+        },
+        {
+          "championId": 134,
+          "name": "Syndra"
+        },
+        {
+          "championId": 36,
+          "name": "Dr. Mundo"
+        },
+        {
+          "championId": 163,
+          "name": "Taliyah"
+        }
+      ]
+    },
+    {
+      "id": 38,
+      "name": "Do Início ao Fim",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/frombeginningtoend_small.png",
+      "rarity": "gold",
+      "description": "Recebe as Runas Essenciais Primeiro Ataque e Colheita Sombria.",
+      "tier": "S",
+      "champions": [
+        {
+          "championId": 68,
+          "name": "Rumble"
+        },
+        {
+          "championId": 526,
+          "name": "Rell"
+        },
+        {
+          "championId": 90,
+          "name": "Malzahar"
+        },
+        {
+          "championId": 876,
+          "name": "Lillia"
+        },
+        {
+          "championId": 113,
+          "name": "Sejuani"
+        }
+      ]
+    },
+    {
+      "id": 309,
+      "name": "E Meu Machado!",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/andmyaxe_small.png",
+      "rarity": "gold",
+      "description": "Conjuração Automática: Arremessa periodicamente um machado no oponente mais próximo, causando Dano Físico e Lentidão, e fragmentando a Armadura e a Resistência Mágica dele. Apanhar o machado reduz o Tempo de Recarga dele.",
+      "tier": "A",
+      "champions": [
+        {
+          "championId": 36,
+          "name": "Dr. Mundo"
+        },
+        {
+          "championId": 163,
+          "name": "Taliyah"
+        },
+        {
+          "championId": 63,
+          "name": "Brand"
+        },
+        {
+          "championId": 516,
+          "name": "Ornn"
+        },
+        {
+          "championId": 69,
+          "name": "Cassiopeia"
+        }
+      ]
+    },
+    {
+      "id": 109,
+      "name": "Em Juramento",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/oathsworn_small.png",
+      "rarity": "gold",
+      "description": "Substitui Fuga por Chamado do Destino. Chamado do Destino deixa sua dupla inalvejável por até 4s. A dupla pode se arremessar, Empurrando os inimigos.",
+      "tier": "S+",
+      "champions": [
+        {
+          "championId": 36,
+          "name": "Dr. Mundo"
+        },
+        {
+          "championId": 163,
+          "name": "Taliyah"
+        },
+        {
+          "championId": 63,
+          "name": "Brand"
+        },
+        {
+          "championId": 516,
+          "name": "Ornn"
+        },
+        {
+          "championId": 69,
+          "name": "Cassiopeia"
+        }
+      ]
+    },
+    {
+      "id": 107,
+      "name": "Encrenca em Dobro",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/twicethrice_small.png",
+      "rarity": "gold",
+      "description": "A cada 2 ataques, aplica efeitos ao contato pela segunda vez.",
+      "tier": "C",
+      "champions": [
+        {
+          "championId": 103,
+          "name": "Ahri"
+        },
+        {
+          "championId": 1,
+          "name": "Annie"
+        },
+        {
+          "championId": 127,
+          "name": "Lissandra"
+        },
+        {
+          "championId": 14,
+          "name": "Sion"
+        },
+        {
+          "championId": 143,
+          "name": "Zyra"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "name": "Flâmula do Comando",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/bannerofcommand_small.png",
+      "rarity": "gold",
+      "description": "Recebe o Feitiço de Invocador Flâmula de Comando. Flâmula de Comando fortalece seu aliado por um breve período.",
+      "tier": "C",
+      "champions": [
+        {
+          "championId": 201,
+          "name": "Braum"
+        },
+        {
+          "championId": 68,
+          "name": "Rumble"
+        },
+        {
+          "championId": 526,
+          "name": "Rell"
+        },
+        {
+          "championId": 90,
+          "name": "Malzahar"
+        },
+        {
+          "championId": 876,
+          "name": "Lillia"
+        }
+      ]
+    },
+    {
+      "id": 198,
+      "name": "Fogo Sagrado",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/holyfire_small.png",
+      "rarity": "gold",
+      "description": "Conceder cura ou Escudo aplica uma Queimadura que acumula infinitamente em um inimigo próximo, causando uma porcentagem da Vida máxima como Dano Mágico ao longo de alguns segundos.",
+      "tier": "D",
+      "champions": [
+        {
+          "championId": 68,
+          "name": "Rumble"
+        },
+        {
+          "championId": 526,
+          "name": "Rell"
+        },
+        {
+          "championId": 90,
+          "name": "Malzahar"
+        },
+        {
+          "championId": 876,
+          "name": "Lillia"
+        },
+        {
+          "championId": 113,
+          "name": "Sejuani"
+        }
+      ]
+    },
+    {
+      "id": 113,
+      "name": "Fuzileiro de Elite",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/skilledsniper_small.png",
+      "rarity": "gold",
+      "description": "Atingir um inimigo com uma habilidade (exceto ultimate) a uma grande distância reduz muito o Tempo de Recarga dela.",
+      "tier": "C",
+      "champions": [
+        {
+          "championId": 127,
+          "name": "Lissandra"
+        },
+        {
+          "championId": 14,
+          "name": "Sion"
+        },
+        {
+          "championId": 143,
+          "name": "Zyra"
+        },
+        {
+          "championId": 45,
+          "name": "Veigar"
+        },
+        {
+          "championId": 201,
+          "name": "Braum"
+        }
+      ]
+    },
+    {
+      "id": 52,
+      "name": "Golpes Velozes",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/lightningstrikes_small.png",
+      "rarity": "gold",
+      "description": "Recebe 30% de Velocidade de Ataque total. Com 3,5 Ataques por segundo, causa Dano Mágico adicional ao contato.",
+      "tier": "B",
+      "champions": [
+        {
+          "championId": 45,
+          "name": "Veigar"
+        },
+        {
+          "championId": 201,
+          "name": "Braum"
+        },
+        {
+          "championId": 68,
+          "name": "Rumble"
+        },
+        {
+          "championId": 526,
+          "name": "Rell"
+        },
+        {
+          "championId": 90,
+          "name": "Malzahar"
+        }
+      ]
+    },
+    {
+      "id": 327,
+      "name": "Guarda Imortal",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/dawnbringersresolve_small.png",
+      "rarity": "gold",
+      "description": "Ao ressuscitar com Cultivação da Guerra, Zaahen causa dano a inimigos próximos com base na Vida atual deles e Arremessa todos os alvos para trás, tornando-se imune a dano causado por Campeões que estão fora do círculo criado, e ganha um breve reforço de Velocidade de Movimento.",
+      "tier": "A",
+      "champions": [
+        {
+          "championId": 103,
+          "name": "Ahri"
+        },
+        {
+          "championId": 1,
+          "name": "Annie"
+        },
+        {
+          "championId": 127,
+          "name": "Lissandra"
+        },
+        {
+          "championId": 14,
+          "name": "Sion"
+        },
+        {
+          "championId": 143,
+          "name": "Zyra"
+        }
+      ]
+    },
+    {
+      "id": 321,
+      "name": "Guarda-costas",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/bodyguard_small.png",
+      "rarity": "gold",
+      "description": "Usar um avanço ou teleporte concede um Escudo a você e a quaisquer Campeões aliados pelos quais você passar.",
+      "tier": "A",
+      "champions": [
+        {
+          "championId": 69,
+          "name": "Cassiopeia"
+        },
+        {
+          "championId": 711,
+          "name": "Vex"
+        },
+        {
+          "championId": 103,
+          "name": "Ahri"
+        },
+        {
+          "championId": 1,
+          "name": "Annie"
+        },
+        {
+          "championId": 127,
+          "name": "Lissandra"
+        }
+      ]
+    },
+    {
+      "id": 357,
+      "name": "Híbrido",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/hybrid_small.png",
+      "rarity": "gold",
+      "description": "Ao causar dano com um Ataque, sua próxima Habilidade causa 70% de dano adicional. Ao causar dano com uma Habilidade, seu próximo Ataque causa 70% de dano adicional.",
+      "tier": "A",
+      "champions": [
+        {
+          "championId": 876,
+          "name": "Lillia"
+        },
+        {
+          "championId": 113,
+          "name": "Sejuani"
+        },
+        {
+          "championId": 11,
+          "name": "Mestre Yi"
+        },
+        {
+          "championId": 134,
+          "name": "Syndra"
+        },
+        {
+          "championId": 36,
+          "name": "Dr. Mundo"
+        }
+      ]
+    },
+    {
+      "id": 24,
+      "name": "Hoje Não",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/dieanotherday_small.png",
+      "rarity": "gold",
+      "description": "Recebe o Feitiço de Invocador Hoje Não. Hoje Não cria uma área em que nenhuma unidade pode ser abatida por 4s.",
+      "tier": "D",
+      "champions": [
+        {
+          "championId": 90,
+          "name": "Malzahar"
+        },
+        {
+          "championId": 876,
+          "name": "Lillia"
+        },
+        {
+          "championId": 113,
+          "name": "Sejuani"
+        },
+        {
+          "championId": 11,
+          "name": "Mestre Yi"
+        },
+        {
+          "championId": 134,
+          "name": "Syndra"
+        }
+      ]
+    },
+    {
+      "id": 211,
+      "name": "Hora do Massacre",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/itskillingtime_small.png",
+      "rarity": "gold",
+      "description": "Depois de conjurar sua ultimate, marca todos os Campeões inimigos para a morte. Enquanto estão marcados, o dano causado a eles se acumula. Quando a marca expira, o dano acumulado detona.",
+      "tier": "S+",
+      "champions": [
+        {
+          "championId": 526,
+          "name": "Rell"
+        },
+        {
+          "championId": 90,
+          "name": "Malzahar"
+        },
+        {
+          "championId": 876,
+          "name": "Lillia"
+        },
+        {
+          "championId": 113,
+          "name": "Sejuani"
+        },
+        {
+          "championId": 11,
+          "name": "Mestre Yi"
+        }
+      ]
+    },
+    {
+      "id": 36,
+      "name": "Incendiário",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/firebrand_small.png",
+      "rarity": "gold",
+      "description": "Seus Ataques aplicam Queimaduras ao contato que acumulam infinitamente, causando dano ao longo do tempo.",
+      "tier": "D",
+      "champions": [
+        {
+          "championId": 134,
+          "name": "Syndra"
+        },
+        {
+          "championId": 36,
+          "name": "Dr. Mundo"
+        },
+        {
+          "championId": 163,
+          "name": "Taliyah"
+        },
+        {
+          "championId": 63,
+          "name": "Brand"
+        },
+        {
+          "championId": 516,
+          "name": "Ornn"
+        }
+      ]
+    },
+    {
+      "id": 149,
+      "name": "Insuperável",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/impassable_small.png",
+      "rarity": "gold",
+      "description": "Recebe as Runas Essenciais de Aprimoramento Glacial e Pós-choque.",
+      "tier": "C",
+      "champions": [
+        {
+          "championId": 36,
+          "name": "Dr. Mundo"
+        },
+        {
+          "championId": 163,
+          "name": "Taliyah"
+        },
+        {
+          "championId": 63,
+          "name": "Brand"
+        },
+        {
+          "championId": 516,
+          "name": "Ornn"
+        },
+        {
+          "championId": 69,
+          "name": "Cassiopeia"
+        }
+      ]
+    },
+    {
+      "id": 180,
+      "name": "Inteligência essencial",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/bigbrain_small.png",
+      "rarity": "gold",
+      "description": "No início de cada rodada, recebe 4 de Escudo para cada 1 de Poder de Habilidade.",
+      "tier": "D",
+      "champions": [
+        {
+          "championId": 1,
+          "name": "Annie"
+        },
+        {
+          "championId": 127,
+          "name": "Lissandra"
+        },
+        {
+          "championId": 14,
+          "name": "Sion"
+        },
+        {
+          "championId": 143,
+          "name": "Zyra"
+        },
+        {
+          "championId": 45,
+          "name": "Veigar"
+        }
+      ]
+    },
+    {
+      "id": 301,
+      "name": "Intervenção Divina",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/slowactingpainkillers_small.png",
+      "rarity": "gold",
+      "description": "Logo após o início do combate, invoca uma estrela protetora. Quando ela pousa, você e seus aliados próximos ficam Invulneráveis por alguns segundos. Depois, conjura automaticamente a cada -50s.",
+      "tier": "S+",
+      "champions": [
+        {
+          "championId": 69,
+          "name": "Cassiopeia"
+        },
+        {
+          "championId": 711,
+          "name": "Vex"
+        },
+        {
+          "championId": 103,
+          "name": "Ahri"
+        },
+        {
+          "championId": 1,
+          "name": "Annie"
+        },
+        {
+          "championId": 127,
+          "name": "Lissandra"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "name": "Inventor Apex",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/apexinventor_small.png",
+      "rarity": "gold",
+      "description": "Recebe 300 de Aceleração de Item (equivalente a 75% de Redução do Tempo de Recarga de Item). A Aceleração de Item reduz o Tempo de Recarga de todas as Habilidades de Itens.",
+      "tier": "S",
+      "champions": [
+        {
+          "championId": 163,
+          "name": "Taliyah"
+        },
+        {
+          "championId": 63,
+          "name": "Brand"
+        },
+        {
+          "championId": 516,
+          "name": "Ornn"
+        },
+        {
+          "championId": 69,
+          "name": "Cassiopeia"
+        },
+        {
+          "championId": 711,
+          "name": "Vex"
+        }
+      ]
+    },
+    {
+      "id": 200,
+      "name": "Irmão de Sangue",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/bloodbrother_small.png",
+      "rarity": "gold",
+      "description": null,
+      "tier": "S",
+      "champions": [
+        {
+          "championId": 1,
+          "name": "Annie"
+        },
+        {
+          "championId": 127,
+          "name": "Lissandra"
+        },
+        {
+          "championId": 14,
+          "name": "Sion"
+        },
+        {
+          "championId": 143,
+          "name": "Zyra"
+        },
+        {
+          "championId": 45,
+          "name": "Veigar"
+        }
+      ]
+    },
+    {
+      "id": 84,
+      "name": "Linha na Agulha",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/threadtheneedle_small.png",
+      "rarity": "gold",
+      "description": "Recebe 35% de Penetração de Armadura e Penetração Mágica.",
+      "tier": "D",
+      "champions": [
+        {
+          "championId": 90,
+          "name": "Malzahar"
+        },
+        {
+          "championId": 876,
+          "name": "Lillia"
+        },
+        {
+          "championId": 113,
+          "name": "Sejuani"
+        },
+        {
+          "championId": 11,
+          "name": "Mestre Yi"
+        },
+        {
+          "championId": 134,
+          "name": "Syndra"
+        }
+      ]
+    },
+    {
+      "id": 129,
+      "name": "Mago Atirador",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/marksmage_small.png",
+      "rarity": "gold",
+      "description": "Seus Ataques causam Dano Físico adicional equivalente a 125% do Poder de Habilidade.",
+      "tier": "A",
+      "champions": [
+        {
+          "championId": 36,
+          "name": "Dr. Mundo"
+        },
+        {
+          "championId": 163,
+          "name": "Taliyah"
+        },
+        {
+          "championId": 63,
+          "name": "Brand"
+        },
+        {
+          "championId": 516,
+          "name": "Ornn"
+        },
+        {
+          "championId": 69,
+          "name": "Cassiopeia"
+        }
+      ]
+    },
+    {
+      "id": 65,
+      "name": "Maligno e Fenomenal",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/phenomenalevil_small.png",
+      "rarity": "gold",
+      "description": "Recebe permanentemente 2 de Poder de Habilidade ao atingir um inimigo com uma habilidade. Se escolhido após a rodada 4, recebe 40 de Poder de Habilidade.",
+      "tier": "C",
+      "champions": [
+        {
+          "championId": 201,
+          "name": "Braum"
+        },
+        {
+          "championId": 68,
+          "name": "Rumble"
+        },
+        {
+          "championId": 526,
+          "name": "Rell"
+        },
+        {
+          "championId": 90,
+          "name": "Malzahar"
+        },
+        {
+          "championId": 876,
+          "name": "Lillia"
+        }
+      ]
+    },
+    {
+      "id": 103,
+      "name": "Mamão com Açúcar",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/breadandbutter_small.png",
+      "rarity": "gold",
+      "description": null,
+      "tier": "S+",
+      "champions": [
+        {
+          "championId": 11,
+          "name": "Mestre Yi"
+        },
+        {
+          "championId": 134,
+          "name": "Syndra"
+        },
+        {
+          "championId": 36,
+          "name": "Dr. Mundo"
+        },
+        {
+          "championId": 163,
+          "name": "Taliyah"
+        },
+        {
+          "championId": 63,
+          "name": "Brand"
+        }
+      ]
+    },
+    {
+      "id": 21,
+      "name": "Manobras Defensivas",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/defensivemaneuvers_small.png",
+      "rarity": "gold",
+      "description": "Recebe o Feitiço de Invocador Manobras Defensivas. Manobras Defensivas conjura Barreira e Cura na sua equipe.",
+      "tier": "A",
+      "champions": [
+        {
+          "championId": 69,
+          "name": "Cassiopeia"
+        },
+        {
+          "championId": 711,
+          "name": "Vex"
+        },
+        {
+          "championId": 103,
+          "name": "Ahri"
+        },
+        {
+          "championId": 1,
+          "name": "Annie"
+        },
+        {
+          "championId": 127,
+          "name": "Lissandra"
+        }
+      ]
+    },
+    {
+      "id": 104,
+      "name": "Mestre das Tropas",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/minionmancer_small.png",
+      "rarity": "gold",
+      "description": "Suas invocações recebem 55% a mais de tamanho, Vida e dano.",
+      "tier": "S",
+      "champions": [
+        {
+          "championId": 90,
+          "name": "Malzahar"
+        },
+        {
+          "championId": 876,
+          "name": "Lillia"
+        },
+        {
+          "championId": 113,
+          "name": "Sejuani"
+        },
+        {
+          "championId": 11,
+          "name": "Mestre Yi"
+        },
+        {
+          "championId": 134,
+          "name": "Syndra"
+        }
+      ]
+    },
+    {
+      "id": 16,
+      "name": "Mestre dos Combos",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/combomaster_small.png",
+      "rarity": "gold",
+      "description": "Recebe as Runas Essenciais Eletrocutar e Ímpeto Gradual.",
+      "tier": "B",
+      "champions": [
+        {
+          "championId": 134,
+          "name": "Syndra"
+        },
+        {
+          "championId": 36,
+          "name": "Dr. Mundo"
+        },
+        {
+          "championId": 163,
+          "name": "Taliyah"
+        },
+        {
+          "championId": 63,
+          "name": "Brand"
+        },
+        {
+          "championId": 516,
+          "name": "Ornn"
+        }
+      ]
+    },
+    {
+      "id": 336,
+      "name": "Mirar na Cabeça",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/aim_for_the_head_small.png",
+      "rarity": "gold",
+      "description": "O limite máximo da sua Chance de Acerto Crítico é de 50%. Converte 100% da Chance de Acerto Crítico acima de 50% em Dano de Acerto Crítico. Recebe 25% de Chance de Acerto Crítico e 25% de Dano de Acerto Crítico.",
+      "tier": "D",
+      "champions": [
+        {
+          "championId": 134,
+          "name": "Syndra"
+        },
+        {
+          "championId": 36,
+          "name": "Dr. Mundo"
+        },
+        {
+          "championId": 163,
+          "name": "Taliyah"
+        },
+        {
+          "championId": 63,
+          "name": "Brand"
+        },
+        {
+          "championId": 516,
+          "name": "Ornn"
+        }
+      ]
+    },
+    {
+      "id": 192,
+      "name": "Missão: Anjo da Vingança",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/quest_angelofretribution_small.png",
+      "rarity": "gold",
+      "description": "Requisito: cure ou impeça 2500 de dano a aliados. Recompensa: recebe 100% de Velocidade de Ataque, e seus Ataques causam Dano Mágico adicional igual a 350% da cura ou Resistência do Escudo.",
+      "tier": "D",
+      "champions": [
+        {
+          "championId": 45,
+          "name": "Veigar"
+        },
+        {
+          "championId": 201,
+          "name": "Braum"
+        },
+        {
+          "championId": 68,
+          "name": "Rumble"
+        },
+        {
+          "championId": 526,
+          "name": "Rell"
+        },
+        {
+          "championId": 90,
+          "name": "Malzahar"
+        }
+      ]
+    },
+    {
+      "id": 154,
+      "name": "Missão: Autoridade do URF",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/quest_urfschampion_small.png",
+      "rarity": "gold",
+      "description": "Requisito: consiga 10 eliminações. Recompensa: Espátula Dourada",
+      "tier": "B",
+      "champions": [
+        {
+          "championId": 711,
+          "name": "Vex"
+        },
+        {
+          "championId": 103,
+          "name": "Ahri"
+        },
+        {
+          "championId": 1,
+          "name": "Annie"
+        },
+        {
+          "championId": 127,
+          "name": "Lissandra"
+        },
+        {
+          "championId": 14,
+          "name": "Sion"
+        }
+      ]
+    },
+    {
+      "id": 318,
+      "name": "Missão: Chapeleiro Maluco",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/mad_hatter_small.png",
+      "rarity": "gold",
+      "description": "Requisito: use 10 chapéus ao fim do combate. Recompensa: recebe Força Adaptativa, Armadura, Resistência Mágica, Tenacidade e Velocidade de Movimento por chapéu.",
+      "tier": "D",
+      "champions": [
+        {
+          "championId": 68,
+          "name": "Rumble"
+        },
+        {
+          "championId": 526,
+          "name": "Rell"
+        },
+        {
+          "championId": 90,
+          "name": "Malzahar"
+        },
+        {
+          "championId": 876,
+          "name": "Lillia"
+        },
+        {
+          "championId": 113,
+          "name": "Sejuani"
+        }
+      ]
+    },
+    {
+      "id": 152,
+      "name": "Missão: Endureça seu Coração",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/quest_steelyourheart_small.png",
+      "rarity": "gold",
+      "description": "Requisito: ter um Coração de Aço com pelo menos 400 acúmulos. Recompensa: multiplica os acúmulos do seu Coração de Aço em 3. Aumenta sua Regeneração de Vida em 12,5% do seus acúmulos Heartsteel.",
+      "tier": "S",
+      "champions": [
+        {
+          "championId": 45,
+          "name": "Veigar"
+        },
+        {
+          "championId": 201,
+          "name": "Braum"
+        },
+        {
+          "championId": 68,
+          "name": "Rumble"
+        },
+        {
+          "championId": 526,
+          "name": "Rell"
+        },
+        {
+          "championId": 90,
+          "name": "Malzahar"
+        }
+      ]
+    },
+    {
+      "id": 319,
+      "name": "Missão: Três Tesouros Sagrados",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/threesacredtreasures_small.png",
+      "rarity": "gold",
+      "description": "Requisito: ter Gume do Infinito, Perplexidade e Pistola Laminar Hextec. Recompensa: os Ataques de Yunara são substituídos por lasers que causam Dano Misto.",
+      "tier": "S+",
+      "champions": [
+        {
+          "championId": 143,
+          "name": "Zyra"
+        },
+        {
+          "championId": 45,
+          "name": "Veigar"
+        },
+        {
+          "championId": 201,
+          "name": "Braum"
+        },
+        {
+          "championId": 68,
+          "name": "Rumble"
+        },
+        {
+          "championId": 526,
+          "name": "Rell"
+        }
+      ]
+    },
+    {
+      "id": 313,
+      "name": "Motor de tanque",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/tank_engine_small.png",
+      "rarity": "gold",
+      "description": "Recebe mais tamanho e porcentagem de Vida adicional por eliminação.",
+      "tier": "S+",
+      "champions": [
+        {
+          "championId": 127,
+          "name": "Lissandra"
+        },
+        {
+          "championId": 14,
+          "name": "Sion"
+        },
+        {
+          "championId": 143,
+          "name": "Zyra"
+        },
+        {
+          "championId": 45,
+          "name": "Veigar"
+        },
+        {
+          "championId": 201,
+          "name": "Braum"
+        }
+      ]
+    },
+    {
+      "id": 239,
+      "name": "Mutação Simbiótica",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/symbioticmutation_small.png",
+      "rarity": "gold",
+      "description": "A cada rodada, se transforma em um dos Aprimoramentos do seu aliado. Só se transforma em Aprimoramentos que podem ser trocados.",
+      "tier": "C",
+      "champions": [
+        {
+          "championId": 143,
+          "name": "Zyra"
+        },
+        {
+          "championId": 45,
+          "name": "Veigar"
+        },
+        {
+          "championId": 201,
+          "name": "Braum"
+        },
+        {
+          "championId": 68,
+          "name": "Rumble"
+        },
+        {
+          "championId": 526,
+          "name": "Rell"
+        }
+      ]
+    },
+    {
+      "id": 150,
+      "name": "Pão com Geleia",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/breadandjam_small.png",
+      "rarity": "gold",
+      "description": null,
+      "tier": "D",
+      "champions": [
+        {
+          "championId": 113,
+          "name": "Sejuani"
+        },
+        {
+          "championId": 11,
+          "name": "Mestre Yi"
+        },
+        {
+          "championId": 134,
+          "name": "Syndra"
+        },
+        {
+          "championId": 36,
+          "name": "Dr. Mundo"
+        },
+        {
+          "championId": 163,
+          "name": "Taliyah"
+        }
+      ]
+    },
+    {
+      "id": 151,
+      "name": "Pão com Queijo",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/breadandcheese_small.png",
+      "rarity": "gold",
+      "description": null,
+      "tier": "S+",
+      "champions": [
+        {
+          "championId": 526,
+          "name": "Rell"
+        },
+        {
+          "championId": 90,
+          "name": "Malzahar"
+        },
+        {
+          "championId": 876,
+          "name": "Lillia"
+        },
+        {
+          "championId": 113,
+          "name": "Sejuani"
+        },
+        {
+          "championId": 11,
+          "name": "Mestre Yi"
+        }
+      ]
+    },
+    {
+      "id": 64,
+      "name": "Perseverança",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/perseverance_small.png",
+      "rarity": "gold",
+      "description": "Recebe um alto valor de Regeneração de Vida, aumentando ainda mais enquanto estiver com Vida baixa.",
+      "tier": "B",
+      "champions": [
+        {
+          "championId": 90,
+          "name": "Malzahar"
+        },
+        {
+          "championId": 876,
+          "name": "Lillia"
+        },
+        {
+          "championId": 113,
+          "name": "Sejuani"
+        },
+        {
+          "championId": 11,
+          "name": "Mestre Yi"
+        },
+        {
+          "championId": 134,
+          "name": "Syndra"
+        }
+      ]
+    },
+    {
+      "id": 133,
+      "name": "Projétil Mágico",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/magicmissile_small.png",
+      "rarity": "gold",
+      "description": "Causar dano com uma habilidade dispara 6 projéteis mágicos, e cada um causa uma porcentagem da Vida máxima como Dano Verdadeiro.",
+      "tier": "S+",
+      "champions": [
+        {
+          "championId": 127,
+          "name": "Lissandra"
+        },
+        {
+          "championId": 14,
+          "name": "Sion"
+        },
+        {
+          "championId": 143,
+          "name": "Zyra"
+        },
+        {
+          "championId": 45,
+          "name": "Veigar"
+        },
+        {
+          "championId": 201,
+          "name": "Braum"
+        }
+      ]
+    },
+    {
+      "id": 231,
+      "name": "Proteção de Luz",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/lightwarden_small.png",
+      "rarity": "gold",
+      "description": "De poucos em poucos segundos, conjura automaticamente uma proteção de luz que concede um Escudo a si e aos aliados no caminho antes de voltar, repetindo o efeito.",
+      "tier": "A",
+      "champions": [
+        {
+          "championId": 526,
+          "name": "Rell"
+        },
+        {
+          "championId": 90,
+          "name": "Malzahar"
+        },
+        {
+          "championId": 876,
+          "name": "Lillia"
+        },
+        {
+          "championId": 113,
+          "name": "Sejuani"
+        },
+        {
+          "championId": 11,
+          "name": "Mestre Yi"
+        }
+      ]
+    },
+    {
+      "id": 74,
+      "name": "Raio Encolhedor",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/shrinkray_small.png",
+      "rarity": "gold",
+      "description": "Seus ataques reduzem o dano e o tamanho do alvo em 40% ao contato.",
+      "tier": "S",
+      "champions": [
+        {
+          "championId": 711,
+          "name": "Vex"
+        },
+        {
+          "championId": 103,
+          "name": "Ahri"
+        },
+        {
+          "championId": 1,
+          "name": "Annie"
+        },
+        {
+          "championId": 127,
+          "name": "Lissandra"
+        },
+        {
+          "championId": 14,
+          "name": "Sion"
+        }
+      ]
+    },
+    {
+      "id": 68,
+      "name": "Recursão",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/recursion_small.png",
+      "rarity": "gold",
+      "description": "Recebe 140 de Aceleração de Habilidade.",
+      "tier": "S",
+      "champions": [
+        {
+          "championId": 516,
+          "name": "Ornn"
+        },
+        {
+          "championId": 69,
+          "name": "Cassiopeia"
+        },
+        {
+          "championId": 711,
+          "name": "Vex"
+        },
+        {
+          "championId": 103,
+          "name": "Ahri"
+        },
+        {
+          "championId": 1,
+          "name": "Annie"
+        }
+      ]
+    },
+    {
+      "id": 165,
+      "name": "Reiniciar",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/restart_small.png",
+      "rarity": "gold",
+      "description": "Suas Habilidades são redefinidas automaticamente a cada 8s (exceto ultimate).",
+      "tier": "A",
+      "champions": [
+        {
+          "championId": 201,
+          "name": "Braum"
+        },
+        {
+          "championId": 68,
+          "name": "Rumble"
+        },
+        {
+          "championId": 526,
+          "name": "Rell"
+        },
+        {
+          "championId": 90,
+          "name": "Malzahar"
+        },
+        {
+          "championId": 876,
+          "name": "Lillia"
+        }
+      ]
+    },
+    {
+      "id": 175,
+      "name": "Relação Parasitária",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/parasiticrelationship_small.png",
+      "rarity": "gold",
+      "description": null,
+      "tier": "S+",
+      "champions": [
+        {
+          "championId": 63,
+          "name": "Brand"
+        },
+        {
+          "championId": 516,
+          "name": "Ornn"
+        },
+        {
+          "championId": 69,
+          "name": "Cassiopeia"
+        },
+        {
+          "championId": 711,
+          "name": "Vex"
+        },
+        {
+          "championId": 103,
+          "name": "Ahri"
+        }
+      ]
+    },
+    {
+      "id": 70,
+      "name": "Restauração Incessante",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/restlessrestoration_small.png",
+      "rarity": "gold",
+      "description": "Você se cura constantemente enquanto se move.",
+      "tier": "B",
+      "champions": [
+        {
+          "championId": 113,
+          "name": "Sejuani"
+        },
+        {
+          "championId": 11,
+          "name": "Mestre Yi"
+        },
+        {
+          "championId": 134,
+          "name": "Syndra"
+        },
+        {
+          "championId": 36,
+          "name": "Dr. Mundo"
+        },
+        {
+          "championId": 163,
+          "name": "Taliyah"
+        }
+      ]
+    },
+    {
+      "id": 223,
+      "name": "Revolução do Invocador",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/summonerrevolution_small.png",
+      "rarity": "gold",
+      "description": "Seus Feitiços de Invocador recebem 3 carga(s) adicional(is). O Flash é redefinido a cada rodada.",
+      "tier": "S+",
+      "champions": [
+        {
+          "championId": 11,
+          "name": "Mestre Yi"
+        },
+        {
+          "championId": 134,
+          "name": "Syndra"
+        },
+        {
+          "championId": 36,
+          "name": "Dr. Mundo"
+        },
+        {
+          "championId": 163,
+          "name": "Taliyah"
+        },
+        {
+          "championId": 63,
+          "name": "Brand"
+        }
+      ]
+    },
+    {
+      "id": 94,
+      "name": "Sacrifício Voluntário",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/willingsacrifice_small.png",
+      "rarity": "gold",
+      "description": "Quando um Campeão aliado fica com menos de 30% de Vida, troca parte da sua Vida por um Escudo para ele.",
+      "tier": "B",
+      "champions": [
+        {
+          "championId": 711,
+          "name": "Vex"
+        },
+        {
+          "championId": 103,
+          "name": "Ahri"
+        },
+        {
+          "championId": 1,
+          "name": "Annie"
+        },
+        {
+          "championId": 127,
+          "name": "Lissandra"
+        },
+        {
+          "championId": 14,
+          "name": "Sion"
+        }
+      ]
+    },
+    {
+      "id": 303,
+      "name": "Sacrifício: por Ouro",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/gohsacrificefor_small.png",
+      "rarity": "gold",
+      "description": "Sacrifica 25% da sua Vida atual. Depois de 4 rodadas, recebe um Aprimoramento Ouro adicional e restaura Vida.",
+      "tier": "A",
+      "champions": [
+        {
+          "championId": 11,
+          "name": "Mestre Yi"
+        },
+        {
+          "championId": 134,
+          "name": "Syndra"
+        },
+        {
+          "championId": 36,
+          "name": "Dr. Mundo"
+        },
+        {
+          "championId": 163,
+          "name": "Taliyah"
+        },
+        {
+          "championId": 63,
+          "name": "Brand"
+        }
+      ]
+    },
+    {
+      "id": 77,
+      "name": "Sifão da Alma",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/soulsiphon_small.png",
+      "rarity": "gold",
+      "description": "Cura 20% do dano causado por Acertos Críticos. Recebe 25% de Chance de Crítico.",
+      "tier": "C",
+      "champions": [
+        {
+          "championId": 876,
+          "name": "Lillia"
+        },
+        {
+          "championId": 113,
+          "name": "Sejuani"
+        },
+        {
+          "championId": 11,
+          "name": "Mestre Yi"
+        },
+        {
+          "championId": 134,
+          "name": "Syndra"
+        },
+        {
+          "championId": 36,
+          "name": "Dr. Mundo"
+        }
+      ]
+    },
+    {
+      "id": 217,
+      "name": "Toque Mortal",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/deathtouch_small.png",
+      "rarity": "gold",
+      "description": "Ao atacar Campeões inimigos, você recebe Poder Amaldiçoado permanente e causa Dano Mágico adicional com base no seu Poder Amaldiçoado.",
+      "tier": "S+",
+      "champions": [
+        {
+          "championId": 876,
+          "name": "Lillia"
+        },
+        {
+          "championId": 113,
+          "name": "Sejuani"
+        },
+        {
+          "championId": 11,
+          "name": "Mestre Yi"
+        },
+        {
+          "championId": 134,
+          "name": "Syndra"
+        },
+        {
+          "championId": 36,
+          "name": "Dr. Mundo"
+        }
+      ]
+    },
+    {
+      "id": 311,
+      "name": "Transbordamento",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/overflow_small.png",
+      "rarity": "gold",
+      "description": "Seus custos de Mana são dobrados. As curas, os Escudos e o dano da sua habilidade aumentam com base no seu Mana máximo.",
+      "tier": "C",
+      "champions": [
+        {
+          "championId": 526,
+          "name": "Rell"
+        },
+        {
+          "championId": 90,
+          "name": "Malzahar"
+        },
+        {
+          "championId": 876,
+          "name": "Lillia"
+        },
+        {
+          "championId": 113,
+          "name": "Sejuani"
+        },
+        {
+          "championId": 11,
+          "name": "Mestre Yi"
+        }
+      ]
+    },
+    {
+      "id": 238,
+      "name": "Transmutar: Prismático",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/transmuteprismatic_small.png",
+      "rarity": "gold",
+      "description": "Recebe um Aprimoramento Prismático aleatório.",
+      "tier": "B",
+      "champions": [
+        {
+          "championId": 68,
+          "name": "Rumble"
+        },
+        {
+          "championId": 526,
+          "name": "Rell"
+        },
+        {
+          "championId": 90,
+          "name": "Malzahar"
+        },
+        {
+          "championId": 876,
+          "name": "Lillia"
+        },
+        {
+          "championId": 113,
+          "name": "Sejuani"
+        }
+      ]
+    },
+    {
+      "id": 241,
+      "name": "Truque de Cartola",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/hattrick_small.png",
+      "rarity": "gold",
+      "description": "Recebe 3 chapéus instantaneamente e reduz o preço do Suco de Chapéu em 350. Quando sua Vida fica abaixo de 30%, recebe % de Velocidade de Movimento e um Escudo, mas perde um chapéu.",
+      "tier": "S+",
+      "champions": [
+        {
+          "championId": 69,
+          "name": "Cassiopeia"
+        },
+        {
+          "championId": 711,
+          "name": "Vex"
+        },
+        {
+          "championId": 103,
+          "name": "Ahri"
+        },
+        {
+          "championId": 1,
+          "name": "Annie"
+        },
+        {
+          "championId": 127,
+          "name": "Lissandra"
+        }
+      ]
+    },
+    {
+      "id": 141,
+      "name": "Tudo por Você",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/allforyou_small.png",
+      "rarity": "gold",
+      "description": "Suas curas e Escudos são mais fortes em aliados.",
+      "tier": "A",
+      "champions": [
+        {
+          "championId": 69,
+          "name": "Cassiopeia"
+        },
+        {
+          "championId": 711,
+          "name": "Vex"
+        },
+        {
+          "championId": 103,
+          "name": "Ahri"
+        },
+        {
+          "championId": 1,
+          "name": "Annie"
+        },
+        {
+          "championId": 127,
+          "name": "Lissandra"
+        }
+      ]
+    },
+    {
+      "id": 90,
+      "name": "Vingança",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/vengeance_small.png",
+      "rarity": "gold",
+      "description": null,
+      "tier": "D",
+      "champions": [
+        {
+          "championId": 113,
+          "name": "Sejuani"
+        },
+        {
+          "championId": 11,
+          "name": "Mestre Yi"
+        },
+        {
+          "championId": 134,
+          "name": "Syndra"
+        },
+        {
+          "championId": 36,
+          "name": "Dr. Mundo"
+        },
+        {
+          "championId": 163,
+          "name": "Taliyah"
+        }
+      ]
+    },
+    {
+      "id": 312,
+      "name": "Voltamos Já!",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/wellberightback_small.png",
+      "rarity": "gold",
+      "description": "Recebe o Feitiço de Invocador Tempo Paralisado. Tempo Paralisado: TODOS os Campeões próximos entram em Estase. O efeito de Estase é mais curto em você, mas cura você com base na Vida perdida.",
+      "tier": "D",
+      "champions": [
+        {
+          "championId": 45,
+          "name": "Veigar"
+        },
+        {
+          "championId": 201,
+          "name": "Braum"
+        },
+        {
+          "championId": 68,
+          "name": "Rumble"
+        },
+        {
+          "championId": 526,
+          "name": "Rell"
+        },
+        {
+          "championId": 90,
+          "name": "Malzahar"
+        }
+      ]
+    },
+    {
+      "id": 92,
+      "name": "Vulnerabilidade",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/vulnerability_small.png",
+      "rarity": "gold",
+      "description": "Seus efeitos de dano ao longo do tempo e de itens podem causar Acertos Críticos. Recebe 25% de Chance de Crítico.",
+      "tier": "S",
+      "champions": [
+        {
+          "championId": 45,
+          "name": "Veigar"
+        },
+        {
+          "championId": 201,
+          "name": "Braum"
+        },
+        {
+          "championId": 68,
+          "name": "Rumble"
+        },
+        {
+          "championId": 526,
+          "name": "Rell"
+        },
+        {
+          "championId": 90,
+          "name": "Malzahar"
+        }
+      ]
+    },
+    {
+      "id": 404,
+      "name": "404: Aprimoramento Não Encontrado",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/augment404_small.png",
+      "rarity": "silver",
+      "description": "Como você achou isso?!?! Recebe 3 Chapéus.",
+      "tier": "S+",
+      "champions": [
+        {
+          "championId": 90,
+          "name": "Malzahar"
+        },
+        {
+          "championId": 876,
+          "name": "Lillia"
+        },
+        {
+          "championId": 113,
+          "name": "Sejuani"
+        },
+        {
+          "championId": 11,
+          "name": "Mestre Yi"
+        },
+        {
+          "championId": 134,
+          "name": "Syndra"
+        }
+      ]
+    },
+    {
+      "id": 204,
+      "name": "Acumulossauro Rex",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/stackosaurusrex_small.png",
+      "rarity": "silver",
+      "description": "Ao receber Acúmulos permanentes em uma Habilidade, recebe mais 75%!",
+      "tier": "C",
+      "champions": [
+        {
+          "championId": 90,
+          "name": "Malzahar"
+        },
+        {
+          "championId": 876,
+          "name": "Lillia"
+        },
+        {
+          "championId": 113,
+          "name": "Sejuani"
+        },
+        {
+          "championId": 11,
+          "name": "Mestre Yi"
+        },
+        {
+          "championId": 134,
+          "name": "Syndra"
+        }
+      ]
+    },
+    {
+      "id": 205,
+      "name": "ADAPte-se",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/adapt_small.png",
+      "rarity": "silver",
+      "description": "Converte Dano de Ataque adicional em Poder de Habilidade. Recebe 15% de Poder de Habilidade.",
+      "tier": "D",
+      "champions": [
+        {
+          "championId": 201,
+          "name": "Braum"
+        },
+        {
+          "championId": 68,
+          "name": "Rumble"
+        },
+        {
+          "championId": 526,
+          "name": "Rell"
+        },
+        {
+          "championId": 90,
+          "name": "Malzahar"
+        },
+        {
+          "championId": 876,
+          "name": "Lillia"
+        }
+      ]
+    },
+    {
+      "id": 80,
+      "name": "Aguenta ou Vaza",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/tankitorleaveit_small.png",
+      "rarity": "silver",
+      "description": "Você pode realizar Defesas Críticas usando sua Chance de Crítico (máximo de 50%), podendo reduzir o dano sofrido. Recebe 25% de Chance de Crítico.",
+      "tier": "S+",
+      "champions": [
+        {
+          "championId": 1,
+          "name": "Annie"
+        },
+        {
+          "championId": 127,
+          "name": "Lissandra"
+        },
+        {
+          "championId": 14,
+          "name": "Sion"
+        },
+        {
+          "championId": 143,
+          "name": "Zyra"
+        },
+        {
+          "championId": 45,
+          "name": "Veigar"
+        }
+      ]
+    },
+    {
+      "id": 57,
+      "name": "Alma da Montanha",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/mountainsoul_small.png",
+      "rarity": "silver",
+      "description": "Você ganha a Alma da Montanha, recebendo um Escudo depois de ficar fora de combate por um curto período.",
+      "tier": "S",
+      "champions": [
+        {
+          "championId": 876,
+          "name": "Lillia"
+        },
+        {
+          "championId": 113,
+          "name": "Sejuani"
+        },
+        {
+          "championId": 11,
+          "name": "Mestre Yi"
+        },
+        {
+          "championId": 134,
+          "name": "Syndra"
+        },
+        {
+          "championId": 36,
+          "name": "Dr. Mundo"
+        }
+      ]
+    },
+    {
+      "id": 60,
+      "name": "Alma do Oceano",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/oceansoul_small.png",
+      "rarity": "silver",
+      "description": "Recebe Alma do Oceano, recebendo alta Regeneração de Vida e Mana depois de causar dano a inimigos.",
+      "tier": "C",
+      "champions": [
+        {
+          "championId": 1,
+          "name": "Annie"
+        },
+        {
+          "championId": 127,
+          "name": "Lissandra"
+        },
+        {
+          "championId": 14,
+          "name": "Sion"
+        },
+        {
+          "championId": 143,
+          "name": "Zyra"
+        },
+        {
+          "championId": 45,
+          "name": "Veigar"
+        }
+      ]
+    },
+    {
+      "id": 46,
+      "name": "Alma Infernal",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/infernalsoul_small.png",
+      "rarity": "silver",
+      "description": "Você recebe Alma de Dragão Infernal, causando dano adicional aos inimigos atingidos por Habilidades ou Ataques.",
+      "tier": "A",
+      "champions": [
+        {
+          "championId": 14,
+          "name": "Sion"
+        },
+        {
+          "championId": 143,
+          "name": "Zyra"
+        },
+        {
+          "championId": 45,
+          "name": "Veigar"
+        },
+        {
+          "championId": 201,
+          "name": "Braum"
+        },
+        {
+          "championId": 68,
+          "name": "Rumble"
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "name": "Amizade de Efeitos",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/buffbuddies_small.png",
+      "rarity": "silver",
+      "description": "Você recebe Insígnia de Brasa e Insígnia de Perspicácia. Concede a si Aceleração de Habilidade e regeneração de recursos, além de fazer com que seus ataques apliquem Queimadura e Lentidão a Campeões inimigos.",
+      "tier": "S",
+      "champions": [
+        {
+          "championId": 36,
+          "name": "Dr. Mundo"
+        },
+        {
+          "championId": 163,
+          "name": "Taliyah"
+        },
+        {
+          "championId": 63,
+          "name": "Brand"
+        },
+        {
+          "championId": 516,
+          "name": "Ornn"
+        },
+        {
+          "championId": 69,
+          "name": "Cassiopeia"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "name": "Aprimoramento Nulo",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/canttouchthis_small.png",
+      "rarity": "silver",
+      "description": "Nulo",
+      "tier": "S",
+      "champions": [
+        {
+          "championId": 11,
+          "name": "Mestre Yi"
+        },
+        {
+          "championId": 134,
+          "name": "Syndra"
+        },
+        {
+          "championId": 36,
+          "name": "Dr. Mundo"
+        },
+        {
+          "championId": 163,
+          "name": "Taliyah"
+        },
+        {
+          "championId": 63,
+          "name": "Brand"
+        }
+      ]
+    },
+    {
+      "id": 93,
+      "name": "Aquecimento",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/warmuproutine_small.png",
+      "rarity": "silver",
+      "description": "Recebe o Feitiço de Invocador Aquecimento. Canaliza seus melhores passos de dança para aumentar seu dano em 2% por segundo, até um máximo de 60%.",
+      "tier": "S",
+      "champions": [
+        {
+          "championId": 127,
+          "name": "Lissandra"
+        },
+        {
+          "championId": 14,
+          "name": "Sion"
+        },
+        {
+          "championId": 143,
+          "name": "Zyra"
+        },
+        {
+          "championId": 45,
+          "name": "Veigar"
+        },
+        {
+          "championId": 201,
+          "name": "Braum"
+        }
+      ]
+    },
+    {
+      "id": 85,
+      "name": "Atormentador",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/tormentor_small.png",
+      "rarity": "silver",
+      "description": "Imobilizar ou Prender ao chão Campeões inimigos aplica uma Queimadura que causa dano ao longo do tempo, acumulando infinitamente.",
+      "tier": "D",
+      "champions": [
+        {
+          "championId": 201,
+          "name": "Braum"
+        },
+        {
+          "championId": 68,
+          "name": "Rumble"
+        },
+        {
+          "championId": 526,
+          "name": "Rell"
+        },
+        {
+          "championId": 90,
+          "name": "Malzahar"
+        },
+        {
+          "championId": 876,
+          "name": "Lillia"
+        }
+      ]
+    },
+    {
+      "id": 226,
+      "name": "Atributos!",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/stats_small.png",
+      "rarity": "silver",
+      "description": "Recebe 7 Bigornas de Atributo!",
+      "tier": "A",
+      "champions": [
+        {
+          "championId": 14,
+          "name": "Sion"
+        },
+        {
+          "championId": 143,
+          "name": "Zyra"
+        },
+        {
+          "championId": 45,
+          "name": "Veigar"
+        },
+        {
+          "championId": 201,
+          "name": "Braum"
+        },
+        {
+          "championId": 68,
+          "name": "Rumble"
+        }
+      ]
+    },
+    {
+      "id": 108,
+      "name": "Autodestruição",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/selfdestruct_small.png",
+      "rarity": "silver",
+      "description": "A cada Conjuração Automática de 13s, prende a si uma bomba que explode e causa Dano Verdadeiro massivo, além de Arremessar ao ar os inimigos próximos.",
+      "tier": "C",
+      "champions": [
+        {
+          "championId": 516,
+          "name": "Ornn"
+        },
+        {
+          "championId": 69,
+          "name": "Cassiopeia"
+        },
+        {
+          "championId": 711,
+          "name": "Vex"
+        },
+        {
+          "championId": 103,
+          "name": "Ahri"
+        },
+        {
+          "championId": 1,
+          "name": "Annie"
+        }
+      ]
+    },
+    {
+      "id": 25,
+      "name": "Bombardeiro",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/divebomber_small.png",
+      "rarity": "silver",
+      "description": "A cada rodada, a primeira morte da sua equipe gera uma explosão, causando muito Dano Verdadeiro.",
+      "tier": "D",
+      "champions": [
+        {
+          "championId": 201,
+          "name": "Braum"
+        },
+        {
+          "championId": 68,
+          "name": "Rumble"
+        },
+        {
+          "championId": 526,
+          "name": "Rell"
+        },
+        {
+          "championId": 90,
+          "name": "Malzahar"
+        },
+        {
+          "championId": 876,
+          "name": "Lillia"
+        }
+      ]
+    },
+    {
+      "id": 324,
+      "name": "Bravura Absurda",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/bravestofthebrave_small.png",
+      "rarity": "silver",
+      "description": "Aumenta o tier de futuros Aprimoramentos oferecidos em 2. Se os Aprimoramentos já forem Prismáticos, recebe 1500 de ouro adicional.",
+      "tier": "C",
+      "champions": [
+        {
+          "championId": 90,
+          "name": "Malzahar"
+        },
+        {
+          "championId": 876,
+          "name": "Lillia"
+        },
+        {
+          "championId": 113,
+          "name": "Sejuani"
+        },
+        {
+          "championId": 11,
+          "name": "Mestre Yi"
+        },
+        {
+          "championId": 134,
+          "name": "Syndra"
+        }
+      ]
+    },
+    {
+      "id": 82,
+      "name": "Brutalizador",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/thebrutalizer_small.png",
+      "rarity": "silver",
+      "description": "Recebe 80 de Dano de Ataque, 50 de Aceleração de Habilidade e 50 de Letalidade.",
+      "tier": "A",
+      "champions": [
+        {
+          "championId": 163,
+          "name": "Taliyah"
+        },
+        {
+          "championId": 63,
+          "name": "Brand"
+        },
+        {
+          "championId": 516,
+          "name": "Ornn"
+        },
+        {
+          "championId": 69,
+          "name": "Cassiopeia"
+        },
+        {
+          "championId": 711,
+          "name": "Vex"
+        }
+      ]
+    },
+    {
+      "id": 32,
+      "name": "Carrasco",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/executioner_small.png",
+      "rarity": "silver",
+      "description": "Causa 20% a mais de dano a inimigos com menos de 50% de Vida. Redefine suas habilidades básicas ao realizar eliminações.",
+      "tier": "S+",
+      "champions": [
+        {
+          "championId": 45,
+          "name": "Veigar"
+        },
+        {
+          "championId": 201,
+          "name": "Braum"
+        },
+        {
+          "championId": 68,
+          "name": "Rumble"
+        },
+        {
+          "championId": 526,
+          "name": "Rell"
+        },
+        {
+          "championId": 90,
+          "name": "Malzahar"
+        }
+      ]
+    },
+    {
+      "id": 12,
+      "name": "Castelo",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/castle_small.png",
+      "rarity": "silver",
+      "description": "Recebe o Feitiço de Invocador Castelo. Castelo: troca de lugar com o aliado e recebe Velocidade de Movimento e Escudo.",
+      "tier": "C",
+      "champions": [
+        {
+          "championId": 45,
+          "name": "Veigar"
+        },
+        {
+          "championId": 201,
+          "name": "Braum"
+        },
+        {
+          "championId": 68,
+          "name": "Rumble"
+        },
+        {
+          "championId": 526,
+          "name": "Rell"
+        },
+        {
+          "championId": 90,
+          "name": "Malzahar"
+        }
+      ]
+    },
+    {
+      "id": 73,
+      "name": "Corrida das Sombras",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/shadowrunner_small.png",
+      "rarity": "silver",
+      "description": null,
+      "tier": "D",
+      "champions": [
+        {
+          "championId": 127,
+          "name": "Lissandra"
+        },
+        {
+          "championId": 14,
+          "name": "Sion"
+        },
+        {
+          "championId": 143,
+          "name": "Zyra"
+        },
+        {
+          "championId": 45,
+          "name": "Veigar"
+        },
+        {
+          "championId": 201,
+          "name": "Braum"
+        }
+      ]
+    },
+    {
+      "id": 221,
+      "name": "Desbravador",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/trailblazer_small.png",
+      "rarity": "silver",
+      "description": "Usar um avanço ou teleporte aplica uma Queimadura a um inimigo próximo que causa dano ao longo do tempo, acumulando infinitamente.",
+      "tier": "B",
+      "champions": [
+        {
+          "championId": 69,
+          "name": "Cassiopeia"
+        },
+        {
+          "championId": 711,
+          "name": "Vex"
+        },
+        {
+          "championId": 103,
+          "name": "Ahri"
+        },
+        {
+          "championId": 1,
+          "name": "Annie"
+        },
+        {
+          "championId": 127,
+          "name": "Lissandra"
+        }
+      ]
+    },
+    {
+      "id": 330,
+      "name": "Despojo",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/desecrator_small.png",
+      "rarity": "silver",
+      "description": "Avançar ou teleportar concede a você Poder Amaldiçoado se houver um inimigo por perto. Recebe Velocidade de Movimento que escala com seu Poder Amaldiçoado.",
+      "tier": "C",
+      "champions": [
+        {
+          "championId": 113,
+          "name": "Sejuani"
+        },
+        {
+          "championId": 11,
+          "name": "Mestre Yi"
+        },
+        {
+          "championId": 134,
+          "name": "Syndra"
+        },
+        {
+          "championId": 36,
+          "name": "Dr. Mundo"
+        },
+        {
+          "championId": 163,
+          "name": "Taliyah"
+        }
+      ]
+    },
+    {
+      "id": 305,
+      "name": "Dia de Perna",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/legday_small.png",
+      "rarity": "silver",
+      "description": "Recebe 190 de Velocidade de Movimento e 135% de Resistência a Lentidão.",
+      "tier": "B",
+      "champions": [
+        {
+          "championId": 201,
+          "name": "Braum"
+        },
+        {
+          "championId": 68,
+          "name": "Rumble"
+        },
+        {
+          "championId": 526,
+          "name": "Rell"
+        },
+        {
+          "championId": 90,
+          "name": "Malzahar"
+        },
+        {
+          "championId": 876,
+          "name": "Lillia"
+        }
+      ]
+    },
+    {
+      "id": 34,
+      "name": "Égide Caída",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/fallenaegis_small.png",
+      "rarity": "silver",
+      "description": "Começa o combate com um Escudo Negro por 15s. O Escudo Negro bloqueia Dano Mágico e efeitos Imobilizadores.",
+      "tier": "A",
+      "champions": [
+        {
+          "championId": 711,
+          "name": "Vex"
+        },
+        {
+          "championId": 103,
+          "name": "Ahri"
+        },
+        {
+          "championId": 1,
+          "name": "Annie"
+        },
+        {
+          "championId": 127,
+          "name": "Lissandra"
+        },
+        {
+          "championId": 14,
+          "name": "Sion"
+        }
+      ]
+    },
+    {
+      "id": 344,
+      "name": "Enérgico",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/energetic_small.png",
+      "rarity": "silver",
+      "description": "Recebe Energizado 300% mais rápido. Ativar Energizado dispara um Projétil Mágico, causando até 0,3% da Vida máxima como Dano Verdadeiro com base na distância percorrida.",
+      "tier": "S+",
+      "champions": [
+        {
+          "championId": 90,
+          "name": "Malzahar"
+        },
+        {
+          "championId": 876,
+          "name": "Lillia"
+        },
+        {
+          "championId": 113,
+          "name": "Sejuani"
+        },
+        {
+          "championId": 11,
+          "name": "Mestre Yi"
+        },
+        {
+          "championId": 134,
+          "name": "Syndra"
+        }
+      ]
+    },
+    {
+      "id": 28,
+      "name": "Erosão",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/erosion_small.png",
+      "rarity": "silver",
+      "description": "Causar dano a inimigos causa fragmentação cumulativa de Armadura e Resistência Mágica por 4s.",
+      "tier": "A",
+      "champions": [
+        {
+          "championId": 516,
+          "name": "Ornn"
+        },
+        {
+          "championId": 69,
+          "name": "Cassiopeia"
+        },
+        {
+          "championId": 711,
+          "name": "Vex"
+        },
+        {
+          "championId": 103,
+          "name": "Ahri"
+        },
+        {
+          "championId": 1,
+          "name": "Annie"
+        }
+      ]
+    },
+    {
+      "id": 206,
+      "name": "EscapaDdA",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/escapade_small.png",
+      "rarity": "silver",
+      "description": "Converte Poder de Habilidade em Dano de Ataque adicional. Recebe 20% de Dano de Ataque.",
+      "tier": "S+",
+      "champions": [
+        {
+          "championId": 14,
+          "name": "Sion"
+        },
+        {
+          "championId": 143,
+          "name": "Zyra"
+        },
+        {
+          "championId": 45,
+          "name": "Veigar"
+        },
+        {
+          "championId": 201,
+          "name": "Braum"
+        },
+        {
+          "championId": 68,
+          "name": "Rumble"
+        }
+      ]
+    },
+    {
+      "id": 22,
+      "name": "Especialista",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/deft_small.png",
+      "rarity": "silver",
+      "description": "Recebe 150% de Velocidade de Ataque.",
+      "tier": "A",
+      "champions": [
+        {
+          "championId": 163,
+          "name": "Taliyah"
+        },
+        {
+          "championId": 63,
+          "name": "Brand"
+        },
+        {
+          "championId": 516,
+          "name": "Ornn"
+        },
+        {
+          "championId": 69,
+          "name": "Cassiopeia"
+        },
+        {
+          "championId": 711,
+          "name": "Vex"
+        }
+      ]
+    },
+    {
+      "id": 39,
+      "name": "Espectro do Gelo",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/frostwraith_small.png",
+      "rarity": "silver",
+      "description": "Automaticamente Enraíza inimigos próximos por 1,25s a cada 6,5s.",
+      "tier": "S",
+      "champions": [
+        {
+          "championId": 143,
+          "name": "Zyra"
+        },
+        {
+          "championId": 45,
+          "name": "Veigar"
+        },
+        {
+          "championId": 201,
+          "name": "Braum"
+        },
+        {
+          "championId": 68,
+          "name": "Rumble"
+        },
+        {
+          "championId": 526,
+          "name": "Rell"
+        }
+      ]
+    },
+    {
+      "id": 76,
+      "name": "Explosão Sônica",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/sonicboom_small.png",
+      "rarity": "silver",
+      "description": "Fortalecer, curar ou conceder Escudo para um aliado causa dano e Lentidão aos inimigos ao redor dele.",
+      "tier": "A",
+      "champions": [
+        {
+          "championId": 134,
+          "name": "Syndra"
+        },
+        {
+          "championId": 36,
+          "name": "Dr. Mundo"
+        },
+        {
+          "championId": 163,
+          "name": "Taliyah"
+        },
+        {
+          "championId": 63,
+          "name": "Brand"
+        },
+        {
+          "championId": 516,
+          "name": "Ornn"
+        }
+      ]
+    },
+    {
+      "id": 308,
+      "name": "Fogo de Raposa",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/firfox_small.png",
+      "rarity": "silver",
+      "description": "Conjuração Automática Recebe Velocidade de Movimento e conjura três chamas que orbitam ao seu redor, escolhendo como alvo o inimigo visível mais próximo dentro do alcance e causando Dano Mágico.",
+      "tier": "S+",
+      "champions": [
+        {
+          "championId": 516,
+          "name": "Ornn"
+        },
+        {
+          "championId": 69,
+          "name": "Cassiopeia"
+        },
+        {
+          "championId": 711,
+          "name": "Vex"
+        },
+        {
+          "championId": 103,
+          "name": "Ahri"
+        },
+        {
+          "championId": 1,
+          "name": "Annie"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "name": "Força Bruta",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/bluntforce_small.png",
+      "rarity": "silver",
+      "description": "Recebe 25% de Dano de Ataque.",
+      "tier": "D",
+      "champions": [
+        {
+          "championId": 103,
+          "name": "Ahri"
+        },
+        {
+          "championId": 1,
+          "name": "Annie"
+        },
+        {
+          "championId": 127,
+          "name": "Lissandra"
+        },
+        {
+          "championId": 14,
+          "name": "Sion"
+        },
+        {
+          "championId": 143,
+          "name": "Zyra"
+        }
+      ]
+    },
+    {
+      "id": 222,
+      "name": "Frutos do Trabalho",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/fruitarian_small.png",
+      "rarity": "silver",
+      "description": "Flores do Poder são 40% mais eficazes em você e são compartilhadas com seu aliado.",
+      "tier": "C",
+      "champions": [
+        {
+          "championId": 163,
+          "name": "Taliyah"
+        },
+        {
+          "championId": 63,
+          "name": "Brand"
+        },
+        {
+          "championId": 516,
+          "name": "Ornn"
+        },
+        {
+          "championId": 69,
+          "name": "Cassiopeia"
+        },
+        {
+          "championId": 711,
+          "name": "Vex"
+        }
+      ]
+    },
+    {
+      "id": 44,
+      "name": "Geladinho",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/icecold_small.png",
+      "rarity": "silver",
+      "description": "Seus efeitos de Lentidão reduzem a Velocidade de Movimento em mais 450.",
+      "tier": "S+",
+      "champions": [
+        {
+          "championId": 90,
+          "name": "Malzahar"
+        },
+        {
+          "championId": 876,
+          "name": "Lillia"
+        },
+        {
+          "championId": 113,
+          "name": "Sejuani"
+        },
+        {
+          "championId": 11,
+          "name": "Mestre Yi"
+        },
+        {
+          "championId": 134,
+          "name": "Syndra"
+        }
+      ]
+    },
+    {
+      "id": 214,
+      "name": "Giro da Vitória",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/spintowin_small.png",
+      "rarity": "silver",
+      "description": "Suas Habilidades de giro recebem 75 de Aceleração de Habilidade e causam 75% a mais de dano!",
+      "tier": "A",
+      "champions": [
+        {
+          "championId": 711,
+          "name": "Vex"
+        },
+        {
+          "championId": 103,
+          "name": "Ahri"
+        },
+        {
+          "championId": 1,
+          "name": "Annie"
+        },
+        {
+          "championId": 127,
+          "name": "Lissandra"
+        },
+        {
+          "championId": 14,
+          "name": "Sion"
+        }
+      ]
+    },
+    {
+      "id": 105,
+      "name": "Guarda Territorial",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/homeguard_small.png",
+      "rarity": "silver",
+      "description": null,
+      "tier": "S",
+      "champions": [
+        {
+          "championId": 201,
+          "name": "Braum"
+        },
+        {
+          "championId": 68,
+          "name": "Rumble"
+        },
+        {
+          "championId": 526,
+          "name": "Rell"
+        },
+        {
+          "championId": 90,
+          "name": "Malzahar"
+        },
+        {
+          "championId": 876,
+          "name": "Lillia"
+        }
+      ]
+    },
+    {
+      "id": 138,
+      "name": "Hemodrenagem",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/goredrink_small.png",
+      "rarity": "silver",
+      "description": "Recebe 25% de Vampirismo Universal.",
+      "tier": "C",
+      "champions": [
+        {
+          "championId": 68,
+          "name": "Rumble"
+        },
+        {
+          "championId": 526,
+          "name": "Rell"
+        },
+        {
+          "championId": 90,
+          "name": "Malzahar"
+        },
+        {
+          "championId": 876,
+          "name": "Lillia"
+        },
+        {
+          "championId": 113,
+          "name": "Sejuani"
+        }
+      ]
+    },
+    {
+      "id": 232,
+      "name": "Hora da Geleca",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/slimetime_small.png",
+      "rarity": "silver",
+      "description": "De poucos em poucos segundos, conjura automaticamente uma explosão de gosma do seu corpo, causando Dano Mágico a inimigos próximos. Se atingir um Campeão, expelirá uma gosma que cura ao passar por cima dela.",
+      "tier": "A",
+      "champions": [
+        {
+          "championId": 45,
+          "name": "Veigar"
+        },
+        {
+          "championId": 201,
+          "name": "Braum"
+        },
+        {
+          "championId": 68,
+          "name": "Rumble"
+        },
+        {
+          "championId": 526,
+          "name": "Rell"
+        },
+        {
+          "championId": 90,
+          "name": "Malzahar"
+        }
+      ]
+    },
+    {
+      "id": 51,
+      "name": "Iluminando!",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/lightemup_small.png",
+      "rarity": "silver",
+      "description": "A cada 4 Ataques, causa Dano Mágico adicional ao contato.",
+      "tier": "S",
+      "champions": [
+        {
+          "championId": 526,
+          "name": "Rell"
+        },
+        {
+          "championId": 90,
+          "name": "Malzahar"
+        },
+        {
+          "championId": 876,
+          "name": "Lillia"
+        },
+        {
+          "championId": 113,
+          "name": "Sejuani"
+        },
+        {
+          "championId": 11,
+          "name": "Mestre Yi"
+        }
+      ]
+    },
+    {
+      "id": 43,
+      "name": "Ilusionista",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/nowyouseeme_small.png",
+      "rarity": "silver",
+      "description": "Recebe o Feitiço de Invocador Ilusionista. Ilusionista teleporta você até a posição inicial da sua última habilidade de movimentação.",
+      "tier": "D",
+      "champions": [
+        {
+          "championId": 11,
+          "name": "Mestre Yi"
+        },
+        {
+          "championId": 134,
+          "name": "Syndra"
+        },
+        {
+          "championId": 36,
+          "name": "Dr. Mundo"
+        },
+        {
+          "championId": 163,
+          "name": "Taliyah"
+        },
+        {
+          "championId": 63,
+          "name": "Brand"
+        }
+      ]
+    },
+    {
+      "id": 172,
+      "name": "Imagem-Espelho",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/mirrorimage_small.png",
+      "rarity": "silver",
+      "description": "Ao ficar com menos de 30% de Vida, fica Invisível por um breve período e cria 4 clones de si.",
+      "tier": "A",
+      "champions": [
+        {
+          "championId": 45,
+          "name": "Veigar"
+        },
+        {
+          "championId": 201,
+          "name": "Braum"
+        },
+        {
+          "championId": 68,
+          "name": "Rumble"
+        },
+        {
+          "championId": 526,
+          "name": "Rell"
+        },
+        {
+          "championId": 90,
+          "name": "Malzahar"
+        }
+      ]
+    },
+    {
+      "id": 251,
+      "name": "Imune à Dor",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/numbtopain_small.png",
+      "rarity": "silver",
+      "description": "60% do dano sofrido é causado ao longo de 6s (40% para Campeões de ataque à distância).",
+      "tier": "B",
+      "champions": [
+        {
+          "championId": 526,
+          "name": "Rell"
+        },
+        {
+          "championId": 90,
+          "name": "Malzahar"
+        },
+        {
+          "championId": 876,
+          "name": "Lillia"
+        },
+        {
+          "championId": 113,
+          "name": "Sejuani"
+        },
+        {
+          "championId": 11,
+          "name": "Mestre Yi"
+        }
+      ]
+    },
+    {
+      "id": 17,
+      "name": "Matador de Aluguel",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/contractkiller_small.png",
+      "rarity": "silver",
+      "description": "A cada rodada, marca um Campeão inimigo. O Campeão sofre 15% de dano adicional e concede +300 de ouro ao ser abatido.",
+      "tier": "B",
+      "champions": [
+        {
+          "championId": 876,
+          "name": "Lillia"
+        },
+        {
+          "championId": 113,
+          "name": "Sejuani"
+        },
+        {
+          "championId": 11,
+          "name": "Mestre Yi"
+        },
+        {
+          "championId": 134,
+          "name": "Syndra"
+        },
+        {
+          "championId": 36,
+          "name": "Dr. Mundo"
+        }
+      ]
+    },
+    {
+      "id": 102,
+      "name": "Me Segue nas Rotas Sociais",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/dontchase_small.png",
+      "rarity": "silver",
+      "description": "Você recebe efeito Fantasma e deixa um rastro de veneno, causando Dano Mágico aos inimigos dentro dele.",
+      "tier": "C",
+      "champions": [
+        {
+          "championId": 163,
+          "name": "Taliyah"
+        },
+        {
+          "championId": 63,
+          "name": "Brand"
+        },
+        {
+          "championId": 516,
+          "name": "Ornn"
+        },
+        {
+          "championId": 69,
+          "name": "Cassiopeia"
+        },
+        {
+          "championId": 711,
+          "name": "Vex"
+        }
+      ]
+    },
+    {
+      "id": 56,
+      "name": "Mente Materializada",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/mindtomatter_small.png",
+      "rarity": "silver",
+      "description": "Recebe um aumento de Vida máxima equivalente à metade do Mana.",
+      "tier": "S+",
+      "champions": [
+        {
+          "championId": 134,
+          "name": "Syndra"
+        },
+        {
+          "championId": 36,
+          "name": "Dr. Mundo"
+        },
+        {
+          "championId": 163,
+          "name": "Taliyah"
+        },
+        {
+          "championId": 63,
+          "name": "Brand"
+        },
+        {
+          "championId": 516,
+          "name": "Ornn"
+        }
+      ]
+    },
+    {
+      "id": 120,
+      "name": "Missão Póstuma",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/servebeyonddeath_small.png",
+      "rarity": "silver",
+      "description": "Na primeira vez que você morreria a cada rodada, ressuscite com a Vida cheia (decai ao longo do tempo). Eliminar um Campeão inimigo impede o decaimento da sua Vida.",
+      "tier": "C",
+      "champions": [
+        {
+          "championId": 1,
+          "name": "Annie"
+        },
+        {
+          "championId": 127,
+          "name": "Lissandra"
+        },
+        {
+          "championId": 14,
+          "name": "Sion"
+        },
+        {
+          "championId": 143,
+          "name": "Zyra"
+        },
+        {
+          "championId": 45,
+          "name": "Veigar"
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "name": "Munição de Canhão",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/cannonfodder_small.png",
+      "rarity": "silver",
+      "description": "Você entra no combate sendo lançado de um canhão.",
+      "tier": "A",
+      "champions": [
+        {
+          "championId": 113,
+          "name": "Sejuani"
+        },
+        {
+          "championId": 11,
+          "name": "Mestre Yi"
+        },
+        {
+          "championId": 134,
+          "name": "Syndra"
+        },
+        {
+          "championId": 36,
+          "name": "Dr. Mundo"
+        },
+        {
+          "championId": 163,
+          "name": "Taliyah"
+        }
+      ]
+    },
+    {
+      "id": 240,
+      "name": "Mutação Parasitária",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/parasiticmutation_small.png",
+      "rarity": "silver",
+      "description": "A cada rodada, se transforma em um dos Aprimoramentos do seu oponente. Só se transforma em Aprimoramentos que podem ser trocados.",
+      "tier": "C",
+      "champions": [
+        {
+          "championId": 1,
+          "name": "Annie"
+        },
+        {
+          "championId": 127,
+          "name": "Lissandra"
+        },
+        {
+          "championId": 14,
+          "name": "Sion"
+        },
+        {
+          "championId": 143,
+          "name": "Zyra"
+        },
+        {
+          "championId": 45,
+          "name": "Veigar"
+        }
+      ]
+    },
+    {
+      "id": 26,
+      "name": "Não Pisque",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/dontblink_small.png",
+      "rarity": "silver",
+      "description": "Recebe 2% de dano adicional a cada 10 de Velocidade de Movimento que você tiver a mais do que o alvo.",
+      "tier": "S+",
+      "champions": [
+        {
+          "championId": 14,
+          "name": "Sion"
+        },
+        {
+          "championId": 143,
+          "name": "Zyra"
+        },
+        {
+          "championId": 45,
+          "name": "Veigar"
+        },
+        {
+          "championId": 201,
+          "name": "Braum"
+        },
+        {
+          "championId": 68,
+          "name": "Rumble"
+        }
+      ]
+    },
+    {
+      "id": 207,
+      "name": "Não Se Mexa",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/holdverystill_small.png",
+      "rarity": "silver",
+      "description": "Recebe Técnicas de Guerrilha. Ficar imóvel deixa você Invisível até você se mover. Sair da Invisibilidade faz com que seu próximo ataque cause Dano Mágico adicional.",
+      "tier": "S",
+      "champions": [
+        {
+          "championId": 103,
+          "name": "Ahri"
+        },
+        {
+          "championId": 1,
+          "name": "Annie"
+        },
+        {
+          "championId": 127,
+          "name": "Lissandra"
+        },
+        {
+          "championId": 14,
+          "name": "Sion"
+        },
+        {
+          "championId": 143,
+          "name": "Zyra"
+        }
+      ]
+    },
+    {
+      "id": 136,
+      "name": "Pancada Sucessiva",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/slaparound_small.png",
+      "rarity": "silver",
+      "description": "Sempre que Imobilizar ou Prender ao chão um inimigo, você receberá 25 de Força Adaptativa durante a rodada.",
+      "tier": "A",
+      "champions": [
+        {
+          "championId": 134,
+          "name": "Syndra"
+        },
+        {
+          "championId": 36,
+          "name": "Dr. Mundo"
+        },
+        {
+          "championId": 163,
+          "name": "Taliyah"
+        },
+        {
+          "championId": 63,
+          "name": "Brand"
+        },
+        {
+          "championId": 516,
+          "name": "Ornn"
+        }
+      ]
+    },
+    {
+      "id": 97,
+      "name": "Pensamentos Mágicos",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/witchfulthinking_small.png",
+      "rarity": "silver",
+      "description": "Recebe 180 de Poder de Habilidade.",
+      "tier": "D",
+      "champions": [
+        {
+          "championId": 876,
+          "name": "Lillia"
+        },
+        {
+          "championId": 113,
+          "name": "Sejuani"
+        },
+        {
+          "championId": 11,
+          "name": "Mestre Yi"
+        },
+        {
+          "championId": 134,
+          "name": "Syndra"
+        },
+        {
+          "championId": 36,
+          "name": "Dr. Mundo"
+        }
+      ]
+    },
+    {
+      "id": 322,
+      "name": "Poder Aprimorado",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/augmented_power_small.png",
+      "rarity": "silver",
+      "description": null,
+      "tier": "A",
+      "champions": [
+        {
+          "championId": 163,
+          "name": "Taliyah"
+        },
+        {
+          "championId": 63,
+          "name": "Brand"
+        },
+        {
+          "championId": 516,
+          "name": "Ornn"
+        },
+        {
+          "championId": 69,
+          "name": "Cassiopeia"
+        },
+        {
+          "championId": 711,
+          "name": "Vex"
+        }
+      ]
+    },
+    {
+      "id": 181,
+      "name": "Porradeiro",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/heavyhitter_small.png",
+      "rarity": "silver",
+      "description": "Seus Ataques causam Dano Físico adicional equivalente a 7% da sua Vida máxima.",
+      "tier": "D",
+      "champions": [
+        {
+          "championId": 69,
+          "name": "Cassiopeia"
+        },
+        {
+          "championId": 711,
+          "name": "Vex"
+        },
+        {
+          "championId": 103,
+          "name": "Ahri"
+        },
+        {
+          "championId": 1,
+          "name": "Annie"
+        },
+        {
+          "championId": 127,
+          "name": "Lissandra"
+        }
+      ]
+    },
+    {
+      "id": 356,
+      "name": "Prataria",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/silver_spoon_small.png",
+      "rarity": "silver",
+      "description": "Causa mais dano para cada Aprimoramento Prata que você tiver.",
+      "tier": "S+",
+      "champions": [
+        {
+          "championId": 134,
+          "name": "Syndra"
+        },
+        {
+          "championId": 36,
+          "name": "Dr. Mundo"
+        },
+        {
+          "championId": 163,
+          "name": "Taliyah"
+        },
+        {
+          "championId": 63,
+          "name": "Brand"
+        },
+        {
+          "championId": 516,
+          "name": "Ornn"
+        }
+      ]
+    },
+    {
+      "id": 42,
+      "name": "Prazer Secreto",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/guiltypleasure_small.png",
+      "rarity": "silver",
+      "description": "Imobilizar ou Prender ao chão Campeões inimigos cura você.",
+      "tier": "C",
+      "champions": [
+        {
+          "championId": 163,
+          "name": "Taliyah"
+        },
+        {
+          "championId": 63,
+          "name": "Brand"
+        },
+        {
+          "championId": 516,
+          "name": "Ornn"
+        },
+        {
+          "championId": 69,
+          "name": "Cassiopeia"
+        },
+        {
+          "championId": 711,
+          "name": "Vex"
+        }
+      ]
+    },
+    {
+      "id": 37,
+      "name": "Primeiros Socorros",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/firstaidkit_small.png",
+      "rarity": "silver",
+      "description": "Recebe 35% de cura e Resistência do Escudo.",
+      "tier": "D",
+      "champions": [
+        {
+          "championId": 876,
+          "name": "Lillia"
+        },
+        {
+          "championId": 113,
+          "name": "Sejuani"
+        },
+        {
+          "championId": 11,
+          "name": "Mestre Yi"
+        },
+        {
+          "championId": 134,
+          "name": "Syndra"
+        },
+        {
+          "championId": 36,
+          "name": "Dr. Mundo"
+        }
+      ]
+    },
+    {
+      "id": 218,
+      "name": "Profanação",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/desecrator_small.png",
+      "rarity": "silver",
+      "description": "Imobilizar Campeões inimigos concede a você Poder Amaldiçoado permanente. Recebe Armadura e Resistência Mágica com base no seu Poder Amaldiçoado.",
+      "tier": "S+",
+      "champions": [
+        {
+          "championId": 68,
+          "name": "Rumble"
+        },
+        {
+          "championId": 526,
+          "name": "Rell"
+        },
+        {
+          "championId": 90,
+          "name": "Malzahar"
+        },
+        {
+          "championId": 876,
+          "name": "Lillia"
+        },
+        {
+          "championId": 113,
+          "name": "Sejuani"
+        }
+      ]
+    },
+    {
+      "id": 171,
+      "name": "Pulverizar",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/dematerialize_small.png",
+      "rarity": "silver",
+      "description": "Recebe 20 de Força Adaptativa ao eliminar, uma vez por rodada para cada Campeão. Ao obter este Aprimoramento após a rodada 4, recebe 30 de Força Adaptativa.",
+      "tier": "S",
+      "champions": [
+        {
+          "championId": 526,
+          "name": "Rell"
+        },
+        {
+          "championId": 90,
+          "name": "Malzahar"
+        },
+        {
+          "championId": 876,
+          "name": "Lillia"
+        },
+        {
+          "championId": 113,
+          "name": "Sejuani"
+        },
+        {
+          "championId": 11,
+          "name": "Mestre Yi"
+        }
+      ]
+    },
+    {
+      "id": 69,
+      "name": "Repulsor",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/repulsor_small.png",
+      "rarity": "silver",
+      "description": "Ao ficar com menos de 60% ou 30% de Vida, inimigos próximos são Empurrados.",
+      "tier": "S",
+      "champions": [
+        {
+          "championId": 36,
+          "name": "Dr. Mundo"
+        },
+        {
+          "championId": 163,
+          "name": "Taliyah"
+        },
+        {
+          "championId": 63,
+          "name": "Brand"
+        },
+        {
+          "championId": 516,
+          "name": "Ornn"
+        },
+        {
+          "championId": 69,
+          "name": "Cassiopeia"
+        }
+      ]
+    },
+    {
+      "id": 302,
+      "name": "Sacrifício: por Prata",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/gohsacrificefor_small.png",
+      "rarity": "silver",
+      "description": "Depois de 2 rodadas, recebe um Aprimoramento Prata adicional.",
+      "tier": "S+",
+      "champions": [
+        {
+          "championId": 163,
+          "name": "Taliyah"
+        },
+        {
+          "championId": 63,
+          "name": "Brand"
+        },
+        {
+          "championId": 516,
+          "name": "Ornn"
+        },
+        {
+          "championId": 69,
+          "name": "Cassiopeia"
+        },
+        {
+          "championId": 711,
+          "name": "Vex"
+        }
+      ]
+    },
+    {
+      "id": 335,
+      "name": "Sala do Pânico",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/panic_room_small.png",
+      "rarity": "silver",
+      "description": "Uma vez por combate, quando estiver prestes a morrer, você se transforma em fogo-fátuo, fica com 35% da Vida e vai para um ponto aleatório da arena.",
+      "tier": "B",
+      "champions": [
+        {
+          "championId": 63,
+          "name": "Brand"
+        },
+        {
+          "championId": 516,
+          "name": "Ornn"
+        },
+        {
+          "championId": 69,
+          "name": "Cassiopeia"
+        },
+        {
+          "championId": 711,
+          "name": "Vex"
+        },
+        {
+          "championId": 103,
+          "name": "Ahri"
+        }
+      ]
+    },
+    {
+      "id": 229,
+      "name": "Saldão da Bala",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/firesale_small.png",
+      "rarity": "silver",
+      "description": "Vende instantaneamente todos os seus itens que não sejam de missão por 100% do preço de compra direta. Excelente para Bigornas com desconto.",
+      "tier": "D",
+      "champions": [
+        {
+          "championId": 36,
+          "name": "Dr. Mundo"
+        },
+        {
+          "championId": 163,
+          "name": "Taliyah"
+        },
+        {
+          "championId": 63,
+          "name": "Brand"
+        },
+        {
+          "championId": 516,
+          "name": "Ornn"
+        },
+        {
+          "championId": 69,
+          "name": "Cassiopeia"
+        }
+      ]
+    },
+    {
+      "id": 49,
+      "name": "Suquinho",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/juicebox_small.png",
+      "rarity": "silver",
+      "description": "A cada rodada, todos os membros da sua equipe recebem 3 Suco.",
+      "tier": "D",
+      "champions": [
+        {
+          "championId": 36,
+          "name": "Dr. Mundo"
+        },
+        {
+          "championId": 163,
+          "name": "Taliyah"
+        },
+        {
+          "championId": 63,
+          "name": "Brand"
+        },
+        {
+          "championId": 516,
+          "name": "Ornn"
+        },
+        {
+          "championId": 69,
+          "name": "Cassiopeia"
+        }
+      ]
+    },
+    {
+      "id": 237,
+      "name": "Transmutar: Ouro",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/transmutegold_small.png",
+      "rarity": "silver",
+      "description": "Recebe um Aprimoramento Ouro aleatório.",
+      "tier": "S",
+      "champions": [
+        {
+          "championId": 876,
+          "name": "Lillia"
+        },
+        {
+          "championId": 113,
+          "name": "Sejuani"
+        },
+        {
+          "championId": 11,
+          "name": "Mestre Yi"
+        },
+        {
+          "championId": 134,
+          "name": "Syndra"
+        },
+        {
+          "championId": 36,
+          "name": "Dr. Mundo"
+        }
+      ]
+    },
+    {
+      "id": 87,
+      "name": "Tufão",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/typhoon_small.png",
+      "rarity": "silver",
+      "description": "Seus Ataques disparam um projétil em um alvo adicional, causando dano reduzido e aplicando efeitos ao contato.",
+      "tier": "S",
+      "champions": [
+        {
+          "championId": 103,
+          "name": "Ahri"
+        },
+        {
+          "championId": 1,
+          "name": "Annie"
+        },
+        {
+          "championId": 127,
+          "name": "Lissandra"
+        },
+        {
+          "championId": 14,
+          "name": "Sion"
+        },
+        {
+          "championId": 143,
+          "name": "Zyra"
+        }
+      ]
+    },
+    {
+      "id": 112,
+      "name": "Ultimate Imbatível",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/ultimateunstoppable_small.png",
+      "rarity": "silver",
+      "description": "Depois de usar sua ultimate, você se torna imune a Controle de Grupo por 5s (8s de Tempo de Recarga).",
+      "tier": "A",
+      "champions": [
+        {
+          "championId": 45,
+          "name": "Veigar"
+        },
+        {
+          "championId": 201,
+          "name": "Braum"
+        },
+        {
+          "championId": 68,
+          "name": "Rumble"
+        },
+        {
+          "championId": 526,
+          "name": "Rell"
+        },
+        {
+          "championId": 90,
+          "name": "Malzahar"
+        }
+      ]
+    },
+    {
+      "id": 110,
+      "name": "Varal do Amor",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/clothesline_small.png",
+      "rarity": "silver",
+      "description": "Um vínculo conecta sua equipe, causando Dano Mágico constante aos inimigos que tocar.",
+      "tier": "S+",
+      "champions": [
+        {
+          "championId": 113,
+          "name": "Sejuani"
+        },
+        {
+          "championId": 11,
+          "name": "Mestre Yi"
+        },
+        {
+          "championId": 134,
+          "name": "Syndra"
+        },
+        {
+          "championId": 36,
+          "name": "Dr. Mundo"
+        },
+        {
+          "championId": 163,
+          "name": "Taliyah"
+        }
+      ]
+    },
+    {
+      "id": 316,
+      "name": "Veneno Doloroso",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/grevious_venmon_small.png",
+      "rarity": "silver",
+      "description": "Causar dano a um Campeão inimigo reduz quaisquer Escudos que ele receba e aplica Feridas Dolorosas, reduzindo qualquer cura que ele receba.",
+      "tier": "A",
+      "champions": [
+        {
+          "championId": 134,
+          "name": "Syndra"
+        },
+        {
+          "championId": 36,
+          "name": "Dr. Mundo"
+        },
+        {
+          "championId": 163,
+          "name": "Taliyah"
+        },
+        {
+          "championId": 63,
+          "name": "Brand"
+        },
+        {
+          "championId": 516,
+          "name": "Ornn"
+        }
+      ]
+    },
+    {
+      "id": 365,
+      "name": "Abstenção da Riqueza",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/wealth_small.arena_2026_s2.png",
+      "rarity": "unique",
+      "description": "Restaura 10% da Vida que você sacrificou para Tahm Kench. Recebe + 500 de ouro.",
+      "tier": "A",
+      "champions": [
+        {
+          "championId": 201,
+          "name": "Braum"
+        },
+        {
+          "championId": 68,
+          "name": "Rumble"
+        },
+        {
+          "championId": 526,
+          "name": "Rell"
+        },
+        {
+          "championId": 90,
+          "name": "Malzahar"
+        },
+        {
+          "championId": 876,
+          "name": "Lillia"
+        }
+      ]
+    },
+    {
+      "id": 366,
+      "name": "Abstenção do Poder",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/power_small.arena_2026_s2.png",
+      "rarity": "unique",
+      "description": "Restaura 10% da Vida que você sacrificou para Tahm Kench. Recebe 1 Bigorna de Atributo Prata.",
+      "tier": "B",
+      "champions": [
+        {
+          "championId": 14,
+          "name": "Sion"
+        },
+        {
+          "championId": 143,
+          "name": "Zyra"
+        },
+        {
+          "championId": 45,
+          "name": "Veigar"
+        },
+        {
+          "championId": 201,
+          "name": "Braum"
+        },
+        {
+          "championId": 68,
+          "name": "Rumble"
+        }
+      ]
+    },
+    {
+      "id": 367,
+      "name": "Abstenção do Risco",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/risk_small.arena_2026_s2.png",
+      "rarity": "unique",
+      "description": "Restaura 10% da Vida que você sacrificou para Tahm Kench. Recebe instantaneamente um Aprimoramento Prata.",
+      "tier": "C",
+      "champions": [
+        {
+          "championId": 103,
+          "name": "Ahri"
+        },
+        {
+          "championId": 1,
+          "name": "Annie"
+        },
+        {
+          "championId": 127,
+          "name": "Lissandra"
+        },
+        {
+          "championId": 14,
+          "name": "Sion"
+        },
+        {
+          "championId": 143,
+          "name": "Zyra"
+        }
+      ]
+    },
+    {
+      "id": 342,
+      "name": "Aprimoramentos de nível",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/crafting_sellaug_small.png",
+      "rarity": "unique",
+      "description": "Remove um Aprimoramento. Recebe 2 níveis de Aprimoramento aleatórios.",
+      "tier": "B",
+      "champions": [
+        {
+          "championId": 163,
+          "name": "Taliyah"
+        },
+        {
+          "championId": 63,
+          "name": "Brand"
+        },
+        {
+          "championId": 516,
+          "name": "Ornn"
+        },
+        {
+          "championId": 69,
+          "name": "Cassiopeia"
+        },
+        {
+          "championId": 711,
+          "name": "Vex"
+        }
+      ]
+    },
+    {
+      "id": 362,
+      "name": "Caçador Aliado",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/yonehunter_small.arena_2026_s2_a2.png",
+      "rarity": "unique",
+      "description": "Vote para sua equipe se aliar aos Caçadores de Demônios. Aliar-se a Caçadores de Demônios concede +500 de ouro adicional ao derrotar uma equipe de Demônios.",
+      "tier": "D",
+      "champions": [
+        {
+          "championId": 163,
+          "name": "Taliyah"
+        },
+        {
+          "championId": 63,
+          "name": "Brand"
+        },
+        {
+          "championId": 516,
+          "name": "Ornn"
+        },
+        {
+          "championId": 69,
+          "name": "Cassiopeia"
+        },
+        {
+          "championId": 711,
+          "name": "Vex"
+        }
+      ]
+    },
+    {
+      "id": 372,
+      "name": "Compulsão por Poder",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/power_small.arena_2026_s2.png",
+      "rarity": "unique",
+      "description": null,
+      "tier": "B",
+      "champions": [
+        {
+          "championId": 45,
+          "name": "Veigar"
+        },
+        {
+          "championId": 201,
+          "name": "Braum"
+        },
+        {
+          "championId": 68,
+          "name": "Rumble"
+        },
+        {
+          "championId": 526,
+          "name": "Rell"
+        },
+        {
+          "championId": 90,
+          "name": "Malzahar"
+        }
+      ]
+    },
+    {
+      "id": 371,
+      "name": "Compulsão por Riqueza",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/wealth_small.arena_2026_s2.png",
+      "rarity": "unique",
+      "description": null,
+      "tier": "A",
+      "champions": [
+        {
+          "championId": 526,
+          "name": "Rell"
+        },
+        {
+          "championId": 90,
+          "name": "Malzahar"
+        },
+        {
+          "championId": 876,
+          "name": "Lillia"
+        },
+        {
+          "championId": 113,
+          "name": "Sejuani"
+        },
+        {
+          "championId": 11,
+          "name": "Mestre Yi"
+        }
+      ]
+    },
+    {
+      "id": 373,
+      "name": "Compulsão por Risco",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/risk_small.arena_2026_s2.png",
+      "rarity": "unique",
+      "description": null,
+      "tier": "C",
+      "champions": [
+        {
+          "championId": 127,
+          "name": "Lissandra"
+        },
+        {
+          "championId": 14,
+          "name": "Sion"
+        },
+        {
+          "championId": 143,
+          "name": "Zyra"
+        },
+        {
+          "championId": 45,
+          "name": "Veigar"
+        },
+        {
+          "championId": 201,
+          "name": "Braum"
+        }
+      ]
+    },
+    {
+      "id": 361,
+      "name": "Demônio Aliado",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/yonedemon_small.arena_2026_s2_a2.png",
+      "rarity": "unique",
+      "description": "Vota para sua equipe se aliar aos Demônios. Aliar-se a Demônios concede Nível de Aprimoramento quando uma equipe de Caçadores é eliminada.",
+      "tier": "C",
+      "champions": [
+        {
+          "championId": 69,
+          "name": "Cassiopeia"
+        },
+        {
+          "championId": 711,
+          "name": "Vex"
+        },
+        {
+          "championId": 103,
+          "name": "Ahri"
+        },
+        {
+          "championId": 1,
+          "name": "Annie"
+        },
+        {
+          "championId": 127,
+          "name": "Lissandra"
+        }
+      ]
+    },
+    {
+      "id": 350,
+      "name": "Frasco Enfeitiçado",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/crystallineflask_small.arena_2026_s2_a2.png",
+      "rarity": "unique",
+      "description": "Recebe um Escudo de Feitiço a cada 10s.",
+      "tier": "D",
+      "champions": [
+        {
+          "championId": 113,
+          "name": "Sejuani"
+        },
+        {
+          "championId": 11,
+          "name": "Mestre Yi"
+        },
+        {
+          "championId": 134,
+          "name": "Syndra"
+        },
+        {
+          "championId": 36,
+          "name": "Dr. Mundo"
+        },
+        {
+          "championId": 163,
+          "name": "Taliyah"
+        }
+      ]
+    },
+    {
+      "id": 358,
+      "name": "Frenesi do Lobo",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/wolf_small.arena_2026_s2.png",
+      "rarity": "unique",
+      "description": "Perde a ressurreição inata. Aumenta sua Vida em 15%. Se você causar dano suficiente para deixar um Campeão inimigo abaixo de 10% da Vida máxima, ele será abatido.",
+      "tier": "S",
+      "champions": [
+        {
+          "championId": 68,
+          "name": "Rumble"
+        },
+        {
+          "championId": 526,
+          "name": "Rell"
+        },
+        {
+          "championId": 90,
+          "name": "Malzahar"
+        },
+        {
+          "championId": 876,
+          "name": "Lillia"
+        },
+        {
+          "championId": 113,
+          "name": "Sejuani"
+        }
+      ]
+    },
+    {
+      "id": 351,
+      "name": "Malho Congelado",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/frozenmallet_small.arena_2026_s2_a2.png",
+      "rarity": "unique",
+      "description": "Causar dano aos inimigos também causa Lentidão a eles.",
+      "tier": "S+",
+      "champions": [
+        {
+          "championId": 526,
+          "name": "Rell"
+        },
+        {
+          "championId": 90,
+          "name": "Malzahar"
+        },
+        {
+          "championId": 876,
+          "name": "Lillia"
+        },
+        {
+          "championId": 113,
+          "name": "Sejuani"
+        },
+        {
+          "championId": 11,
+          "name": "Mestre Yi"
+        }
+      ]
+    },
+    {
+      "id": 348,
+      "name": "Navalha Sangrenta",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/bloodrazor_small.arena_2026_s2_a2.png",
+      "rarity": "unique",
+      "description": "Ao causar dano, você causa Dano Físico adicional igual a 1,5% da Vida máxima.",
+      "tier": "B",
+      "champions": [
+        {
+          "championId": 516,
+          "name": "Ornn"
+        },
+        {
+          "championId": 69,
+          "name": "Cassiopeia"
+        },
+        {
+          "championId": 711,
+          "name": "Vex"
+        },
+        {
+          "championId": 103,
+          "name": "Ahri"
+        },
+        {
+          "championId": 1,
+          "name": "Annie"
+        }
+      ]
+    },
+    {
+      "id": 392,
+      "name": "Orbe do Logrador",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/swindlers_orb_item_small.png",
+      "rarity": "unique",
+      "description": "Causar dano a um Campeão inimigo reduz os Escudos dele.",
+      "tier": "D",
+      "champions": [
+        {
+          "championId": 45,
+          "name": "Veigar"
+        },
+        {
+          "championId": 201,
+          "name": "Braum"
+        },
+        {
+          "championId": 68,
+          "name": "Rumble"
+        },
+        {
+          "championId": 526,
+          "name": "Rell"
+        },
+        {
+          "championId": 90,
+          "name": "Malzahar"
+        }
+      ]
+    },
+    {
+      "id": 349,
+      "name": "Pulverizar",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/dematerializer_small.arena_2026_s2_a2.png",
+      "rarity": "unique",
+      "description": "Seu dano executa Campeões com menos de 10% de Vida.",
+      "tier": "C",
+      "champions": [
+        {
+          "championId": 36,
+          "name": "Dr. Mundo"
+        },
+        {
+          "championId": 163,
+          "name": "Taliyah"
+        },
+        {
+          "championId": 63,
+          "name": "Brand"
+        },
+        {
+          "championId": 516,
+          "name": "Ornn"
+        },
+        {
+          "championId": 69,
+          "name": "Cassiopeia"
+        }
+      ]
+    },
+    {
+      "id": 347,
+      "name": "Putrificador Quimtec",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/chemtechpurifier_small.arena_2026_s2_a2.png",
+      "rarity": "unique",
+      "description": "Todo dano que você causa aplica Feridas Dolorosas.",
+      "tier": "A",
+      "champions": [
+        {
+          "championId": 103,
+          "name": "Ahri"
+        },
+        {
+          "championId": 1,
+          "name": "Annie"
+        },
+        {
+          "championId": 127,
+          "name": "Lissandra"
+        },
+        {
+          "championId": 14,
+          "name": "Sion"
+        },
+        {
+          "championId": 143,
+          "name": "Zyra"
+        }
+      ]
+    },
+    {
+      "id": 355,
+      "name": "Recebe Bigorna de Atributo",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/gain_stat_anvil_small.png",
+      "rarity": "unique",
+      "description": "Recebe uma Bigorna de Atributo aleatória.",
+      "tier": "C",
+      "champions": [
+        {
+          "championId": 63,
+          "name": "Brand"
+        },
+        {
+          "championId": 516,
+          "name": "Ornn"
+        },
+        {
+          "championId": 69,
+          "name": "Cassiopeia"
+        },
+        {
+          "championId": 711,
+          "name": "Vex"
+        },
+        {
+          "championId": 103,
+          "name": "Ahri"
+        }
+      ]
+    },
+    {
+      "id": 341,
+      "name": "Recebe um espaço de Aprimoramento",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/crafting_slot_small.png",
+      "rarity": "unique",
+      "description": "Habilita seu 5º Espaço de Aprimoramento. Depois de 4 rodadas, recebe um Aprimoramento Prata.",
+      "tier": "A",
+      "champions": [
+        {
+          "championId": 69,
+          "name": "Cassiopeia"
+        },
+        {
+          "championId": 711,
+          "name": "Vex"
+        },
+        {
+          "championId": 103,
+          "name": "Ahri"
+        },
+        {
+          "championId": 1,
+          "name": "Annie"
+        },
+        {
+          "championId": 127,
+          "name": "Lissandra"
+        }
+      ]
+    },
+    {
+      "id": 340,
+      "name": "Recebe uma Bigorna de Atributo Prismática",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/crafting_prisstatanvil_small.png",
+      "rarity": "unique",
+      "description": "Recebe uma Bigorna de Atributo Prismática.",
+      "tier": "S",
+      "champions": [
+        {
+          "championId": 1,
+          "name": "Annie"
+        },
+        {
+          "championId": 127,
+          "name": "Lissandra"
+        },
+        {
+          "championId": 14,
+          "name": "Sion"
+        },
+        {
+          "championId": 143,
+          "name": "Zyra"
+        },
+        {
+          "championId": 45,
+          "name": "Veigar"
+        }
+      ]
+    },
+    {
+      "id": 359,
+      "name": "Refúgio da Ovelha",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/lamb_small.arena_2026_s2.png",
+      "rarity": "unique",
+      "description": "Concede 1 ressurreição adicional e reduz pela metade o tempo necessário para reviver.",
+      "tier": "A",
+      "champions": [
+        {
+          "championId": 143,
+          "name": "Zyra"
+        },
+        {
+          "championId": 45,
+          "name": "Veigar"
+        },
+        {
+          "championId": 201,
+          "name": "Braum"
+        },
+        {
+          "championId": 68,
+          "name": "Rumble"
+        },
+        {
+          "championId": 526,
+          "name": "Rell"
+        }
+      ]
+    },
+    {
+      "id": 354,
+      "name": "Resquício dos Observadores",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/remnantofthewatchers_small.arena_2026_s2_a2.png",
+      "rarity": "unique",
+      "description": "Reduz a Velocidade de Ataque dos Campeões próximos.",
+      "tier": "B",
+      "champions": [
+        {
+          "championId": 711,
+          "name": "Vex"
+        },
+        {
+          "championId": 103,
+          "name": "Ahri"
+        },
+        {
+          "championId": 1,
+          "name": "Annie"
+        },
+        {
+          "championId": 127,
+          "name": "Lissandra"
+        },
+        {
+          "championId": 14,
+          "name": "Sion"
+        }
+      ]
+    },
+    {
+      "id": 369,
+      "name": "Sede de Poder",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/power_small.arena_2026_s2.png",
+      "rarity": "unique",
+      "description": null,
+      "tier": "S+",
+      "champions": [
+        {
+          "championId": 36,
+          "name": "Dr. Mundo"
+        },
+        {
+          "championId": 163,
+          "name": "Taliyah"
+        },
+        {
+          "championId": 63,
+          "name": "Brand"
+        },
+        {
+          "championId": 516,
+          "name": "Ornn"
+        },
+        {
+          "championId": 69,
+          "name": "Cassiopeia"
+        }
+      ]
+    },
+    {
+      "id": 368,
+      "name": "Sede de Riqueza",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/wealth_large.arena_2026_s2.png",
+      "rarity": "unique",
+      "description": null,
+      "tier": "D",
+      "champions": [
+        {
+          "championId": 516,
+          "name": "Ornn"
+        },
+        {
+          "championId": 69,
+          "name": "Cassiopeia"
+        },
+        {
+          "championId": 711,
+          "name": "Vex"
+        },
+        {
+          "championId": 103,
+          "name": "Ahri"
+        },
+        {
+          "championId": 1,
+          "name": "Annie"
+        }
+      ]
+    },
+    {
+      "id": 370,
+      "name": "Sede de Risco",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/risk_small.arena_2026_s2.png",
+      "rarity": "unique",
+      "description": null,
+      "tier": "S",
+      "champions": [
+        {
+          "championId": 113,
+          "name": "Sejuani"
+        },
+        {
+          "championId": 11,
+          "name": "Mestre Yi"
+        },
+        {
+          "championId": 134,
+          "name": "Syndra"
+        },
+        {
+          "championId": 36,
+          "name": "Dr. Mundo"
+        },
+        {
+          "championId": 163,
+          "name": "Taliyah"
+        }
+      ]
+    },
+    {
+      "id": 364,
+      "name": "Substituir Aprimoramento",
+      "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/replace_augment_small.png",
+      "rarity": "unique",
+      "description": "Substitui um dos seus Aprimoramentos por um Aprimoramento de 1 tier superior.",
+      "tier": "S",
+      "champions": [
+        {
+          "championId": 90,
+          "name": "Malzahar"
+        },
+        {
+          "championId": 876,
+          "name": "Lillia"
+        },
+        {
+          "championId": 113,
+          "name": "Sejuani"
+        },
+        {
+          "championId": 11,
+          "name": "Mestre Yi"
+        },
+        {
+          "championId": 134,
+          "name": "Syndra"
+        }
+      ]
+    }
+  ]
+}

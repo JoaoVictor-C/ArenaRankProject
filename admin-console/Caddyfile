@@ -1,0 +1,48 @@
+# Admin Console static server + API proxy (see ../admin-console/Dockerfile).
+#
+# Plain HTTP on :8080. TLS is deliberately absent: this is bound to 127.0.0.1
+# by the compose files and reached over an SSH tunnel, so the tunnel provides
+# the encryption. Publishing it to the internet would need a real TLS terminator
+# in front — do not just change the port binding.
+#
+# ADMIN_API_UPSTREAM is the backend to proxy /api to (default: the admin API
+# service on the worker box's compose network).
+
+{
+	admin off
+	auto_https off
+}
+
+:8080 {
+	encode gzip
+
+	# /api/* -> backend, SAME ORIGIN as the console itself. This is what lets
+	# the console's "local" preset (empty base -> relative /api) work from a
+	# static build, and it keeps the admin surface out of CORS entirely.
+	handle /api/* {
+		reverse_proxy {$ADMIN_API_UPSTREAM:api-admin:8000}
+	}
+
+	# /healthz is served by the backend too — proxy it so the console's health
+	# probe hits the real API rather than 404ing on the static root.
+	handle /healthz {
+		reverse_proxy {$ADMIN_API_UPSTREAM:api-admin:8000}
+	}
+
+	handle {
+		root * /srv
+		# SPA fallback: the console keeps its view in component state rather
+		# than the URL today, but this makes a deep link or a refresh safe if
+		# routing is ever added.
+		try_files {path} /index.html
+		file_server
+	}
+
+	header {
+		# Operator UI — never let it be indexed or embedded.
+		X-Robots-Tag "noindex, nofollow"
+		X-Frame-Options "DENY"
+		X-Content-Type-Options "nosniff"
+		-Server
+	}
+}

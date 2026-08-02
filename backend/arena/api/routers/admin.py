@@ -286,6 +286,41 @@ def _representative_overview() -> AdminOverview:
 # ---------------------------------------------------------------------------
 
 
+async def _queues_from_snapshot() -> tuple[list[AdminQueue], int, int] | None:
+    """Profundidades a partir do snapshot publicado pela caixa de workers.
+
+    ``None`` quando não há snapshot ou ele está obsoleto — e ``None`` é
+    importante: o chamador trata isso como "não sei" e a métrica some, em vez de
+    virar um zero que o operador leria como "fila vazia, tudo processado".
+    """
+    from arena.services import telemetry_snapshot
+    from arena.workers.queues import DLQ_KEY, PRIORITY_QUEUE, STANDARD_QUEUE
+
+    try:
+        from arena.db.session import get_sessionmaker
+
+        async with get_sessionmaker()() as session:
+            snap = await telemetry_snapshot.read_snapshot(session)
+    except Exception:  # noqa: BLE001 - telemetria nunca derruba o overview
+        _log.warning("admin.telemetry_snapshot_failed", exc_info=True)
+        return None
+    if snap is None or snap.stale:
+        return None
+    pipeline = (snap.payload or {}).get(telemetry_snapshot.LIVE_KEY, {}).get("pipeline") or {}
+    try:
+        priority = int(pipeline.get("priorityQueue", 0))
+        standard = int(pipeline.get("standardQueue", 0))
+        dlq = int(pipeline.get("dlq", 0))
+    except (TypeError, ValueError):
+        return None
+    queues = [
+        AdminQueue(name=PRIORITY_QUEUE, depth=priority, rate="—"),
+        AdminQueue(name=STANDARD_QUEUE, depth=standard, rate="—"),
+        AdminQueue(name=DLQ_KEY, depth=dlq, rate="—"),
+    ]
+    return queues, priority + standard, dlq
+
+
 async def _live_queues(rt: _Runtime) -> tuple[list[AdminQueue], int, int] | None:
     """Real processing-pipeline depths from Redis.
 
@@ -295,6 +330,15 @@ async def _live_queues(rt: _Runtime) -> tuple[list[AdminQueue], int, int] | None
     consume them continuously. There is no separate pending-list stage anymore
     (that was ``BulkProcessorWorker``, now retired).
     """
+    # Caixa que não divide o Redis com os workers (API pública do split): as
+    # profundidades vêm do snapshot que a caixa de workers publica no banco.
+    # Ler o Redis LOCAL aqui devolveria 0 com cara de fila vazia — medido, 0
+    # contra 166 reais. Ver services/telemetry_snapshot.
+    from arena.services import telemetry_snapshot
+
+    if telemetry_snapshot.reads_from_db():
+        return await _queues_from_snapshot()
+
     if rt.redis_factory is None:
         return None
     from arena.workers.queues import DLQ_KEY, PRIORITY_QUEUE, STANDARD_QUEUE
@@ -655,9 +699,13 @@ async def get_overview() -> AdminOverview:
     rt = _runtime()
     overview = _representative_overview()
 
-    # --- queues + queue/dlq depth metrics (Redis) ---
-    queue_depth = 0
-    dlq_depth = 0
+    # --- queues + queue/dlq depth metrics ---
+    # ``None`` = NÃO SEI, e isso não pode virar 0. Esta era a mentira do deploy
+    # dividido: a API do EC2 não enxerga o Redis dos workers e o painel mostrava
+    # "fila 0" — medido, 0 contra 166 reais — que o operador lê como "tudo
+    # processado". Um traço diz a verdade; um zero inventa uma.
+    queue_depth: int | None = None
+    dlq_depth: int | None = None
     live_q = await _live_queues(rt)
     if live_q is not None:
         overview.queues, queue_depth, dlq_depth = live_q
@@ -682,8 +730,20 @@ async def get_overview() -> AdminOverview:
         AdminMetric(key="activePlayers", label="Jogadores ativos", value=str(active_players)),
         AdminMetric(key="matchesToday", label="Partidas hoje", value=str(matches_today)),
         AdminMetric(key="totalMatches", label="Total de partidas", value=str(total_matches)),
-        AdminMetric(key="queueDepth", label="Fila de processamento", value=str(queue_depth)),
-        AdminMetric(key="dlqDepth", label="Fila de erros (DLQ)", value=str(dlq_depth)),
+        # "—" quando a profundidade é desconhecida (esta caixa não enxerga o
+        # Redis dos workers e o snapshot está ausente ou obsoleto). O tile
+        # continua visível — sumir esconderia que a métrica existe — mas para de
+        # afirmar um número que ninguém mediu.
+        AdminMetric(
+            key="queueDepth",
+            label="Fila de processamento",
+            value="—" if queue_depth is None else str(queue_depth),
+        ),
+        AdminMetric(
+            key="dlqDepth",
+            label="Fila de erros (DLQ)",
+            value="—" if dlq_depth is None else str(dlq_depth),
+        ),
     ]
     return overview
 

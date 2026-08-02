@@ -105,7 +105,10 @@ async def rebuild_raw_matches(
 
     Em ordem ``(played_at, riot_match_id)`` — a ordem cronológica canônica, com
     o id como desempate para tornar o replay determinístico entre execuções.
-    Reconstrói ``is_premade``/``party_id`` (que o rerate antigo perdia).
+    Reconstrói ``is_premade``/``party_id``/``augments``/``items``/telemetria de
+    combate (que o rerate antigo perdia) — sem isso, ``_persist`` reescreveria a
+    linha com augments/items/combate vazios a cada replay, apagando dados já
+    capturados.
     """
     conds = [m.Match.season_id == season_id]
     if since is not None:
@@ -140,6 +143,20 @@ async def rebuild_raw_matches(
                 m.MatchParticipant.eligible,
                 m.MatchParticipant.is_premade,
                 m.MatchParticipant.party_id,
+                m.MatchParticipant.augments,
+                m.MatchParticipant.items,
+                m.MatchParticipant.kills,
+                m.MatchParticipant.deaths,
+                m.MatchParticipant.assists,
+                m.MatchParticipant.damage_to_champions,
+                m.MatchParticipant.gold_earned,
+                m.MatchParticipant.champion_level,
+                m.MatchParticipant.damage_taken,
+                m.MatchParticipant.total_heal,
+                m.MatchParticipant.damage_self_mitigated,
+                m.MatchParticipant.largest_multi_kill,
+                m.MatchParticipant.killing_sprees,
+                m.MatchParticipant.time_spent_dead,
             ).where(m.MatchParticipant.match_id.in_([r.id for r in match_rows]))
         )
     ).all()
@@ -169,6 +186,20 @@ async def rebuild_raw_matches(
                             placement=p.placement,
                             is_premade=bool(p.is_premade),
                             party_id=p.party_id,
+                            augments=list(p.augments or []),
+                            items=list(p.items or []),
+                            kills=int(p.kills or 0),
+                            deaths=int(p.deaths or 0),
+                            assists=int(p.assists or 0),
+                            damage_to_champions=int(p.damage_to_champions or 0),
+                            gold_earned=int(p.gold_earned or 0),
+                            champion_level=int(p.champion_level or 0),
+                            damage_taken=int(p.damage_taken or 0),
+                            total_heal=int(p.total_heal or 0),
+                            damage_self_mitigated=int(p.damage_self_mitigated or 0),
+                            largest_multi_kill=int(p.largest_multi_kill or 0),
+                            killing_sprees=int(p.killing_sprees or 0),
+                            time_spent_dead=int(p.time_spent_dead or 0),
                         )
                         for p in parts
                     ],

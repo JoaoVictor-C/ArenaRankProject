@@ -1,13 +1,17 @@
 import { useEffect, useState } from "react";
 import type { Conn } from "../lib/backend";
 import { pauseWorker, resumeWorker } from "../lib/actions";
-import type { NormWorker } from "../lib/types";
+import type { NormWorker, TelemetrySource } from "../lib/types";
+import { SourceBadge } from "./SourceBadge";
 import { dur, fmtInt, fmtPct } from "../lib/format";
 
 interface Props {
   workers: NormWorker[];
   conn: Conn;
   onMutated: () => void;
+  /** Procedência da telemetria — ver SourceBadge. */
+  dataSource?: TelemetrySource;
+  ageSeconds?: number | null;
 }
 
 const HEALTH_LABEL: Record<string, string> = {
@@ -129,12 +133,13 @@ function WorkerCard({
   );
 }
 
-export function WorkersPanel({ workers, conn, onMutated }: Props) {
+export function WorkersPanel({ workers, conn, onMutated, dataSource, ageSeconds }: Props) {
   return (
     <section className="panel">
       <div className="panel-head">
         <h2>Workers &amp; processadores</h2>
         <span className="panel-note">{workers.length} pools · pausa/retomada em tempo real</span>
+        <SourceBadge source={dataSource} ageSeconds={ageSeconds} what="telemetria de workers" />
       </div>
       <div className="worker-grid">
         {workers.length === 0 && <div className="empty">Sem workers reportados.</div>}

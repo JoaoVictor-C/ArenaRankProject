@@ -11,18 +11,28 @@ import {
   type CSSProperties,
   type KeyboardEvent as ReactKeyboardEvent,
 } from "react";
-import { Mi } from "../components/Mi";
+import { PlayerTagChip } from "../components/Badges";
 import { PlayerAvatar, ChampIcon } from "../components/Avatar";
 import { StateBlock } from "../components/StateBlock";
+import { FreshnessBadge } from "../components/FreshnessBadge";
+import { Mi } from "../components/Mi";
 import { api } from "../lib/api";
 import type {
   AvatarColors,
   LeaderboardChampion,
   LeaderboardRow,
+  LeaderboardResponse,
+  RecordsResponse,
   PlayerTag,
   SearchPlayer,
 } from "../lib/types";
 import { useApi } from "../hooks/useApi";
+import { seedFrom, type SnapshotFile } from "../lib/snapshot";
+import snapshotLeaderboard from "../generated/snapshot.leaderboard.json";
+
+// Semente congelada no build (página 1 + recordes): primeira visita pinta a
+// tabela sem esperar a API, e revalida em seguida (ver lib/snapshot).
+const SNAP = snapshotLeaderboard as SnapshotFile;
 import { useIconColors } from "../hooks/useIconColors";
 import { Link, useNavigate, type NavigateFunction } from "react-router-dom";
 import { nf, pct, winrateBand } from "../lib/format";
@@ -238,14 +248,19 @@ function buildFluidBlobs(seed: number): Array<{ style: CSSProperties }> {
     r = ((r * 1664525 + 1013904223) >>> 0) >>> 0;
     return r / 4294967296;
   };
+  // Tons derivados SÓ do deep (--pc1) do ícone — a mesma cor-base das tags de
+  // campeão. Sem bright (--pc2) nem #fff no wash: os dois clareiam sob o
+  // mix-blend screen e estouram o contraste do texto branco (bright dava ~2.4:1).
+  // Um único matiz do ícone, escurecido em graus → card lê como a cor do ícone
+  // e o texto branco (com text-shadow) passa AA. bright fica só p/ bordas/frame.
   const tones = [
-    "var(--pc2)",
-    "color-mix(in srgb, var(--pc2) 72%, #fff)",
-    "color-mix(in srgb, var(--pc1) 52%, var(--pc2))",
-    "color-mix(in srgb, var(--pc2) 64%, #000)",
-    "color-mix(in srgb, var(--pc1) 70%, #fff)",
     "var(--pc1)",
-    "color-mix(in srgb, var(--pc2) 50%, var(--pc1))",
+    "color-mix(in srgb, var(--pc1) 78%, #000)",
+    "color-mix(in srgb, var(--pc1) 60%, #000)",
+    "var(--pc1)",
+    "color-mix(in srgb, var(--pc1) 70%, #000)",
+    "color-mix(in srgb, var(--pc1) 85%, #000)",
+    "color-mix(in srgb, var(--pc1) 66%, #000)",
   ];
   const anims = ["ar-fl-a", "ar-fl-b", "ar-fl-c", "ar-fl-d"];
   const blobs: Array<{ style: CSSProperties }> = [];
@@ -278,6 +293,7 @@ function PodiumFx({ seed }: { seed: number }) {
   const blobs = useMemo(() => buildFluidBlobs(seed), [seed]);
   return (
     <div className="pod-fx" aria-hidden="true">
+      <i className="pod-aura" />
       {blobs.map((b, i) => (
         <b key={i} style={b.style} />
       ))}
@@ -299,10 +315,7 @@ function TagRow({
   return (
     <>
       {shown.map((t, i) => (
-        <span key={i} className={`ptag ptag-${t.kind}`}>
-          <Mi name={t.icon} />
-          {t.label}
-        </span>
+        <PlayerTagChip key={i} tag={t} />
       ))}
       {rest.length > 0 && (
         <span
@@ -332,10 +345,7 @@ function TagRow({
               }}
             >
               {rest.map((t, i) => (
-                <span key={i} className={`ptag ptag-${t.kind}`}>
-                  <Mi name={t.icon} />
-                  {t.label}
-                </span>
+                <PlayerTagChip key={i} tag={t} />
               ))}
             </span>
           )}
@@ -411,19 +421,25 @@ function PodiumCard({
 }) {
   const band = winrateBand(row.winrate);
   const d7Up = row.delta7d >= 0;
-  // O efeito interno (.pod-fx) varia conforme o ÍCONE DE INVOCADOR: extrai a cor
-  // dominante do ícone ddragon; cai no gradiente do avatar enquanto carrega ou
-  // se a extração falhar.
-  const iconColors = useIconColors(row.profileIconUrl);
+  // O efeito interno (.pod-fx + .pod-aura) reflete o CAMPEÃO MAIS JOGADO do
+  // jogador: extrai a cor dominante do ícone ddragon do main (championIconUrls[0],
+  // busiest-first) com a mesma conversão das tags. Fallbacks: ícone de invocador
+  // → gradiente do avatar (enquanto carrega ou se a extração falhar).
+  const champIcon = row.championIconUrls?.[0] ?? row.profileIconUrl;
+  const iconColors = useIconColors(champIcon);
   const pc1 = iconColors?.[0] ?? row.avatar.c1;
   const pc2 = iconColors?.[1] ?? row.avatar.c2;
   return (
-    <div
+    <Link
+      to={`/perfil/${encodeURIComponent(row.riotId)}`}
       className="pod"
       style={
         {
           ["--pc1" as string]: pc1,
           ["--pc2" as string]: pc2,
+          textDecoration: "none",
+          color: "inherit",
+          cursor: "pointer",
         } as CSSProperties
       }
     >
@@ -431,7 +447,7 @@ function PodiumCard({
 
       {/* topo: avatar + nome + rank */}
       <div className="pod-top">
-        <PlayerAvatar colors={row.avatar} url={row.profileIconUrl} alt={row.name} size={50} />
+        <PlayerAvatar colors={{ c1: pc1, c2: pc2 }} url={row.profileIconUrl} alt={row.name} size={50} />
         <div className="pod-id">
           <div className="nm">{row.name}</div>
           <div className="phandle">{row.handle}</div>
@@ -490,7 +506,7 @@ function PodiumCard({
           <span className="cap">Winrate</span>
         </div>
       </div>
-    </div>
+    </Link>
   );
 }
 
@@ -577,7 +593,7 @@ const REC_DUR = 3800;
 
 function LiveRecordsCard() {
   // Recordes reais da temporada (/meta/records), rotativos.
-  const { data } = useApi(() => api.records(), []);
+  const { data } = useApi(() => api.records(), [], seedFrom<RecordsResponse>(SNAP, "records"));
   const records = data?.records ?? [];
   const [idx, setIdx] = useState(0);
   const dotsRef = useRef<(HTMLElement | null)[]>([]);
@@ -630,9 +646,11 @@ function LiveRecordsCard() {
           </div>
           <div className="rec-label">{r.label}</div>
           <div className="rec-who">
-            <span
-              className="ch-icon sm"
-              style={{ "--c1": r.avatar.c1, "--c2": r.avatar.c2 } as CSSProperties}
+            <ChampIcon
+              colors={r.avatar}
+              url={r.profileIconUrl ?? undefined}
+              alt={r.name}
+              size="sm"
             />
             {r.name} <span>{r.handle}</span>
           </div>
@@ -654,40 +672,359 @@ function LiveRecordsCard() {
 }
 
 /* ------------------------------------------------------------------ */
-/* Rail: Atividade da temporada — barras renderizadas no React (usa as    */
-/* classes .ar-chart/.ar-col do anim.css). Auto-contido: não depende do   */
-/* animEngine encontrar o elemento (que não roda em rotas lazy). O        */
-/* data-static faz o engine ignorar este chart (não sobrescrever o React).*/
+/* Rail: SEASON I — card premium da temporada. Status ao vivo + datas, e   */
+/* a VAQUINHA da premiação: barra de arrecadação + botão Doar (vermelho    */
+/* urgência) → seletor de valor (presets/personalizado) → checkout PIX     */
+/* InfinitePay (redirect; iframe é bloqueado). Datas em BRT (-03:00).      */
+/* Arrecadação viva (tabela + webhook) chega na fatia 2 — por ora o pote   */
+/* base é exibido; a UI de doação já é real.                               */
 /* ------------------------------------------------------------------ */
 
-function ActivityChart() {
-  // Partidas ranqueadas processadas por dia — dados reais (/meta/activity).
-  const { data } = useApi(() => api.activity({ days: 14 }), []);
-  const days = data?.days ?? [];
-  const max = data?.max || 1;
+// Temporada inaugural: partidas passaram a contar 19/07 06:00 (BRT, exibido fixo
+// no card); encerra 19/08 06:00 (BRT) — usado no countdown.
+const SEASON_END = new Date("2026-08-19T06:00:00-03:00").getTime();
+
+// Vaquinha: pote base (o que já foi colocado) e a meta. Em centavos.
+const PRIZE_BASE_CENTS = 2_800; // R$ 28 (pote inicial)
+const PRIZE_GOAL_CENTS = 100_000; // R$ 1.000 (meta)
+const DONATION_PRESETS = [2, 5, 10, 15, 20]; // reais
+
+const brl0 = (cents: number) =>
+  (cents / 100).toLocaleString("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+    maximumFractionDigits: 0,
+  });
+
+/* ------------------------------------------------------------------ */
+/* Poro mascote do card SEASON I. SVG rigado offline (scripts/rig-poro.mjs) */
+/* em grupos #poro-arm / #poro-foot-l/r / #poro-lids. Injetado inline p/ o  */
+/* CSS animar as partes (img não expõe o DOM interno). Máquina de estados: */
+/* idle (acena+pisca) → fall (no scroll) → rise → exit (sai pela direita)  */
+/* → gone → return (volta) → idle. Reduced-motion: estático, sem queda.    */
+/* ------------------------------------------------------------------ */
+
+/* Camadas do PSD (scripts/poro-layers/manifest.json, canvas 1024×1021),
+   posicionadas em % (o webp em public/assets/poro/ é 0.4x; % independe da
+   resolução). Braços são MARIONETE FK: a mesma imagem fatiada por clip-path
+   em segmentos sobrepostos (a sobreposição some no pelo), cada um dentro de
+   um pivô aninhado — ombro→cotovelo→punho(garras) — p/ follow-through real. */
+const PORO_W = 1024;
+const PORO_H = 1021;
+const PORO_DIR = "/assets/poro/";
+
+function poroBox(b: [number, number, number, number]) {
+  return {
+    left: `${((b[0] / PORO_W) * 100).toFixed(2)}%`,
+    top: `${((b[1] / PORO_H) * 100).toFixed(2)}%`,
+    width: `${(((b[2] - b[0]) / PORO_W) * 100).toFixed(2)}%`,
+    height: `${(((b[3] - b[1]) / PORO_H) * 100).toFixed(2)}%`,
+  };
+}
+
+function PoroBody() {
+  const img = (slug: string, cls: string, b: [number, number, number, number]) => (
+    <img className={`pr ${cls}`} style={poroBox(b)} src={`${PORO_DIR}${slug}.webp`} alt="" draggable={false} />
+  );
   return (
-    <div className="rail-card">
-      <h3>Atividade da temporada</h3>
-      <p className="note" style={{ marginBottom: 14 }}>
-        Partidas ranqueadas processadas por dia
-      </p>
-      <div className="ar-chart ar-shown" data-static="1">
-        {days.map((d, i) => {
-          const pct = Math.max(4, Math.round((d.count / max) * 100));
-          return (
-            <div className={"ar-col" + (d.count === max ? " hi" : "")} key={i}>
-              <div className="ar-bar-track">
-                <div className="ar-bar" style={{ height: `${pct}%` }}>
-                  <span className="ar-val">{d.count.toLocaleString("pt-BR")}</span>
-                </div>
-              </div>
-              <div className="ar-xlbl">{d.label}</div>
-            </div>
-          );
-        })}
-        {days.length === 0 && (
-          <div style={{ opacity: 0.6, padding: 12, fontSize: 13 }}>Sem dados ainda.</div>
+    <div className="sc-poro-fig">
+      {img("chifre-esquerdo", "", [244, 261, 444, 414])}
+      {img("chifre-direito", "", [637, 264, 837, 417])}
+      {img("tronco", "", [202, 303, 787, 1021])}
+      {img("camada-2", "pr-foot-l", [344, 804, 507, 896])}
+      {img("camada-1", "pr-foot-r", [601, 795, 737, 896])}
+      {img("cinturao", "", [331, 733, 760, 825])}
+      {img("olho-esquerdo", "pr-eye", [395, 387, 458, 441])}
+      {img("olho-direito", "pr-eye", [582, 370, 650, 428])}
+
+      {/* braço esquerdo (baixo): ombro → punho */}
+      <div className="pr pj pj-l-sh" style={poroBox([193, 596, 361, 733])}>
+        <img className="pj-seg pj-l-upper" src={`${PORO_DIR}braco-esquerdo.webp`} alt="" draggable={false} />
+        <div className="pj pj-l-wr">
+          <img className="pj-seg pj-l-paw" src={`${PORO_DIR}braco-esquerdo.webp`} alt="" draggable={false} />
+        </div>
+      </div>
+
+      {/* braço direito (erguido, acena): ombro → cotovelo → punho c/ garras */}
+      <div className="pr pj pj-r-sh" style={poroBox([724, 480, 875, 698])}>
+        <img className="pj-seg pj-r-upper" src={`${PORO_DIR}braco-direito.webp`} alt="" draggable={false} />
+        <div className="pj pj-r-el">
+          <img className="pj-seg pj-r-fore" src={`${PORO_DIR}braco-direito.webp`} alt="" draggable={false} />
+          <div className="pj pj-r-wr">
+            <img className="pj-seg pj-r-paw" src={`${PORO_DIR}braco-direito.webp`} alt="" draggable={false} />
+          </div>
+        </div>
+      </div>
+
+      {/* coroa com inércia própria (salta na queda) */}
+      <div className="pr pj pj-crown" style={poroBox([380, 116, 690, 337])}>
+        <img className="pj-seg pj-full" src={`${PORO_DIR}coroa.webp`} alt="" draggable={false} />
+      </div>
+    </div>
+  );
+}
+
+type PoroState = "idle" | "fall" | "downed" | "refall" | "rise" | "exit" | "gone" | "return";
+
+function SeasonPoro() {
+  const [st, setSt] = useState<PoroState>("idle");
+  const stageRef = useRef<HTMLDivElement>(null);
+  const visibleRef = useRef(false);
+  const lastY = useRef(0);
+  const reduced = useRef(false);
+
+  // Visibilidade do palco (só cai se o card está na tela).
+  useEffect(() => {
+    const el = stageRef.current;
+    if (!el || typeof IntersectionObserver === "undefined") return;
+    const io = new IntersectionObserver(([e]) => {
+      visibleRef.current = e.isIntersecting;
+    });
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
+
+  // Scroll da página derruba o poro (uma vez por ciclo; reduced-motion pula).
+  useEffect(() => {
+    reduced.current =
+      typeof matchMedia !== "undefined" && matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (reduced.current) return;
+    lastY.current = window.scrollY;
+    function onScroll() {
+      const dy = Math.abs(window.scrollY - lastY.current);
+      if (dy > 60) lastY.current = window.scrollY;
+      if (dy <= 60 || !visibleRef.current) return;
+      // idle → cai; caído se levantando → tomba de novo (re-knock)
+      setSt((cur) => (cur === "idle" ? "fall" : cur === "downed" ? "refall" : cur));
+    }
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  // Avanço da máquina por fim de animação + retorno agendado.
+  useEffect(() => {
+    if (st === "gone") {
+      const t = window.setTimeout(() => setSt("return"), 9000);
+      return () => window.clearTimeout(t);
+    }
+    return undefined;
+  }, [st]);
+
+  function onAnimEnd(e: { animationName: string }) {
+    // queda → luta pra levantar (downed, 2s); scroll no meio → refall → downed de novo
+    if (e.animationName === "poro-fall") setSt("downed");
+    else if (e.animationName === "poro-downed") setSt("rise");
+    else if (e.animationName === "poro-refall") setSt("downed");
+    else if (e.animationName === "poro-rise") window.setTimeout(() => setSt("exit"), 320);
+    else if (e.animationName === "poro-exit") setSt("gone");
+    else if (e.animationName === "poro-return") setSt("idle");
+  }
+
+  return (
+    <div className="sc-poro-wrap" aria-hidden="true">
+      {/* poça de sombra circular — vive FORA do palco (não é clipada), some
+          radialmente e passa atrás dos spans de doação abaixo */}
+      <div className="sc-poro-ground" />
+      <div className="sc-poro-stage" ref={stageRef} data-state={st}>
+        <div className="sc-poro-mover" onAnimationEnd={onAnimEnd}>
+          {/* sombra de estúdio: o MESMO rig, achatado/enviesado atrás no ciclorama */}
+          <div className="sc-poro-cast">
+            <PoroBody />
+          </div>
+          <PoroBody />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SeasonCard() {
+  const [now, setNow] = useState(() => Date.now());
+  const [picking, setPicking] = useState(false);
+  const [sel, setSel] = useState<number | null>(null);
+  const [custom, setCustom] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const [thanks, setThanks] = useState(false);
+  const customRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const t = window.setInterval(() => setNow(Date.now()), 60_000);
+    return () => window.clearInterval(t);
+  }, []);
+
+  // Volta do checkout com ?doacao=ok → agradece (sem afirmar pagamento confirmado;
+  // a confirmação por webhook é fatia 2).
+  useEffect(() => {
+    try {
+      if (new URLSearchParams(window.location.search).get("doacao") === "ok") setThanks(true);
+    } catch {
+      /* SSR/URL indisponível */
+    }
+  }, []);
+
+  const remaining = SEASON_END - now;
+  const ended = remaining <= 0;
+  const days = Math.max(0, Math.floor(remaining / 86_400_000));
+  const hours = Math.max(0, Math.floor((remaining % 86_400_000) / 3_600_000));
+
+  const raised = PRIZE_BASE_CENTS;
+  const fund = Math.min(1, raised / PRIZE_GOAL_CENTS);
+
+  const amount = custom.trim() !== "" ? Number(custom.replace(",", ".")) : sel;
+  const valid = amount != null && Number.isFinite(amount) && amount >= 1 && amount <= 1000;
+
+  async function donate() {
+    if (!valid || loading) return;
+    setLoading(true);
+    setErr(null);
+    try {
+      const res = await api.createDonation(Math.round((amount as number) * 100));
+      // Redirect para a página hospedada do InfinitePay (iframe é bloqueado).
+      window.location.href = res.checkoutUrl;
+    } catch (e) {
+      setErr(e instanceof Error && e.message ? e.message : "Não foi possível abrir o pagamento. Tente de novo.");
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="rail-card season-card">
+      <div className="sc-name">
+        SEASON <span className="sc-num">I</span>
+      </div>
+      <p className="sc-dates">
+        Começou <b>19 jul, 06h</b> ·{" "}
+        {ended ? (
+          "temporada encerrada"
+        ) : (
+          <>
+            termina em <b className="tnum">{days}d {hours}h</b>
+          </>
         )}
+      </p>
+
+      <div className="sc-prize">
+        <div className="sc-prize-head">
+          <span className="sc-ph-label">
+            <span className="mi fill" aria-hidden="true">
+              emoji_events
+            </span>
+            Premiação total
+          </span>
+          <span className="sc-toptag">Top 3 melhores</span>
+        </div>
+        <div className="sc-prize-val">
+          <span className="sc-cur">R$</span>
+          <span className="sc-fig tnum">
+            {(raised / 100).toLocaleString("pt-BR", { maximumFractionDigits: 0 })}
+          </span>
+        </div>
+
+        <div
+          className="sc-fund"
+          role="progressbar"
+          aria-valuenow={Math.round(fund * 100)}
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-label="Vaquinha da premiação"
+        >
+          <span style={{ width: `${fund * 100}%` }} />
+        </div>
+        <div className="sc-fund-meta">
+          <span>arrecadado</span>
+          <span className="tnum">meta {brl0(PRIZE_GOAL_CENTS)}</span>
+        </div>
+
+        <p className="sc-appeal">
+          Ajude a manter a comunidade ativa e engajada dando suporte à premiação!
+        </p>
+
+        <SeasonPoro />
+
+        {thanks && (
+          <div className="sc-thanks" role="status">
+            <span className="mi fill" aria-hidden="true">
+              favorite
+            </span>
+            Obrigado por apoiar a premiação!
+          </div>
+        )}
+
+        {!picking ? (
+          <button className="sc-donate" type="button" onClick={() => setPicking(true)}>
+            <span className="mi fill" aria-hidden="true">
+              volunteer_activism
+            </span>
+            Doar para a premiação
+          </button>
+        ) : (
+          <div className="sc-picker">
+            <div className="sc-amts">
+              {DONATION_PRESETS.map((v) => (
+                <button
+                  key={v}
+                  type="button"
+                  className={`sc-amt${custom.trim() === "" && sel === v ? " on" : ""}`}
+                  onClick={() => {
+                    setSel(v);
+                    setCustom("");
+                    setErr(null);
+                  }}
+                >
+                  R$ {v}
+                </button>
+              ))}
+            </div>
+            <label className="sc-custom" data-on={custom.trim() !== "" ? "true" : "false"}>
+              <span>R$</span>
+              <input
+                ref={customRef}
+                type="number"
+                inputMode="decimal"
+                min={1}
+                max={1000}
+                step={1}
+                placeholder="outro valor"
+                value={custom}
+                onChange={(e) => {
+                  setCustom(e.target.value);
+                  setSel(null);
+                  setErr(null);
+                }}
+              />
+            </label>
+
+            {err && (
+              <div className="sc-err" role="alert">
+                {err}
+              </div>
+            )}
+
+            <div className="sc-picker-actions">
+              <button className="sc-cancel" type="button" onClick={() => setPicking(false)}>
+                Cancelar
+              </button>
+              <button
+                className="sc-donate"
+                type="button"
+                disabled={!valid || loading}
+                onClick={donate}
+              >
+                {loading
+                  ? "Abrindo…"
+                  : valid
+                    ? `Contribuir ${brl0(Math.round((amount as number) * 100))}`
+                    : "Escolha um valor"}
+              </button>
+            </div>
+          </div>
+        )}
+
+        <p className="sc-fine">
+          100% da doação vai para o Top 1, 2 e 3 na proporção 50/30/20 — descontada apenas a taxa
+          da InfinitePay que processa o pagamento.
+        </p>
       </div>
     </div>
   );
@@ -708,7 +1045,9 @@ type Format = "3v3" | "2v2";
 const PAGE_SIZE = 50;
 
 export function Leaderboard() {
-  const [scope, setScope] = useState<Scope>("global");
+  // Escopo fixo em "global": os filtros Escopo/Ordenar foram removidos da UI
+  // (ocupavam espaço sem função clara). O leaderboard sempre lista por CR global.
+  const scope: Scope = "global";
   const [format] = useState<Format>("3v3");
   const [season] = useState(3);
   const [page, setPage] = useState(0);
@@ -716,25 +1055,18 @@ export function Leaderboard() {
   const navigate = useNavigate();
 
   const offset = page * PAGE_SIZE;
-  const { data, loading, error } = useApi(
+  const { data, loading, error, retry, refreshing, updatedAt } = useApi(
     () => api.leaderboard({ format, scope, season, limit: PAGE_SIZE, offset }),
     [format, scope, season, page],
+    // A semente é da página 1: aplicá-la em qualquer outra pintaria a página
+    // errada. Fora da primeira página, sem semente.
+    page === 0 ? seedFrom<LeaderboardResponse>(SNAP, "page1") : {},
   );
 
-  // Ordenação da página (client-side sobre as 50 linhas da página atual).
-  // "cr" mantém o pódio Top 3; os demais critérios viram tabela plana ordenada.
-  const [sortBy, setSortBy] = useState<"cr" | "games" | "top1" | "top3">("cr");
+  // Sempre listado por CR (Escopo/Ordenar removidos da UI): pódio = Top 3, tabela = resto.
   const allRows = data?.rows ?? [];
-  const sortedRows =
-    sortBy === "cr"
-      ? allRows
-      : [...allRows].sort((a, b) => {
-          const key = (r: LeaderboardRow) =>
-            sortBy === "games" ? r.wins + r.losses : sortBy === "top1" ? r.top1 : r.winrate;
-          return key(b) - key(a);
-        });
-  const podiumRows = sortBy === "cr" ? sortedRows.slice(0, 3) : [];
-  const tableRows = sortBy === "cr" ? sortedRows.slice(3) : sortedRows;
+  const podiumRows = allRows.slice(0, 3);
+  const tableRows = allRows.slice(3);
   const totalPages = data ? Math.ceil(data.total / PAGE_SIZE) : 1;
 
   // paginação visível (máx 5 páginas + setas)
@@ -763,7 +1095,18 @@ export function Leaderboard() {
             {format === "3v3" ? "Trios" : "Duos"} ·{" "}
             {data ? nf(data.total) : "…"} jogadores ranqueados nesta temporada
           </div>
+          <Link className="lb-otp-entry" to="/winrate">
+            <Mi name="workspace_premium" />
+            OTPs por campeão
+            <Mi name="arrow_forward" />
+          </Link>
         </div>
+        {/* A tabela pode ter vindo da semente de build (até 24h) ou do cache
+            em disco: é aqui que o jogador confere a posição, então a idade
+            precisa estar à vista. */}
+        {data && (
+          <FreshnessBadge updatedAt={updatedAt} refreshing={refreshing} onRefresh={retry} />
+        )}
       </div>
 
       {/* layout 2 colunas: conteúdo + rail direito */}
@@ -786,43 +1129,8 @@ export function Leaderboard() {
               </div>
             )}
 
-            {/* filtros */}
+            {/* busca (Escopo/Ordenar removidos — sem função clara, ocupavam espaço) */}
             <div className="lb-filters">
-              <div className="grp">
-                <span className="lbl">Escopo</span>
-                <div className="chips">
-                  {(["global", "br"] as Scope[]).map((s) => (
-                    <div
-                      key={s}
-                      className="chip"
-                      data-active={scope === s ? "true" : "false"}
-                      onClick={() => { setScope(s); setPage(0); }}
-                    >
-                      {s === "global" ? "Global" : "Brasil"}
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <div className="grp">
-                <span className="lbl">Ordenar</span>
-                <div className="chips">
-                  {([
-                    ["cr", "Padrão"],
-                    ["games", "Partidas"],
-                    ["top1", "Top 1"],
-                    ["top3", "Top 3"],
-                  ] as const).map(([k, lbl]) => (
-                    <div
-                      key={k}
-                      className="chip"
-                      data-active={sortBy === k ? "true" : "false"}
-                      onClick={() => setSortBy(k)}
-                    >
-                      {lbl}
-                    </div>
-                  ))}
-                </div>
-              </div>
               <PlayerSearch format={format} navigate={navigate} />
             </div>
 
@@ -883,7 +1191,7 @@ export function Leaderboard() {
         {/* rail direito (fiel ao Leaderboard.html do design) */}
         <aside className="rail">
           <LiveRecordsCard />
-          <ActivityChart />
+          <SeasonCard />
           <div className="rail-card sponsor">
             <h3 style={{ marginBottom: 12 }}>Temporada patrocinada</h3>
             <div className="logo-slot">SEU LOGO AQUI</div>

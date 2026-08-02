@@ -18,6 +18,7 @@ CR impact), never augment/item winrate. User-facing strings PT-BR.
 from __future__ import annotations
 
 import math
+from collections import Counter
 from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
@@ -38,6 +39,7 @@ from sqlalchemy import (
     func,
     insert,
     literal,
+    or_,
     select,
     true,
     values,
@@ -275,6 +277,16 @@ class ChampionSynergyGroupRow:
     avg_place: float
 
 
+@dataclass
+class ChampionMatchupPartnerRow:
+    """One duo partner of a fixed champion — raw counts, pre-ranking."""
+
+    champion_id: int  # the OTHER member of the duo
+    games: int
+    top4: int
+    placement_sum: int
+
+
 @dataclass(slots=True)
 class ChampionTrendPointView:
     """One day of a champion's trend, from the ``champion_daily_stats`` rollup."""
@@ -301,6 +313,55 @@ class RawRecord:
 #: this order; reading them back out of ``season_record_cache`` (an unordered set
 #: of rows) re-imposes it so the rail's rotation doesn't shuffle between ticks.
 _RECORD_ORDER = ("streak", "biggest_gain", "most_today", "first_rate", "top4_rate")
+
+
+@dataclass(slots=True)
+class BuildPickRow:
+    """One augment/item pick from ``champion_build_stats`` (native, placement-derived).
+
+    ``tier`` starts empty and is filled by :func:`_assign_build_tiers` — every
+    caller needs it computed relative to a specific pool (one champion's picks,
+    or the whole cross-champion category), so it can't be baked in per-row.
+    """
+
+    pick_id: int
+    games: int
+    top1: int  # 0..100
+    top4: int  # 0..100
+    avg_place: float
+    pick_rate: float  # 0..100
+    tier: str = ""
+
+
+# Relative-position tier cutoffs — identical bucketing idea to the champions
+# tierlist / the old external top_build aggregate: best (lowest avg_place)
+# first, cumulative fraction of the pool decides the letter.
+_BUILD_TIER_CUTOFFS: list[tuple[str, float]] = [
+    ("S", 0.10),
+    ("A", 0.30),
+    ("B", 0.55),
+    ("C", 0.80),
+    ("D", 1.0),
+]
+
+
+def _assign_build_tiers(rows: list[BuildPickRow]) -> list[BuildPickRow]:
+    """Tier each row by relative strength (avg_place, best first) within ``rows``.
+
+    Mutates and returns the same list. There's no externally-supplied tier
+    anymore (the old ``champion_build_ref`` aggregate carried its own); this is
+    OUR read of "how good is this pick compared to the others in the same pool" —
+    per-champion picks are tiered against each other, the global top-build pool
+    against itself, never mixed.
+    """
+    if not rows:
+        return rows
+    order = sorted(range(len(rows)), key=lambda i: rows[i].avg_place)
+    n = len(order)
+    for rank, i in enumerate(order):
+        frac = (rank + 1) / n
+        rows[i].tier = next(t for t, cutoff in _BUILD_TIER_CUTOFFS if frac <= cutoff)
+    return rows
 
 
 class StatsService:
@@ -385,6 +446,7 @@ class StatsService:
         *,
         season_id: str,
         min_games: int = 3,
+        champion_id: int | None = None,
     ) -> list[ChampionTierRow]:
         """Global per-champion aggregate for the season (tierlist source).
 
@@ -404,9 +466,16 @@ class StatsService:
 
         A champion needs ``>= min_games`` season-wide to surface. ToS:
         placement-derived only.
+
+        ``champion_id`` narrows to one champion (used by the build-ref header
+        stats) — pass ``min_games=0`` alongside it so an under-floor champion
+        still returns its true (possibly zero) totals rather than vanishing.
         """
         cds = m.ChampionDailyStat.__table__
         games = func.sum(cds.c.games)
+        conds = [cds.c.season_id == season_id]
+        if champion_id is not None:
+            conds.append(cds.c.champion_id == champion_id)
         stmt = (
             select(
                 cds.c.champion_id.label("champion_id"),
@@ -415,7 +484,7 @@ class StatsService:
                 func.sum(cds.c.top4).label("top4"),
                 func.sum(cds.c.placement_sum).label("place_sum"),
             )
-            .where(cds.c.season_id == season_id)
+            .where(*conds)
             .group_by(cds.c.champion_id)
             .having(games >= min_games)
         )
@@ -746,6 +815,49 @@ class StatsService:
             )
         return out
 
+    async def champion_matchups_duo(
+        self,
+        session: AsyncSession,
+        *,
+        season_id: str,
+        champion_id: int,
+        min_games: int = SYNERGY_MIN_GAMES,
+    ) -> list[ChampionMatchupPartnerRow]:
+        """Every duo partner ``champion_id`` shared a subteam with this season.
+
+        Reads ``champion_combo_stats`` (size=2) — the same rollup /sinergias
+        reads, just filtered to rows containing this champion instead of
+        ranked globally. Same OOM-avoidance reasoning as
+        :meth:`champion_synergies_n`: a live self-join over
+        ``match_participants`` for a champion-page grid is exactly the query
+        shape that already took the API down once; never do it, even scoped
+        to one champion (``match_participants`` has no ``champion_id`` index,
+        so a filtered scan still walks every partition).
+        """
+        floor = max(int(min_games), settings.synergy_combo_min_games)
+        ccs = m.ChampionComboStat.__table__
+        stmt = select(
+            ccs.c.c0, ccs.c.c1, ccs.c.games, ccs.c.top4, ccs.c.placement_sum,
+        ).where(
+            ccs.c.season_id == season_id,
+            ccs.c.size == 2,
+            ccs.c.games >= floor,
+            or_(ccs.c.c0 == champion_id, ccs.c.c1 == champion_id),
+        )
+        rows = (await session.execute(stmt)).all()
+        out: list[ChampionMatchupPartnerRow] = []
+        for r in rows:
+            partner = int(r.c1) if int(r.c0) == champion_id else int(r.c0)
+            out.append(
+                ChampionMatchupPartnerRow(
+                    champion_id=partner,
+                    games=int(r.games or 0),
+                    top4=int(r.top4 or 0),
+                    placement_sum=int(r.placement_sum or 0),
+                )
+            )
+        return out
+
     async def rebuild_champion_combos(
         self, session: AsyncSession, *, season_id: str, min_games: int | None = None
     ) -> int:
@@ -818,6 +930,461 @@ class StatsService:
             )
             written += int(getattr(result, "rowcount", 0) or 0)
         return written
+
+    async def rebuild_champion_versus(
+        self, session: AsyncSession, *, season_id: str, min_games: int | None = None
+    ) -> int:
+        """Recompute ``champion_versus_stats`` — cross-subteam matchups. Cron-only.
+
+        Same family as :meth:`rebuild_champion_combos`, but the self-join pairs
+        participants of DIFFERENT subteams in the same match (``team_id !=``,
+        not ``==``) — each side of the pair keeps its OWN placement (different
+        subteams finish differently), so ``c0``/``c1`` need separate top4/
+        placement_sum columns instead of one shared pair like combos.
+
+        Heavier than the combo self-join, and NOT done as a self-join: a full
+        3v3 lobby (6 subteams x 3) has ~135 ordered cross-subteam pairs per
+        match vs. ~18 same-team pairs, and ``matches``/``match_participants``
+        are partitioned on INCOMPATIBLE keys (time range vs. ``HASH(player_id)``)
+        — Postgres cannot do a partition-wise join across them, so a SQL
+        self-join here gets a real ``EXPLAIN`` cost in the BILLIONS (checked
+        live before writing this: ``Nested Loop ... rows=291131763150``), while
+        the same shape's same-team version (:meth:`rebuild_champion_combos`)
+        plans fine — same-team pairs are far more selective (2-3 rows/match)
+        than cross-team ones (~15 rows/match), which is enough to tip the
+        cross-partition estimate into catastrophic territory.
+
+        Instead: one plain (non-self-join) scan of the season's participants
+        (~6.5s measured live for ~1.4M rows), grouped by match in Python, pairs
+        computed and summed in a dict, then bulk-inserted. O(n) query, O(pairs)
+        memory — sidesteps the planner problem entirely.
+
+        Delete-then-insert per season (cumulative rollup, cannot be windowed)
+        — same posture as the other rollups in this series. ``min_games`` is
+        the WRITE floor (default ``settings.synergy_combo_min_games``, shared
+        with combos since both describe "how often do these two champions
+        actually meet"). Returns rows written. The caller commits.
+        """
+        floor = settings.synergy_combo_min_games if min_games is None else min_games
+        cvs = m.ChampionVersusStat
+        await session.execute(delete(cvs).where(cvs.season_id == season_id))
+
+        mp = m.MatchParticipant.__table__
+        stmt = (
+            select(mp.c.match_id, mp.c.team_id, mp.c.champion_id, mp.c.placement)
+            .select_from(mp.join(m.Match.__table__, m.Match.__table__.c.id == mp.c.match_id))
+            .where(
+                m.Match.__table__.c.season_id == season_id,
+                mp.c.eligible.is_(True),
+                mp.c.played_at >= _EPOCH,
+            )
+        )
+        rows = (await session.execute(stmt)).all()
+
+        by_match: dict[Any, list[tuple[int, int, int]]] = {}
+        for r in rows:
+            by_match.setdefault(r.match_id, []).append((int(r.team_id), int(r.champion_id), int(r.placement)))
+
+        # (c0, c1) -> [games, c0_top4, c0_placement_sum, c1_top4, c1_placement_sum]
+        pairs: dict[tuple[int, int], list[int]] = {}
+        for participants in by_match.values():
+            n = len(participants)
+            for i in range(n):
+                team_i, champ_i, place_i = participants[i]
+                for j in range(i + 1, n):
+                    team_j, champ_j, place_j = participants[j]
+                    if team_i == team_j or champ_i == champ_j:
+                        continue
+                    hit_i = 1 if place_i <= _TOP4_THRESHOLD else 0
+                    hit_j = 1 if place_j <= _TOP4_THRESHOLD else 0
+                    key = (champ_i, champ_j) if champ_i < champ_j else (champ_j, champ_i)
+                    c0_top4, c0_place, c1_top4, c1_place = (
+                        (hit_i, place_i, hit_j, place_j) if champ_i < champ_j else (hit_j, place_j, hit_i, place_i)
+                    )
+                    acc = pairs.setdefault(key, [0, 0, 0, 0, 0])
+                    acc[0] += 1
+                    acc[1] += c0_top4
+                    acc[2] += c0_place
+                    acc[3] += c1_top4
+                    acc[4] += c1_place
+
+        to_insert = [
+            {
+                "season_id": season_id,
+                "c0": c0,
+                "c1": c1,
+                "games": acc[0],
+                "c0_top4": acc[1],
+                "c0_placement_sum": acc[2],
+                "c1_top4": acc[3],
+                "c1_placement_sum": acc[4],
+            }
+            for (c0, c1), acc in pairs.items()
+            if acc[0] >= floor
+        ]
+        if to_insert:
+            await session.execute(insert(cvs), to_insert)
+        return len(to_insert)
+
+    async def champion_matchups_versus(
+        self,
+        session: AsyncSession,
+        *,
+        season_id: str,
+        champion_id: int,
+        min_games: int = SYNERGY_MIN_GAMES,
+    ) -> list[ChampionMatchupPartnerRow]:
+        """Every opponent ``champion_id`` faced (different subteam) this season.
+
+        Reads ``champion_versus_stats`` from whichever side ``champion_id``
+        landed on (``c0`` or ``c1``) — the rollup only stores each ordered
+        pair once, so both indexes are queried and the caller's own top4/
+        placement_sum picked from the matching side.
+        """
+        floor = max(int(min_games), settings.synergy_combo_min_games)
+        cvs = m.ChampionVersusStat.__table__
+        stmt = select(
+            cvs.c.c0, cvs.c.c1, cvs.c.games,
+            cvs.c.c0_top4, cvs.c.c0_placement_sum, cvs.c.c1_top4, cvs.c.c1_placement_sum,
+        ).where(
+            cvs.c.season_id == season_id,
+            cvs.c.games >= floor,
+            or_(cvs.c.c0 == champion_id, cvs.c.c1 == champion_id),
+        )
+        rows = (await session.execute(stmt)).all()
+        out: list[ChampionMatchupPartnerRow] = []
+        for r in rows:
+            is_c0 = int(r.c0) == champion_id
+            opponent = int(r.c1) if is_c0 else int(r.c0)
+            top4 = int((r.c0_top4 if is_c0 else r.c1_top4) or 0)
+            placement_sum = int((r.c0_placement_sum if is_c0 else r.c1_placement_sum) or 0)
+            out.append(
+                ChampionMatchupPartnerRow(
+                    champion_id=opponent,
+                    games=int(r.games or 0),
+                    top4=top4,
+                    placement_sum=placement_sum,
+                )
+            )
+        return out
+
+    async def rebuild_champion_build_stats(
+        self, session: AsyncSession, *, season_id: str, min_games: int | None = None
+    ) -> int:
+        """Recompute ``champion_build_stats`` (augments AND items). Cron-only.
+
+        Delete-then-insert per season, same shape as :meth:`rebuild_champion_combos`
+        (cumulative rollup, cannot be windowed). ``unnest()`` over
+        ``match_participants.augments``/``.items`` replaces the self-join those
+        combos need — there's no row COMBINATION here, each unnested array
+        element already IS one (champion, pick) observation.
+
+        De-dupes (participant, pick) in an inner ``DISTINCT`` before aggregating:
+        an augment-granting effect can repeat an id in one participant's array
+        (observed live — id 238 twice, an "receba uma bigorna aleatória" style
+        pick), and without the dedupe that ONE game silently counts twice toward
+        that pick's games/top1/top4/placement_sum — inflating its sample and
+        double-weighting that single placement.
+
+        ``min_games`` is the WRITE floor (default ``settings.champion_build_min_games``);
+        the READ floors live in ``build_ref_service`` (``BUILD_MIN_GAMES``,
+        ``TOP_MIN_GAMES``) and must stay above it. Returns rows written.
+        """
+        floor = settings.champion_build_min_games if min_games is None else min_games
+        cbs = m.ChampionBuildStat
+        await session.execute(delete(cbs).where(cbs.season_id == season_id))
+
+        written = 0
+        for kind, source_col in (
+            ("augment", m.MatchParticipant.augments),
+            ("item", m.MatchParticipant.items),
+        ):
+            # SQLAlchemy warns "cartesian product" here (it doesn't model Postgres's
+            # implicit-LATERAL treatment of a set-returning function in FROM) — a
+            # false positive: `FROM match_participants, unnest(...augments)` DOES
+            # correlate per-row in Postgres (has since 9.3), confirmed against real
+            # data (per-champion games/top1/top4 line up with actual participant
+            # counts, not an inflated cross-join).
+            pick_id = func.unnest(source_col).column_valued("pick_id")
+            # DISTINCT includes participant_id so only a repeated id WITHIN the
+            # same participant's array collapses (the id-238-twice case) — two
+            # DIFFERENT participants who happen to share (champion, placement,
+            # pick) are not the same row and must both count. Without
+            # participant_id here, DISTINCT collapses across participants too
+            # (season/champion/placement/pick alone do not identify a unique
+            # participant), silently undercounting every pick's games.
+            picks = (
+                select(
+                    m.MatchParticipant.id.label("participant_id"),
+                    m.Match.season_id.label("season_id"),
+                    m.MatchParticipant.champion_id.label("champion_id"),
+                    m.MatchParticipant.placement.label("placement"),
+                    pick_id.label("pick_id"),
+                )
+                .select_from(m.MatchParticipant)
+                .join(m.Match, m.Match.id == m.MatchParticipant.match_id)
+                .where(
+                    m.Match.season_id == season_id,
+                    m.MatchParticipant.eligible.is_(True),
+                    m.MatchParticipant.played_at >= _EPOCH,
+                )
+                .distinct()
+                .subquery()
+            )
+            games = func.count()
+            # A bound VARCHAR parameter has no implicit cast to the pg enum in an
+            # INSERT...SELECT (unlike an untyped literal constant) — cast explicitly
+            # or Postgres raises DatatypeMismatchError at execute time.
+            kind_literal = cast(literal(kind), cbs.__table__.c.kind.type)
+            src = (
+                select(
+                    picks.c.season_id,
+                    kind_literal.label("kind"),
+                    picks.c.champion_id,
+                    picks.c.pick_id,
+                    games.label("games"),
+                    func.sum(case((picks.c.placement == 1, 1), else_=0)).label("top1"),
+                    func.sum(
+                        case((picks.c.placement <= _TOP4_THRESHOLD, 1), else_=0)
+                    ).label("top4"),
+                    func.sum(picks.c.placement).label("placement_sum"),
+                )
+                .group_by(picks.c.season_id, picks.c.champion_id, picks.c.pick_id)
+                .having(games >= floor)
+            )
+            result = await session.execute(
+                insert(cbs).from_select(
+                    ["season_id", "kind", "champion_id", "pick_id", "games", "top1", "top4", "placement_sum"],
+                    src,
+                )
+            )
+            written += int(getattr(result, "rowcount", 0) or 0)
+        return written
+
+    async def champion_build_picks(
+        self,
+        session: AsyncSession,
+        *,
+        season_id: str,
+        champion_id: int,
+        kind: str,
+        min_games: int,
+    ) -> list[BuildPickRow]:
+        """One champion's augment/item picks (native), tiered against each other.
+
+        ``pick_rate`` = share of the CHAMPION's total eligible games (from
+        :meth:`champion_tierlist`, ``min_games=0`` so an under-floor champion
+        still gets its true total) that included this pick — the champion's
+        real total, not the floor-filtered pick pool, so excluding the tail
+        doesn't artificially inflate the survivors' rates.
+        """
+        cbs = m.ChampionBuildStat.__table__
+        rows = (
+            await session.execute(
+                select(cbs.c.pick_id, cbs.c.games, cbs.c.top1, cbs.c.top4, cbs.c.placement_sum)
+                .where(
+                    cbs.c.season_id == season_id,
+                    cbs.c.kind == kind,
+                    cbs.c.champion_id == champion_id,
+                    cbs.c.games >= min_games,
+                )
+            )
+        ).all()
+        if not rows:
+            return []
+        totals = await self.champion_tierlist(
+            session, season_id=season_id, min_games=0, champion_id=champion_id
+        )
+        total_games = totals[0].games if totals else 0
+        built = [
+            BuildPickRow(
+                pick_id=int(r.pick_id),
+                games=int(r.games),
+                top1=round(100 * r.top1 / r.games),
+                top4=round(100 * r.top4 / r.games),
+                avg_place=round(r.placement_sum / r.games, 2),
+                pick_rate=round(100 * r.games / total_games, 1) if total_games > 0 else 0.0,
+            )
+            for r in rows
+        ]
+        return _assign_build_tiers(built)
+
+    async def rebuild_champion_build_variants(
+        self,
+        session: AsyncSession,
+        *,
+        season_id: str,
+        prismatic_augment_ids: set[int],
+        min_games: int | None = None,
+        max_items: int = 8,
+    ) -> int:
+        """Recompute ``champion_build_variant_stats``. Cron-only.
+
+        Groups by (champion, PRISMATIC augment) — the round-3 pick that
+        actually defines an Arena build's direction — instead of clustering
+        full itemizations, which would both explode combinatorially and have
+        no honest name to give each cluster (the augment already has a real
+        CDragon name; an invented archetype label like "Burst AP" would not).
+
+        Not a SQL aggregate: needs ``prismatic_augment_ids`` (from
+        ``BuildRefService``, HTTP-cached, not something SQL can know) to pick
+        the right augment out of each participant's 3 draft picks, so this
+        follows :meth:`rebuild_champion_versus`'s shape — one plain
+        (non-self-join) scan of the season's participants, aggregated in
+        Python, then bulk-inserted. Delete-then-insert per season (cumulative
+        rollup, cannot be windowed). ``min_games`` is the WRITE floor (default
+        ``settings.synergy_combo_min_games``, shared with the other rollups in
+        this series). Returns rows written. The caller commits.
+        """
+        floor = settings.synergy_combo_min_games if min_games is None else min_games
+        cbvs = m.ChampionBuildVariantStat
+        await session.execute(delete(cbvs).where(cbvs.season_id == season_id))
+
+        mp = m.MatchParticipant.__table__
+        # ``.c.items`` collides with ColumnCollection's own mapping-style
+        # ``.items()`` method (and would collide with Row's own accessor the
+        # same way) — bracket access + an explicit label sidesteps both.
+        mp_items = mp.c["items"].label("item_ids")
+        stmt = (
+            select(mp.c.champion_id, mp.c.augments, mp_items, mp.c.placement)
+            .select_from(mp.join(m.Match.__table__, m.Match.__table__.c.id == mp.c.match_id))
+            .where(
+                m.Match.__table__.c.season_id == season_id,
+                mp.c.eligible.is_(True),
+                mp.c.played_at >= _EPOCH,
+                mp.c.augments.is_not(None),
+                mp_items.is_not(None),
+            )
+        )
+        rows = (await session.execute(stmt)).all()
+
+        # (champion_id, augment_id) -> [games, top1, top4, placement_sum, Counter[item_id]]
+        groups: dict[tuple[int, int], list[Any]] = {}
+        for r in rows:
+            picked_augments: list[int] = r.augments or []
+            prismatic = next((a for a in picked_augments if a in prismatic_augment_ids), None)
+            if prismatic is None:
+                continue
+            key = (int(r.champion_id), int(prismatic))
+            acc = groups.setdefault(key, [0, 0, 0, 0, Counter()])
+            placement = int(r.placement)
+            acc[0] += 1
+            acc[1] += 1 if placement == 1 else 0
+            acc[2] += 1 if placement <= _TOP4_THRESHOLD else 0
+            acc[3] += placement
+            acc[4].update(int(i) for i in (r.item_ids or []))
+
+        to_insert = [
+            {
+                "season_id": season_id,
+                "champion_id": champion_id,
+                "augment_id": augment_id,
+                "games": games,
+                "top1": top1,
+                "top4": top4,
+                "placement_sum": placement_sum,
+                "items": [item_id for item_id, _count in item_counter.most_common(max_items)],
+            }
+            for (champion_id, augment_id), (games, top1, top4, placement_sum, item_counter) in groups.items()
+            if games >= floor
+        ]
+        if to_insert:
+            await session.execute(insert(cbvs), to_insert)
+        return len(to_insert)
+
+    async def champion_build_variants(
+        self,
+        session: AsyncSession,
+        *,
+        season_id: str,
+        champion_id: int,
+        min_games: int,
+    ) -> list[tuple[BuildPickRow, list[int]]]:
+        """One champion's build variants (by prismatic augment), tiered.
+
+        Returns ``(row, item_ids)`` pairs — ``row.pick_id`` is the augment id;
+        item ids are the rollup's precomputed top-frequency list, resolved to
+        display DTOs by the caller (this layer stays CDragon-agnostic).
+        """
+        cbvs = m.ChampionBuildVariantStat.__table__
+        cbvs_items = cbvs.c["items"].label("item_ids")
+        rows = (
+            await session.execute(
+                select(
+                    cbvs.c.augment_id, cbvs.c.games, cbvs.c.top1, cbvs.c.top4,
+                    cbvs.c.placement_sum, cbvs_items,
+                )
+                .where(
+                    cbvs.c.season_id == season_id,
+                    cbvs.c.champion_id == champion_id,
+                    cbvs.c.games >= min_games,
+                )
+                .order_by(cbvs.c.games.desc())
+            )
+        ).all()
+        if not rows:
+            return []
+        totals = await self.champion_tierlist(
+            session, season_id=season_id, min_games=0, champion_id=champion_id
+        )
+        total_games = totals[0].games if totals else 0
+        built = [
+            (
+                BuildPickRow(
+                    pick_id=int(r.augment_id),
+                    games=int(r.games),
+                    top1=round(100 * r.top1 / r.games),
+                    top4=round(100 * r.top4 / r.games),
+                    avg_place=round(r.placement_sum / r.games, 2),
+                    pick_rate=round(100 * r.games / total_games, 1) if total_games > 0 else 0.0,
+                ),
+                [int(i) for i in (r.item_ids or [])],
+            )
+            for r in rows
+        ]
+        _assign_build_tiers([row for row, _items in built])
+        return built
+
+    async def top_build_picks(
+        self, session: AsyncSession, *, season_id: str, kind: str, min_games: int
+    ) -> list[BuildPickRow]:
+        """Global cross-champion augment/item picks (native), tiered against each other.
+
+        ``pick_rate`` = share of the CATEGORY's games — the floor-qualified
+        pool's own total, mirroring the old external top_build's convention
+        (rank order = games desc, "what the meta actually plays").
+        """
+        cbs = m.ChampionBuildStat.__table__
+        games = func.sum(cbs.c.games)
+        rows = (
+            await session.execute(
+                select(
+                    cbs.c.pick_id,
+                    games.label("games"),
+                    func.sum(cbs.c.top1).label("top1"),
+                    func.sum(cbs.c.top4).label("top4"),
+                    func.sum(cbs.c.placement_sum).label("placement_sum"),
+                )
+                .where(cbs.c.season_id == season_id, cbs.c.kind == kind)
+                .group_by(cbs.c.pick_id)
+                .having(games >= min_games)
+            )
+        ).all()
+        if not rows:
+            return []
+        category_games = sum(int(r.games) for r in rows) or 1
+        built = [
+            BuildPickRow(
+                pick_id=int(r.pick_id),
+                games=int(r.games),
+                top1=round(100 * r.top1 / r.games),
+                top4=round(100 * r.top4 / r.games),
+                avg_place=round(r.placement_sum / r.games, 2),
+                pick_rate=round(100 * r.games / category_games, 1),
+            )
+            for r in rows
+        ]
+        return _assign_build_tiers(built)
 
     async def _champion_synergies_n_live(
         self,

@@ -12,7 +12,9 @@
 import { useState, type CSSProperties } from "react";
 import type { AvatarColors } from "../lib/types";
 
-function colorVars(c?: AvatarColors): CSSProperties {
+// O perfil reutiliza estas propriedades no ancestral comum ao avatar e ao nick.
+// eslint-disable-next-line react-refresh/only-export-components
+export function avatarColorVars(c?: AvatarColors): CSSProperties {
   return { ["--c1" as string]: c?.c1 ?? "#2a4a6a", ["--c2" as string]: c?.c2 ?? "#46b4ec" };
 }
 
@@ -58,7 +60,7 @@ export function PlayerAvatar({
   className?: string;
   style?: CSSProperties;
 }) {
-  const s: CSSProperties = { ...colorVars(colors), ...style };
+  const s: CSSProperties = { ...avatarColorVars(colors), ...style };
   if (size) {
     s.width = size;
     s.height = size;
@@ -89,7 +91,7 @@ export function ChampIcon({
   return (
     <span
       className={`ch-icon${size ? " " + size : ""}${className ? " " + className : ""}`}
-      style={{ ...colorVars(colors), ...style }}
+      style={{ ...avatarColorVars(colors), ...style }}
     >
       {url ? <DDragonImg url={url} alt={alt} /> : null}
     </span>

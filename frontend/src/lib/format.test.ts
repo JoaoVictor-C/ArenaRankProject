@@ -69,7 +69,7 @@ describe("format helpers", () => {
 
   it("timeAgo é relativo e determinístico com nowMs fixo", () => {
     const now = Date.parse("2026-06-21T12:00:00Z");
-    expect(timeAgo("2026-06-21T11:59:30Z", now)).toBe("há 30 s");
+    expect(timeAgo("2026-06-21T11:59:30Z", now)).toBe("agora mesmo"); // <60s nunca mostra "há 0 s"
     expect(timeAgo("2026-06-21T11:49:00Z", now)).toBe("há 11 min");
     expect(timeAgo("2026-06-21T10:00:00Z", now)).toBe("há 2 h");
     expect(timeAgo("2026-06-19T12:00:00Z", now)).toBe("há 2 d");

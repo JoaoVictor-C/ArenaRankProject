@@ -1,0 +1,189 @@
+{
+  "$meta": {
+    "purpose": "Payloads de referência para os endpoints da página do campeão que AINDA NÃO EXISTEM no backend. O frontend já está escrito contra estas formas exatas; servir isto faz a página funcionar sem nenhuma mudança de front.",
+    "champion": { "championId": 50, "name": "Swain" },
+    "envelope": "docs/backend-envelope-champion-page.md",
+    "consumedBy": "frontend/src/lib/devMock.ts",
+    "servedAt": "/fixtures/champion-page.json — fora do prefixo /api de propósito (o proxy do Vite encaminha /api* para o backend real)",
+    "howToRun": "npm run dev e abrir /campeao/50?mock=1 — a página inteira renderiza a partir deste arquivo. ?mock=0 desliga.",
+    "conventions": {
+      "case": "camelCase no JSON (response_model_by_alias=True, como nos routers existentes)",
+      "percent": "todas as taxas são 0..100 (não 0..1), como o resto de /champions",
+      "winRate": "SEMPRE taxa de top-half (top 4). O produto chama isso de 'winrate' em toda a UI.",
+      "placementDerived": "nenhum campo é winrate cru de augment/item — tudo derivado de colocação, como o /build já faz (ToS)",
+      "ids": "ids de item e augment são os IDS DE ARENA que /champions/{id}/build já serve (item 443056, augment 45), NÃO os ids clássicos do ddragon",
+      "iconUrls": "copiados da resposta REAL de /champions/50/build — item e augment vêm do CommunityDragon, ícone de campeão vem do ddragon. Reutilizar o mesmo resolver.",
+      "nulls": "iconUrl pode ser null; o front degrada para a moldura de raridade sem quebrar"
+    },
+    "numbersAreIllustrative": "os VALORES (winRate, games, pickRate) são plausíveis mas inventados — servem para provar forma e layout. Ids, nomes PT-BR e URLs são reais."
+  },
+
+  "buildPatch": {
+    "$endpoint": "CAMPO ADITIVO em GET /api/v1/champions/{championId}/build (endpoint que JÁ existe)",
+    "$why": "o agregado atual devolve `items` sem separar raridade. A página exibe uma faixa de 10 ITENS PRISMÁTICOS; sem a raridade não dá para montá-la sem chutar.",
+    "prismaticItems": [
+      { "id": 443056, "name": "Coroa do Rei Demoníaco", "iconUrl": "https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/assets/items/icons2d/3056_demonkingscrown.png", "tier": "S+", "games": 3210, "avgPlace": 2.98, "top1": 20.4, "top4": 79.1, "pickRate": 31.3 },
+      { "id": 447111, "name": "Armadura Sangrenta do Suserano", "iconUrl": "https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/assets/items/icons2d/7111_overlordsbloodmail.png", "tier": "S", "games": 2884, "avgPlace": 3.01, "top1": 19.8, "top4": 78.2, "pickRate": 28.1 },
+      { "id": 226664, "name": "Resplendor Vazio", "iconUrl": "https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/assets/items/icons2d/6664_hollowradiance.png", "tier": "S", "games": 2461, "avgPlace": 3.04, "top1": 19.1, "top4": 77.6, "pickRate": 24.0 },
+      { "id": 223110, "name": "Coração Congelado", "iconUrl": "https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/assets/items/icons2d/3110_tank_t3_frozenheart.png", "tier": "A", "games": 2107, "avgPlace": 3.09, "top1": 18.4, "top4": 76.8, "pickRate": 20.5 },
+      { "id": 223143, "name": "Presságio de Randuin", "iconUrl": "https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/assets/items/icons2d/3143_tank_t3_randuinsomen.png", "tier": "A", "games": 1907, "avgPlace": 3.11, "top1": 17.6, "top4": 76.3, "pickRate": 18.6 },
+      { "id": 223121, "name": "Fimbulwinter", "iconUrl": "https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/assets/items/icons2d/3121_fimbulwinter.png", "tier": "B", "games": 1338, "avgPlace": 3.19, "top1": 16.2, "top4": 74.8, "pickRate": 13.0 },
+      { "id": 224403, "name": "Espátula Dourada", "iconUrl": "https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/assets/items/icons2d/4403_goldenspatula.png", "tier": "B", "games": 1104, "avgPlace": 3.24, "top1": 15.4, "top4": 73.9, "pickRate": 10.8 },
+      { "id": 226662, "name": "Lâmina Congelante", "iconUrl": "https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/assets/items/icons2d/6662_icebornegauntlet.png", "tier": "C", "games": 866, "avgPlace": 3.32, "top1": 14.1, "top4": 72.1, "pickRate": 8.4 },
+      { "id": 223065, "name": "Visage Espiritual", "iconUrl": "https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/assets/items/icons2d/3065_spiritvisage.png", "tier": "C", "games": 702, "avgPlace": 3.38, "top1": 13.3, "top4": 71.0, "pickRate": 6.8 },
+      { "id": 223001, "name": "Máscara Abissal", "iconUrl": "https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/assets/items/icons2d/3001_abyssalmask.png", "tier": "D", "games": 481, "avgPlace": 3.47, "top1": 12.0, "top4": 69.4, "pickRate": 4.7 }
+    ]
+  },
+
+  "trend": {
+    "$endpoint": "GET /api/v1/champions/{championId}/trend?days=15",
+    "championId": 50,
+    "name": "Swain",
+    "championIconUrl": "https://ddragon.leagueoflegends.com/cdn/16.14.1/img/champion/Swain.png",
+    "days": 15,
+    "series": [
+      { "date": "2026-07-11", "top4": 77, "first": 22, "pickRate": 1.4, "games": 1244 },
+      { "date": "2026-07-12", "top4": 76, "first": 21, "pickRate": 1.3, "games": 1216 },
+      { "date": "2026-07-13", "top4": 74, "first": 19, "pickRate": 1.2, "games": 1128 },
+      { "date": "2026-07-14", "top4": 73, "first": 18, "pickRate": 1.1, "games": 1054 },
+      { "date": "2026-07-15", "top4": 75, "first": 20, "pickRate": 1.2, "games": 1170 },
+      { "date": "2026-07-16", "top4": 74, "first": 18, "pickRate": 1.1, "games": 1109 },
+      { "date": "2026-07-17", "top4": 76, "first": 21, "pickRate": 1.3, "games": 1230 },
+      { "date": "2026-07-18", "top4": 74, "first": 18, "pickRate": 1.2, "games": 1241 },
+      { "date": "2026-07-19", "top4": 75, "first": 16, "pickRate": 1.1, "games": 1141 },
+      { "date": "2026-07-20", "top4": 73, "first": 17, "pickRate": 1.0, "games": 967 },
+      { "date": "2026-07-21", "top4": 74, "first": 16, "pickRate": 1.0, "games": 992 },
+      { "date": "2026-07-22", "top4": 77, "first": 16, "pickRate": 1.0, "games": 907 },
+      { "date": "2026-07-23", "top4": 75, "first": 18, "pickRate": 1.0, "games": 768 },
+      { "date": "2026-07-24", "top4": 72, "first": 15, "pickRate": 1.0, "games": 763 },
+      { "date": "2026-07-25", "top4": 78, "first": 19, "pickRate": 1.0, "games": 414 }
+    ]
+  },
+
+  "matchups": {
+    "duo": {
+      "$endpoint": "GET /api/v1/champions/{championId}/matchups?kind=duo&limit=5&season=3&format=3v3",
+      "championId": 50,
+      "name": "Swain",
+      "season": 3,
+      "format": "3v3",
+      "kind": "duo",
+      "sampleSize": 4318,
+      "minGames": 50,
+      "baseWinRate": 75.0,
+      "best": [
+        { "championId": 37, "name": "Sona", "championIconUrl": "https://ddragon.leagueoflegends.com/cdn/16.14.1/img/champion/Sona.png", "colors": { "c1": "#7b5ea7", "c2": "#2a1f45" }, "games": 412, "winRate": 81.2, "delta": 6.2, "avgPlace": 2.71 },
+        { "championId": 147, "name": "Seraphine", "championIconUrl": "https://ddragon.leagueoflegends.com/cdn/16.14.1/img/champion/Seraphine.png", "colors": { "c1": "#d36ea4", "c2": "#3a1d2e" }, "games": 358, "winRate": 80.4, "delta": 5.4, "avgPlace": 2.78 },
+        { "championId": 117, "name": "Lulu", "championIconUrl": "https://ddragon.leagueoflegends.com/cdn/16.14.1/img/champion/Lulu.png", "colors": { "c1": "#8ac6d1", "c2": "#1e3540" }, "games": 291, "winRate": 79.8, "delta": 4.8, "avgPlace": 2.84 },
+        { "championId": 267, "name": "Nami", "championIconUrl": "https://ddragon.leagueoflegends.com/cdn/16.14.1/img/champion/Nami.png", "colors": { "c1": "#4fa3c7", "c2": "#152f3d" }, "games": 264, "winRate": 79.1, "delta": 4.1, "avgPlace": 2.90 },
+        { "championId": 350, "name": "Yuumi", "championIconUrl": "https://ddragon.leagueoflegends.com/cdn/16.14.1/img/champion/Yuumi.png", "colors": { "c1": "#c9a227", "c2": "#3a2f10" }, "games": 233, "winRate": 78.6, "delta": 3.6, "avgPlace": 2.95 }
+      ],
+      "worst": [
+        { "championId": 777, "name": "Yone", "championIconUrl": "https://ddragon.leagueoflegends.com/cdn/16.14.1/img/champion/Yone.png", "colors": { "c1": "#5b7fa6", "c2": "#141f2b" }, "games": 318, "winRate": 69.7, "delta": -5.3, "avgPlace": 3.72 },
+        { "championId": 92, "name": "Riven", "championIconUrl": "https://ddragon.leagueoflegends.com/cdn/16.14.1/img/champion/Riven.png", "colors": { "c1": "#9aa4b0", "c2": "#20262e" }, "games": 276, "winRate": 70.4, "delta": -4.6, "avgPlace": 3.66 },
+        { "championId": 141, "name": "Kayn", "championIconUrl": "https://ddragon.leagueoflegends.com/cdn/16.14.1/img/champion/Kayn.png", "colors": { "c1": "#b03a4a", "c2": "#2a1015" }, "games": 402, "winRate": 70.8, "delta": -4.2, "avgPlace": 3.61 },
+        { "championId": 11, "name": "Mestre Yi", "championIconUrl": "https://ddragon.leagueoflegends.com/cdn/16.14.1/img/champion/MasterYi.png", "colors": { "c1": "#c78b3c", "c2": "#33230e" }, "games": 249, "winRate": 71.3, "delta": -3.7, "avgPlace": 3.57 },
+        { "championId": 238, "name": "Zed", "championIconUrl": "https://ddragon.leagueoflegends.com/cdn/16.14.1/img/champion/Zed.png", "colors": { "c1": "#c0392b", "c2": "#1c1416" }, "games": 305, "winRate": 71.9, "delta": -3.1, "avgPlace": 3.51 }
+      ]
+    },
+    "versus": {
+      "$endpoint": "GET /api/v1/champions/{championId}/matchups?kind=versus&limit=5&season=3&format=3v3",
+      "championId": 50,
+      "name": "Swain",
+      "season": 3,
+      "format": "3v3",
+      "kind": "versus",
+      "sampleSize": 9764,
+      "minGames": 50,
+      "baseWinRate": 75.0,
+      "best": [
+        { "championId": 157, "name": "Yasuo", "championIconUrl": "https://ddragon.leagueoflegends.com/cdn/16.14.1/img/champion/Yasuo.png", "colors": { "c1": "#4a6fa5", "c2": "#131c28" }, "games": 688, "winRate": 82.1, "delta": 7.1, "avgPlace": 2.63 },
+        { "championId": 238, "name": "Zed", "championIconUrl": "https://ddragon.leagueoflegends.com/cdn/16.14.1/img/champion/Zed.png", "colors": { "c1": "#c0392b", "c2": "#1c1416" }, "games": 604, "winRate": 81.3, "delta": 6.3, "avgPlace": 2.70 },
+        { "championId": 91, "name": "Talon", "championIconUrl": "https://ddragon.leagueoflegends.com/cdn/16.14.1/img/champion/Talon.png", "colors": { "c1": "#8e7cc3", "c2": "#1f1a2e" }, "games": 437, "winRate": 80.2, "delta": 5.2, "avgPlace": 2.79 },
+        { "championId": 55, "name": "Katarina", "championIconUrl": "https://ddragon.leagueoflegends.com/cdn/16.14.1/img/champion/Katarina.png", "colors": { "c1": "#b5443c", "c2": "#2b1313" }, "games": 512, "winRate": 79.6, "delta": 4.6, "avgPlace": 2.85 },
+        { "championId": 84, "name": "Akali", "championIconUrl": "https://ddragon.leagueoflegends.com/cdn/16.14.1/img/champion/Akali.png", "colors": { "c1": "#3fa07a", "c2": "#10261f" }, "games": 391, "winRate": 78.8, "delta": 3.8, "avgPlace": 2.93 }
+      ],
+      "worst": [
+        { "championId": 141, "name": "Kayn", "championIconUrl": "https://ddragon.leagueoflegends.com/cdn/16.14.1/img/champion/Kayn.png", "colors": { "c1": "#b03a4a", "c2": "#2a1015" }, "games": 723, "winRate": 69.6, "delta": -5.4, "avgPlace": 3.74 },
+        { "championId": 8, "name": "Vladimir", "championIconUrl": "https://ddragon.leagueoflegends.com/cdn/16.14.1/img/champion/Vladimir.png", "colors": { "c1": "#8e2b3f", "c2": "#210d13" }, "games": 466, "winRate": 70.3, "delta": -4.7, "avgPlace": 3.68 },
+        { "championId": 54, "name": "Malphite", "championIconUrl": "https://ddragon.leagueoflegends.com/cdn/16.14.1/img/champion/Malphite.png", "colors": { "c1": "#6e7f8d", "c2": "#1a2126" }, "games": 589, "winRate": 70.9, "delta": -4.1, "avgPlace": 3.62 },
+        { "championId": 105, "name": "Fizz", "championIconUrl": "https://ddragon.leagueoflegends.com/cdn/16.14.1/img/champion/Fizz.png", "colors": { "c1": "#4bb3c4", "c2": "#122b30" }, "games": 344, "winRate": 71.5, "delta": -3.5, "avgPlace": 3.56 },
+        { "championId": 38, "name": "Kassadin", "championIconUrl": "https://ddragon.leagueoflegends.com/cdn/16.14.1/img/champion/Kassadin.png", "colors": { "c1": "#5a6fc0", "c2": "#151a30" }, "games": 298, "winRate": 72.1, "delta": -2.9, "avgPlace": 3.49 }
+      ]
+    }
+  },
+
+  "builds": {
+    "$endpoint": "GET /api/v1/champions/{championId}/builds?season=3&format=3v3",
+    "$note": "ids, nomes PT-BR e iconUrls copiados da resposta REAL de /champions/50/build — reutilizar o mesmo resolver CDragon.",
+    "championId": 50,
+    "name": "Swain",
+    "patch": "16.14",
+    "updatedAt": "2026-07-24",
+    "games": 5747,
+    "minGames": 50,
+    "variants": [
+      {
+        "id": "drain-tank",
+        "name": "Drain Tank",
+        "tier": "S",
+        "games": 3514,
+        "pickRate": 58.2,
+        "top4": 78.4,
+        "top1": 19.6,
+        "avgPlace": 3.02,
+        "items": [
+          { "id": 443056, "name": "Coroa do Rei Demoníaco", "iconUrl": "https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/assets/items/icons2d/3056_demonkingscrown.png", "tier": "S", "games": 3210, "avgPlace": 2.98, "top1": 20.4, "top4": 79.1, "pickRate": 91.3 },
+          { "id": 447111, "name": "Armadura Sangrenta do Suserano", "iconUrl": "https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/assets/items/icons2d/7111_overlordsbloodmail.png", "tier": "S", "games": 2884, "avgPlace": 3.01, "top1": 19.8, "top4": 78.2, "pickRate": 82.1 },
+          { "id": 223110, "name": "Coração Congelado", "iconUrl": "https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/assets/items/icons2d/3110_tank_t3_frozenheart.png", "tier": "A", "games": 2461, "avgPlace": 3.06, "top1": 18.9, "top4": 77.4, "pickRate": 70.0 },
+          { "id": 223143, "name": "Presságio de Randuin", "iconUrl": "https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/assets/items/icons2d/3143_tank_t3_randuinsomen.png", "tier": "A", "games": 1907, "avgPlace": 3.11, "top1": 17.6, "top4": 76.3, "pickRate": 54.3 },
+          { "id": 223121, "name": "Fimbulwinter", "iconUrl": "https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/assets/items/icons2d/3121_fimbulwinter.png", "tier": "B", "games": 1338, "avgPlace": 3.19, "top1": 16.2, "top4": 74.8, "pickRate": 38.1 }
+        ],
+        "requiredAugments": [
+          { "id": 45, "name": "Condutor Infernal", "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/infernalconduit_small.png", "rarity": "prismatic", "tier": "S+", "games": 2104, "avgPlace": 2.91, "top1": 22.1, "top4": 81.0, "pickRate": 59.9 },
+          { "id": 41, "name": "Golias", "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/goliath_small.png", "rarity": "prismatic", "tier": "S", "games": 1688, "avgPlace": 2.96, "top1": 20.8, "top4": 79.7, "pickRate": 48.0 },
+          { "id": 313, "name": "Motor de tanque", "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/tank_engine_small.png", "rarity": "gold", "tier": "A", "games": 1204, "avgPlace": 3.04, "top1": 19.1, "top4": 77.9, "pickRate": 34.3 }
+        ]
+      },
+      {
+        "id": "arauto-ap",
+        "name": "Arauto AP",
+        "tier": "A",
+        "games": 1666,
+        "pickRate": 27.6,
+        "top4": 73.1,
+        "top1": 15.8,
+        "avgPlace": 3.28,
+        "items": [
+          { "id": 226664, "name": "Resplendor Vazio", "iconUrl": "https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/assets/items/icons2d/6664_hollowradiance.png", "tier": "A", "games": 1520, "avgPlace": 3.24, "top1": 16.4, "top4": 74.0, "pickRate": 91.2 },
+          { "id": 443056, "name": "Coroa do Rei Demoníaco", "iconUrl": "https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/assets/items/icons2d/3056_demonkingscrown.png", "tier": "A", "games": 1312, "avgPlace": 3.27, "top1": 15.9, "top4": 73.4, "pickRate": 78.8 },
+          { "id": 223121, "name": "Fimbulwinter", "iconUrl": "https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/assets/items/icons2d/3121_fimbulwinter.png", "tier": "B", "games": 1044, "avgPlace": 3.31, "top1": 15.1, "top4": 72.6, "pickRate": 62.7 },
+          { "id": 224403, "name": "Espátula Dourada", "iconUrl": "https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/assets/items/icons2d/4403_goldenspatula.png", "tier": "B", "games": 806, "avgPlace": 3.36, "top1": 14.3, "top4": 71.5, "pickRate": 48.4 }
+        ],
+        "requiredAugments": [
+          { "id": 216, "name": "Arauto do Pavor", "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/plaguebearer_small.png", "rarity": "prismatic", "tier": "S", "games": 1180, "avgPlace": 3.18, "top1": 17.2, "top4": 75.6, "pickRate": 70.8 },
+          { "id": 65, "name": "Maligno e Fenomenal", "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/phenomenalevil_small.png", "rarity": "gold", "tier": "A", "games": 902, "avgPlace": 3.25, "top1": 16.0, "top4": 73.9, "pickRate": 54.1 }
+        ]
+      },
+      {
+        "id": "agouro-poke",
+        "name": "Agouro Poke",
+        "tier": "B",
+        "games": 567,
+        "pickRate": 9.4,
+        "top4": 68.9,
+        "top1": 12.4,
+        "avgPlace": 3.55,
+        "items": [
+          { "id": 224403, "name": "Espátula Dourada", "iconUrl": "https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/assets/items/icons2d/4403_goldenspatula.png", "tier": "B", "games": 511, "avgPlace": 3.52, "top1": 12.8, "top4": 69.5, "pickRate": 90.1 },
+          { "id": 226664, "name": "Resplendor Vazio", "iconUrl": "https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/assets/items/icons2d/6664_hollowradiance.png", "tier": "B", "games": 438, "avgPlace": 3.55, "top1": 12.5, "top4": 68.8, "pickRate": 77.2 },
+          { "id": 223110, "name": "Coração Congelado", "iconUrl": "https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/assets/items/icons2d/3110_tank_t3_frozenheart.png", "tier": "C", "games": 322, "avgPlace": 3.61, "top1": 11.6, "top4": 67.4, "pickRate": 56.8 }
+        ],
+        "requiredAugments": [
+          { "id": 219, "name": "Agouro", "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/doomsayer_small.png", "rarity": "prismatic", "tier": "A", "games": 401, "avgPlace": 3.48, "top1": 13.2, "top4": 70.4, "pickRate": 70.7 },
+          { "id": 135, "name": "Magia Desperta", "iconUrl": "https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/spellwake_small.png", "rarity": "silver", "tier": "B", "games": 318, "avgPlace": 3.57, "top1": 12.1, "top4": 68.2, "pickRate": 56.1 }
+        ]
+      }
+    ]
+  }
+}

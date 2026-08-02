@@ -28,6 +28,7 @@ import { RiotUsagePanel } from "./components/RiotUsagePanel";
 import { DailyMatchesPanel } from "./components/DailyMatchesPanel";
 import { HealthPanel } from "./components/HealthPanel";
 import { RefillPanel } from "./components/RefillPanel";
+import { fmtAge } from "./components/SourceBadge";
 import { RolesPermissionsPanel } from "./components/RolesPermissionsPanel";
 import { AuditLogPanel } from "./components/AuditLogPanel";
 import { ActivityFeed } from "./components/ActivityFeed";
@@ -177,6 +178,30 @@ export default function App() {
               </div>
             )}
 
+            {/* Procedência da telemetria. Num deploy dividido (API no EC2,
+                workers no notebook) esta API pode não enxergar o Redis dos
+                workers — e antes disso o console mostrava "fila 0" e "workers
+                parados" com toda a confiança. O banner é o que impede o
+                operador de diagnosticar uma queda que não existe. */}
+            {t && t.dataSource === "snapshot" && TELEMETRY_VIEWS.includes(view) && (
+              <div className="banner">
+                Telemetria por snapshot da caixa de workers — capturada há{" "}
+                {fmtAge(t.ageSeconds)}. Esta API não divide o Redis com eles, então
+                fila, workers e uso da Riot são do último instante publicado.
+              </div>
+            )}
+
+            {t && t.dataSource === "unavailable" && TELEMETRY_VIEWS.includes(view) && (
+              <div className="banner banner-warn">
+                Sem telemetria dos workers
+                {t.ageSeconds == null
+                  ? ": a caixa de workers nunca publicou. Verifique se o scheduler dela está no ar."
+                  : `: último sinal há ${fmtAge(t.ageSeconds)}. Ela parou de publicar.`}{" "}
+                Fila, workers e uso da Riot aparecem vazios porque são
+                desconhecidos — não porque estejam zerados.
+              </div>
+            )}
+
             {!t && TELEMETRY_VIEWS.includes(view) && (
               <div className="panel connecting">
                 <span className="spinner" /> Conectando à telemetria…
@@ -199,7 +224,9 @@ export default function App() {
             )}
 
             {view === "workers" && t && (
-              <WorkersPanel workers={t.workers} conn={conn} onMutated={onWorkerMutated} />
+              <WorkersPanel workers={t.workers} conn={conn} onMutated={onWorkerMutated} dataSource={t.dataSource}
+                ageSeconds={t.ageSeconds}
+              />
             )}
 
             {view === "queues" && t && (

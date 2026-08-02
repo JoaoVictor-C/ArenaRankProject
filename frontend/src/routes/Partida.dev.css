@@ -1,0 +1,13 @@
+/*
+ * Preview oficial do Mori para desenvolvimento local.
+ * O build de produção recebe apenas as fontes locais licenciadas.
+ */
+@font-face {
+  font-family: "Mori";
+  src:
+    url("https://pangrampangram.com/cdn/shop/files/PPMori-Variable_1b739cad-396d-457b-a4e6-addb15e8e13b.woff2?v=1796808650887107637")
+      format("woff2");
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+}

@@ -11,6 +11,7 @@ import {
   useCallback,
   type CSSProperties,
 } from "react";
+import { createPortal } from "react-dom";
 import { useParams, Link } from "react-router-dom";
 import { Mi } from "../components/Mi";
 import { StateBlock } from "../components/StateBlock";
@@ -88,8 +89,11 @@ interface ToastItem {
   show: boolean;
 }
 
+/* Overlays de viewport saem para o <body>: a rota vive dentro do #smooth-content,
+   que o ScrollSmoother transforma — e transform faz `position: fixed` descendente
+   se comportar como `absolute`, o que deixaria scrim e toasts rolando com a página. */
 function ToastWrap({ toasts }: { toasts: ToastItem[] }) {
-  return (
+  return createPortal(
     <div className="toast-wrap">
       {toasts.map((t) => (
         <div key={t.id} className={`toast${t.show ? " show" : ""}`}>
@@ -102,7 +106,8 @@ function ToastWrap({ toasts }: { toasts: ToastItem[] }) {
           </div>
         </div>
       ))}
-    </div>
+    </div>,
+    document.body,
   );
 }
 
@@ -470,7 +475,7 @@ function LobbyModal({
     return () => document.removeEventListener("keydown", handler);
   }, [open, onClose]);
 
-  return (
+  return createPortal(
     <div
       className={`modal-scrim${open ? " open" : ""}`}
       role="dialog"
@@ -549,7 +554,8 @@ function LobbyModal({
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 
@@ -582,7 +588,7 @@ export function Campeonatos({ tourneyIdOverride }: { tourneyIdOverride?: string 
 
   // sidebar player status
   const [playerStatus, setPlayerStatus] = useState<"waiting" | "lobby">("waiting");
-  const [playerStatusText, setPlayerStatusText] = useState("Aguardando início da Partida 2");
+  const [playerStatusText, setPlayerStatusText] = useState("Aguardando início da partida");
 
   // toasts
   const [toasts, setToasts] = useState<ToastItem[]>([]);
@@ -1180,20 +1186,17 @@ export function Campeonatos({ tourneyIdOverride }: { tourneyIdOverride?: string 
       {/* ===== SIDEBAR ===== */}
       <aside className="sidebar" aria-label="Seu desempenho no campeonato">
         <StateBlock loading={loading} error={error}>
-          {data && (
+          {data && myStanding && (
             <div className="pp-card">
               <div className="pp-top">
-                <div className="pp-avatar">
-                  <span className="lvl">54</span>
-                </div>
+                <div className="pp-avatar" />
                 <div>
                   <div className="pp-name">
-                    {slotName(myStanding?.players[0]) || "Jogador"}
-                    <span className="on" title="online" />
+                    {slotName(myStanding.players[0]) || myStanding.teamName}
                   </div>
                   <div className="pp-team">
                     <span className="tdot" />
-                    <span>{myStanding?.teamName ?? "—"} · #{myRank ?? "—"} geral</span>
+                    <span>{myStanding.teamName} · #{myRank ?? "—"} geral</span>
                   </div>
                 </div>
               </div>
@@ -1213,10 +1216,18 @@ export function Campeonatos({ tourneyIdOverride }: { tourneyIdOverride?: string 
                   <div className="l">Posição da equipe</div>
                 </div>
                 <div className="pp-stat">
-                  <div className="v red">{myStanding?.penalties ?? 0}</div>
+                  <div className="v red">{myStanding.penalties}</div>
                   <div className="l">Penalidades</div>
                 </div>
               </div>
+            </div>
+          )}
+          {data && !myStanding && (
+            <div className="pp-card pp-card-empty">
+              <p>Você ainda não está inscrito neste campeonato.</p>
+              <button type="button" className="magnet-btn" onClick={() => setActiveTab("inscritos")}>
+                Ver equipes inscritas
+              </button>
             </div>
           )}
         </StateBlock>
@@ -1286,24 +1297,13 @@ export function Campeonatos({ tourneyIdOverride }: { tourneyIdOverride?: string 
               )}
             </div>
 
-            {/* histórico de campeonatos */}
+            {/* Histórico entre campeonatos (cross-tournament) ainda não existe como
+                endpoint — depende de identidade de jogador, que o produto não tem
+                hoje. Um array de exemplo fixo aqui apareceria como resultado real
+                para qualquer visitante; mostramos a lacuna em vez disso. */}
             <div className="side-h">Histórico no campeonato</div>
-            <div className="hist">
-              {/* dados sample do design — substituir por endpoint quando disponível */}
-              {[
-                { name: "Copa ArenaRank 2X2 Sem Bans", date: "12 mai 2026", medal: "1º", cls: "g" },
-                { name: "Arena Tradicional #44", date: "03 mai 2026", medal: "3º", cls: "b" },
-                { name: "Copa Relâmpago 3X3", date: "27 abr 2026", medal: "2º", cls: "s" },
-                { name: "Bravura Mensal — Abril", date: "15 abr 2026", medal: "5º", cls: "" },
-              ].map((h, i) => (
-                <div key={i} className="hist-row">
-                  <div>
-                    <div className="h-name">{h.name}</div>
-                    <div className="h-date">{h.date}</div>
-                  </div>
-                  <div className={`h-medal${h.cls ? " " + h.cls : ""}`}>{h.medal}</div>
-                </div>
-              ))}
+            <div className="hist hist-empty">
+              <p>Histórico entre campeonatos ainda não está disponível.</p>
             </div>
           </>
         )}

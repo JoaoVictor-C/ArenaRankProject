@@ -98,6 +98,13 @@ class IngestMode(enum.Enum):
     live = "live"
 
 
+class BuildPickKind(enum.Enum):
+    """Discriminates the two pick families in ``champion_build_stats``."""
+
+    augment = "augment"
+    item = "item"
+
+
 class TournamentStatus(enum.Enum):
     upcoming = "upcoming"
     live = "live"
@@ -396,6 +403,37 @@ class MatchParticipant(Base):
     # a atravessar um NULL e exige um rerate de temporada inteira primeiro.
     state_before: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
 
+    # Augment/item picks (draft order preserved), from Riot's ``playerAugment1..6``
+    # / ``item0..6``. NULL nas linhas anteriores à migração 0018 (nunca
+    # capturadas) — distinto de ``[]`` (capturado, sem picks). Placement-derived
+    # only: nunca expor winrate de augment/item, só o rollup
+    # ``champion_build_stats``. Ver arena/services/replay.py — precisa
+    # sobreviver ao replay, senão um rerate zera as colunas.
+    augments: Mapped[list[int] | None] = mapped_column(ARRAY(Integer))
+    items: Mapped[list[int] | None] = mapped_column(ARRAY(Integer))
+
+    # Combat telemetry, raw Riot primitives (kills/deaths/assists/damage/gold/
+    # level plus a curated "useful later, cheap to grab during the same
+    # re-fetch" set — damage taken, healing, self-mitigation, largest multi-
+    # kill, killing sprees, time spent dead). NULL on rows ingested before this
+    # capture existed — distinct from 0, same convention as augments/items
+    # above. kill_participation/damage_per_minute are DERIVED at read time from
+    # these + subteam grouping (see arena/api/routers/match.py), never stored —
+    # Riot's own challenges.killParticipation is computed on the wrong (legacy
+    # 2-bucket teamId) grouping for Arena and must not be trusted/persisted.
+    kills: Mapped[int | None] = mapped_column(Integer)
+    deaths: Mapped[int | None] = mapped_column(Integer)
+    assists: Mapped[int | None] = mapped_column(Integer)
+    damage_to_champions: Mapped[int | None] = mapped_column(Integer)
+    gold_earned: Mapped[int | None] = mapped_column(Integer)
+    champion_level: Mapped[int | None] = mapped_column(Integer)
+    damage_taken: Mapped[int | None] = mapped_column(Integer)
+    total_heal: Mapped[int | None] = mapped_column(Integer)
+    damage_self_mitigated: Mapped[int | None] = mapped_column(Integer)
+    largest_multi_kill: Mapped[int | None] = mapped_column(Integer)
+    killing_sprees: Mapped[int | None] = mapped_column(Integer)
+    time_spent_dead: Mapped[int | None] = mapped_column(Integer)
+
     match: Mapped[Match] = relationship(
         back_populates="participants",
         primaryjoin="Match.id == foreign(MatchParticipant.match_id)",
@@ -658,6 +696,45 @@ class ChampionDailyStat(Base):
 
 
 # ---------------------------------------------------------------------------
+# worker_telemetry — snapshot de telemetria publicado pela caixa de workers.
+#
+# Num deploy dividido (API no EC2, workers no notebook) as duas caixas têm Redis
+# SEPARADOS: só a caixa de workers tem filas, locks, heartbeats e o token-bucket
+# da Riot. O console lido a partir do EC2 não mostrava "não sei" — mostrava
+# ZERO: fila vazia, workers ``active: false``, chave da Riot ausente. Ou seja,
+# uma resposta confiante e ERRADA, que faz o operador diagnosticar uma queda que
+# não existe.
+#
+# A caixa de workers publica aqui um snapshot periódico. Isto é o ÚNICO ponto
+# que as duas caixas já compartilham (o mesmo RDS), então não exige VPN, IP
+# fixo nem porta aberta no notebook — que fica atrás de NAT e às vezes
+# desligado. O sentido é de dentro para fora: o notebook EMPURRA, o EC2 nunca
+# precisa alcançá-lo.
+#
+# ``as_of`` é o que torna a degradação honesta: com o notebook offline o EC2 lê
+# o último snapshot e sabe a idade dele, então a UI mostra "visto pela última
+# vez há 14 min" em vez de zeros.
+# ---------------------------------------------------------------------------
+
+
+class WorkerTelemetry(Base):
+    __tablename__ = "worker_telemetry"
+    __mapper_args__ = {"eager_defaults": False}
+
+    # Uma linha por caixa publicadora. Hoje só existe uma ("worker"), mas a
+    # chave textual evita ter de migrar o dia em que houver duas.
+    source: Mapped[str] = mapped_column(String(32), primary_key=True)
+    # Quando o snapshot foi CAPTURADO (não quando foi lido). É a base do cálculo
+    # de obsolescência no read path.
+    as_of: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True))
+    # Frame já serializado: {"live": LiveSnapshot, "riot": RiotUsage}. JSONB e
+    # não colunas porque o formato é ditado pelos DTOs de telemetria, que mudam
+    # junto com os painéis — normalizar aqui só criaria uma segunda definição
+    # para manter em sincronia.
+    payload: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+
+
+# ---------------------------------------------------------------------------
 # match_backlog — área de espera das partidas descobertas durante um refill.
 #
 # Guarda a partida JÁ PARSEADA (``ParsedArenaMatch``), não o payload cru da
@@ -712,6 +789,22 @@ class SeasonIngestState(Base):
     frontier_pending: Mapped[int] = mapped_column(Integer, server_default=text("0"))
     frontier_done: Mapped[int] = mapped_column(Integer, server_default=text("0"))
     saturated_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True))
+    # Quando as sementes foram efetivamente injetadas — NULL = refill pedido mas
+    # ainda não semeado.
+    #
+    # Existe porque semear NÃO pode acontecer no processo da API. Resolver um
+    # Riot ID exige a chave da Riot, e enfileirar exige o Redis das FILAS; no
+    # deploy dividido a API do EC2 não tem nenhum dos dois (a própria
+    # .env.example diz que a chave "NOT needed by the EC2/API box"). A rota de
+    # admin só registra a INTENÇÃO — vira ``catching_up`` com este campo NULL —
+    # e o ``bootstrap_tick`` da caixa de workers, que tem chave e fila, faz a
+    # semeadura e carimba aqui.
+    seeded_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True))
+    # Última falha da semeadura, em PT-BR, para o console explicar por que um
+    # refill pedido não andou (sem semente configurada, Riot fora, etc.). O
+    # operador clica na API do EC2 mas o erro acontece na caixa de workers —
+    # sem este campo ele seria invisível.
+    last_error: Mapped[str | None] = mapped_column(String(300))
     # Estimativa de cobertura da última amostragem do audit (0..100), e quando.
     coverage_pct: Mapped[float | None] = mapped_column(Float)
     coverage_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True))
@@ -756,6 +849,110 @@ class ChampionComboStat(Base):
         # A leitura pega o topo por jogos dentro de (temporada, tamanho) antes do
         # re-rank de Wilson em Python.
         Index("ix_champion_combo_stats_season_size_games", "season_id", "size", "games"),
+    )
+
+
+# ---------------------------------------------------------------------------
+# champion_versus_stats — confrontos entre subteams (o grid "quem ele bate" da
+# página do campeão) materializados.
+#
+# Mesma família de champion_combo_stats, mas o self-join é entre participantes
+# de subteams DIFERENTES do mesmo match (não do mesmo subteam) — cada campeão
+# do par carrega sua PRÓPRIA colocação (diferentes subteams = colocações
+# diferentes), por isso c0/c1 guardam contadores SEPARADOS em vez de um único
+# top4/placement_sum compartilhado. c0 < c1 (mesma convenção de ordenação).
+# ToS: placement-derived, nunca winrate de augment/item.
+# ---------------------------------------------------------------------------
+
+
+class ChampionVersusStat(Base):
+    __tablename__ = "champion_versus_stats"
+    __mapper_args__ = {"eager_defaults": False}
+
+    season_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True))
+    c0: Mapped[int] = mapped_column(Integer)  # champion ids, c0 < c1
+    c1: Mapped[int] = mapped_column(Integer)
+    games: Mapped[int] = mapped_column(Integer)  # matches c0/c1 faced (different subteams)
+    c0_top4: Mapped[int] = mapped_column(Integer)  # c0's OWN top4 count in these games
+    c0_placement_sum: Mapped[int] = mapped_column(Integer)
+    c1_top4: Mapped[int] = mapped_column(Integer)  # c1's OWN top4 count in these games
+    c1_placement_sum: Mapped[int] = mapped_column(Integer)
+
+    __table_args__ = (
+        PrimaryKeyConstraint("season_id", "c0", "c1", name="pk_champion_versus_stats"),
+        Index("ix_champion_versus_stats_season_c0_games", "season_id", "c0", "games"),
+        Index("ix_champion_versus_stats_season_c1_games", "season_id", "c1", "games"),
+    )
+
+
+# ---------------------------------------------------------------------------
+# champion_build_variant_stats — itemizações do campeão agrupadas pelo augment
+# PRISMÁTICO (rodada final do draft, a escolha que de fato define o rumo da
+# build no Arena) materializadas.
+#
+# ``items`` guarda os ids mais frequentes DENTRO desse agrupamento (campeão +
+# prismático), rankeados por frequência — não é ordem de compra: o payload da
+# Riot só dá o inventário final (item0..6), nunca a sequência de compra (isso
+# só existiria na timeline, que não ingerimos — ver o comentário sobre
+# ``/rounds`` em ``arena/api/routers/champions.py``).
+# ---------------------------------------------------------------------------
+
+
+class ChampionBuildVariantStat(Base):
+    __tablename__ = "champion_build_variant_stats"
+    __mapper_args__ = {"eager_defaults": False}
+
+    season_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True))
+    champion_id: Mapped[int] = mapped_column(Integer)
+    augment_id: Mapped[int] = mapped_column(Integer)  # the PRISMATIC augment defining the variant
+    games: Mapped[int] = mapped_column(Integer)
+    top1: Mapped[int] = mapped_column(Integer)  # placement == 1
+    top4: Mapped[int] = mapped_column(Integer)  # placement <= 4
+    placement_sum: Mapped[int] = mapped_column(Integer)
+    items: Mapped[list[int]] = mapped_column(ARRAY(Integer))  # most frequent item ids, ranked, capped
+
+    __table_args__ = (
+        PrimaryKeyConstraint("season_id", "champion_id", "augment_id", name="pk_champion_build_variant_stats"),
+        Index("ix_champion_build_variant_stats_champion_games", "season_id", "champion_id", "games"),
+    )
+
+
+# ---------------------------------------------------------------------------
+# champion_build_stats — augments/items de referência, NATIVOS (não mais de
+# terceiros — ver build_ref_service.py, que este rollup substitui como fonte).
+#
+# ``unnest()`` sobre match_participants.augments/.items em vez de self-join
+# (não há combinação de linhas aqui — cada linha já É um pick), mesmo
+# raciocínio de custo dos outros rollups desta série: um agregado por-request
+# faria o mesmo tipo de scan caro. ToS: placement-derived, nunca winrate.
+# ---------------------------------------------------------------------------
+
+
+class ChampionBuildStat(Base):
+    __tablename__ = "champion_build_stats"
+    __mapper_args__ = {"eager_defaults": False}
+
+    season_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True))
+    kind: Mapped[BuildPickKind] = mapped_column(_pg_enum(BuildPickKind, "build_pick_kind"))
+    champion_id: Mapped[int] = mapped_column(Integer)
+    pick_id: Mapped[int] = mapped_column(Integer)  # augment id OR item id (per kind)
+    games: Mapped[int] = mapped_column(Integer)
+    top1: Mapped[int] = mapped_column(Integer)  # placement == 1
+    top4: Mapped[int] = mapped_column(Integer)  # placement <= 4 (top-half do contrato)
+    placement_sum: Mapped[int] = mapped_column(Integer)  # p/ colocação média
+
+    __table_args__ = (
+        PrimaryKeyConstraint(
+            "season_id", "kind", "champion_id", "pick_id", name="pk_champion_build_stats"
+        ),
+        Index(
+            "ix_champion_build_stats_champion_games",
+            "season_id", "kind", "champion_id", "games",
+        ),
+        Index(
+            "ix_champion_build_stats_pick_games",
+            "season_id", "kind", "pick_id", "games",
+        ),
     )
 
 
@@ -902,30 +1099,6 @@ class TournamentMatch(Base):
 
 
 # ---------------------------------------------------------------------------
-# champion_build_ref  (PROVISIONAL — reference build data, remove when native
-# augment ingestion lands)
-#
-# Caches a per-champion Arena aggregate — augment / item / teammate placement
-# stats — as one JSONB snapshot per (champion_id, patch), backing a stop-gap
-# "build recomendada" surface until our own ingestion captures augment/item
-# data. Self-contained + clearly named so the whole feature drops in one pass
-# (this class, migration 0006, scripts/fetch_build_ref.py).
-# ---------------------------------------------------------------------------
-
-
-class ChampionBuildRef(Base):
-    __tablename__ = "champion_build_ref"
-
-    champion_id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    patch: Mapped[str] = mapped_column(String, primary_key=True)
-    dt: Mapped[str | None] = mapped_column(String)
-    payload: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
-    fetched_at: Mapped[datetime] = mapped_column(
-        TIMESTAMP(timezone=True), server_default=text("now()"), nullable=False
-    )
-
-
-# ---------------------------------------------------------------------------
 # admin_operators — per-operator RBAC identities (arena/api/rbac.py).
 #
 # The env ADMIN_API_KEY (arena/core/config.py) stays a separate, permanent
@@ -1020,10 +1193,12 @@ __all__ = [
     "IngestMode",
     "MatchBacklog",
     "SeasonIngestState",
+    "WorkerTelemetry",
     "Tournament",
     "TournamentTeam",
     "TournamentMatch",
-    "ChampionBuildRef",
+    "BuildPickKind",
+    "ChampionBuildStat",
     "OperatorRole",
     "AdminOperator",
     "AdminAuditEvent",

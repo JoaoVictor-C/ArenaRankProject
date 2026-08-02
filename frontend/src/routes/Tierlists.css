@@ -1,0 +1,902 @@
+/* ============================================================
+   Tierlists.css — /augments e /sinergias
+   Duas superfícies gêmeas (bandas S+→D com cards), então dividem
+   uma folha só em vez de duplicar o bloco de tokens duas vezes.
+   Mundo "handoff" ESCOPADO a .tl-page, igual .wr-page / .cmp-page.
+   ============================================================ */
+.tl-page {
+  --wr-bg: #0a0a0c;
+  --wr-panel: #101014;
+  --wr-panel-2: #0c0c0f;
+  --wr-panel-3: #16161b;
+  --wr-line: #242429;
+  --wr-line-soft: #1b1b20;
+  --wr-text: #f3f3f5;
+  --wr-dim: #9a9aa2;
+  --wr-faint: #6f7079;
+  --wr-gold: #ffcc00;
+  --wr-gold-deep: #d5a038;
+  --wr-purple: #9b5cff;
+  --wr-green: #25e05a;
+  --wr-red: #ff6a6a;
+  --wr-wr: #5aa9ff;
+  --t-splus: #ffcc00;
+  --t-s: #ff04dd;
+  --t-a: #9b5cff;
+  --t-b: #008cff;
+  --t-c: #5fa83a;
+  --t-d: #6b6b70;
+  --wr-r-sm: 8px;
+  --wr-r-md: 11px;
+  --wr-r-lg: 14px;
+
+  position: relative;
+  background: var(--wr-bg);
+  color: var(--wr-text);
+  min-height: 100vh;
+  font-family: "Plus Jakarta Sans", system-ui, sans-serif;
+  padding: 18px 20px 56px;
+}
+.tl-page .tnum {
+  font-variant-numeric: tabular-nums;
+}
+.tl-page .mi {
+  vertical-align: middle;
+}
+
+.tl-amb {
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 480px;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(720px 300px at 58% -70px, rgba(155, 92, 255, 0.16), transparent 70%),
+    radial-gradient(540px 250px at 24% -40px, rgba(0, 140, 255, 0.12), transparent 72%),
+    radial-gradient(600px 280px at 90% -30px, rgba(255, 140, 60, 0.1), transparent 72%);
+}
+.tl-page > .pfield--route {
+  -webkit-mask-image: linear-gradient(180deg, #000, transparent 560px);
+  mask-image: linear-gradient(180deg, #000, transparent 560px);
+}
+.tl-wrap {
+  position: relative;
+  z-index: 2;
+  max-width: 1280px;
+  margin: 0 auto;
+}
+
+/* ── cabeçalho ───────────────────────────────────────────────── */
+.tl-head {
+  display: flex;
+  align-items: flex-end;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+.tl-title {
+  min-width: 0;
+}
+.tl-eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font: 700 11px/1 "Plus Jakarta Sans";
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--wr-faint);
+}
+.tl-eyebrow .mi {
+  font-size: 16px;
+  color: var(--wr-gold-deep);
+}
+.tl-h1 {
+  margin: 10px 0 0;
+  font: 800 34px/1 "Plus Jakarta Sans";
+  letter-spacing: 0.01em;
+}
+.tl-sub {
+  margin: 9px 0 0;
+  font: 500 12px/1.5 "Plus Jakarta Sans";
+  color: var(--wr-dim);
+  max-width: 70ch;
+}
+.tl-tools {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.tl-tabs {
+  display: flex;
+  background: var(--wr-panel-3);
+  border: 1px solid var(--wr-line);
+  border-radius: 9px;
+  padding: 3px;
+}
+.tl-tabs button {
+  background: none;
+  border: none;
+  color: var(--wr-dim);
+  font: 800 11px/1 "Plus Jakarta Sans";
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 9px 16px;
+  border-radius: 7px;
+  cursor: pointer;
+}
+.tl-tabs button:is(:hover, :focus-visible) {
+  color: #fff;
+}
+.tl-tabs button:focus-visible {
+  outline: 2px solid var(--wr-purple);
+  outline-offset: 2px;
+}
+.tl-tabs button.on {
+  background: rgba(155, 92, 255, 0.18);
+  color: #fff;
+  box-shadow: inset 0 0 0 1px rgba(155, 92, 255, 0.5);
+}
+.tl-tools-augments {
+  max-width: 560px;
+  justify-content: flex-end;
+}
+.tl-rarity-tabs {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px;
+  border: 1px solid var(--wr-line);
+  border-radius: 9px;
+  background: var(--wr-panel-3);
+}
+.tl-rarity-tabs button {
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--wr-dim);
+  cursor: pointer;
+  font: 800 10px/1 "Plus Jakarta Sans";
+  letter-spacing: 0.04em;
+  padding: 9px 11px;
+}
+.tl-rarity-tabs button:is(:hover, :focus-visible) {
+  color: #fff;
+}
+.tl-rarity-tabs button:focus-visible {
+  outline: 2px solid var(--wr-purple);
+  outline-offset: 2px;
+}
+.tl-rarity-tabs button.on {
+  background: rgba(155, 92, 255, 0.18);
+  color: #fff;
+  box-shadow: inset 0 0 0 1px rgba(155, 92, 255, 0.5);
+}
+.tl-rarity-tabs button:disabled {
+  cursor: not-allowed;
+  opacity: 0.38;
+}
+.tl-rarity-tabs button:disabled:is(:hover, :focus-visible) {
+  color: var(--wr-dim);
+}
+.tl-rarity-status {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 0 8px;
+  border: 1px dashed rgba(213, 160, 56, 0.34);
+  border-radius: 6px;
+  color: var(--wr-gold-deep);
+  font: 750 8px/1 "Plus Jakarta Sans";
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+.tl-result-count {
+  color: var(--wr-faint);
+  font: 700 10px/1 "Plus Jakarta Sans";
+  letter-spacing: 0.04em;
+  min-width: 134px;
+  text-align: right;
+}
+.tl-search {
+  position: relative;
+  display: block;
+}
+.tl-search input {
+  width: 220px;
+  background: var(--wr-panel-3);
+  border: 1px solid var(--wr-line);
+  color: var(--wr-text);
+  font: 500 12px/1 "Plus Jakarta Sans";
+  padding: 10px 11px 10px 30px;
+  border-radius: 8px;
+  outline: none;
+}
+.tl-search input:focus {
+  border-color: var(--wr-purple);
+}
+.tl-search .mi {
+  position: absolute;
+  left: 9px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--wr-faint);
+  font-size: 16px;
+  pointer-events: none;
+}
+
+/* ── bandas ──────────────────────────────────────────────────── */
+.tl-bands {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.tl-band {
+  display: grid;
+  grid-template-columns: 84px minmax(0, 1fr);
+  gap: 12px;
+  align-items: stretch;
+  background: var(--wr-panel);
+  border: 1px solid var(--wr-line);
+  border-radius: var(--wr-r-lg);
+  overflow: hidden;
+}
+/* O selo é a única superfície que recebe a cor cheia do tier — o card
+   dentro da banda fica neutro, senão a página vira um vitral. */
+.tl-seal {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 18px 8px;
+  background: color-mix(in oklab, var(--tc, var(--t-d)) 16%, #0b0d12);
+  box-shadow: inset -1px 0 0 color-mix(in oklab, var(--tc, var(--t-d)) 40%, transparent);
+}
+.tl-seal b {
+  font: 800 30px/1 "Plus Jakarta Sans";
+  letter-spacing: -0.02em;
+  color: var(--tc, var(--t-d));
+}
+.tl-seal span {
+  font: 700 8px/1.3 "Plus Jakarta Sans";
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--wr-faint);
+  text-align: center;
+}
+.tl-seal.t-splus {
+  --tc: var(--t-splus);
+}
+.tl-seal.t-s {
+  --tc: var(--t-s);
+}
+.tl-seal.t-a {
+  --tc: var(--t-a);
+}
+.tl-seal.t-b {
+  --tc: var(--t-b);
+}
+.tl-seal.t-c {
+  --tc: var(--t-c);
+}
+.tl-seal.t-d {
+  --tc: var(--t-d);
+}
+.tl-band-body {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 12px 14px 12px 2px;
+  align-content: flex-start;
+  min-width: 0;
+}
+.tl-band-empty {
+  display: flex;
+  align-items: center;
+  padding: 16px 4px;
+  font: 500 12px/1.5 "Plus Jakarta Sans";
+  color: var(--wr-faint);
+}
+.tl-filter-empty {
+  display: grid;
+  min-height: 160px;
+  margin: 0;
+  place-items: center;
+  border: 1px dashed var(--wr-line);
+  border-radius: var(--wr-r-lg);
+  color: var(--wr-dim);
+  font: 600 12px/1.5 "Plus Jakarta Sans";
+  text-align: center;
+}
+
+/* ── ranking de sinergias ───────────────────────────────────── */
+.tl-context {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 12px;
+}
+.tl-context span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 0 8px;
+  border: 1px solid var(--wr-line);
+  border-radius: 6px;
+  background: rgba(16, 16, 20, 0.7);
+  color: var(--wr-faint);
+  font: 700 8px/1 "Plus Jakarta Sans";
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+.tl-context .tl-refresh-status {
+  border-color: rgba(155, 92, 255, 0.48);
+  color: #d2c4ff;
+}
+.tl-synergy-table {
+  overflow: hidden;
+  border: 1px solid var(--wr-line);
+  border-radius: var(--wr-r-lg);
+  background: var(--wr-panel);
+  box-shadow: 0 18px 70px rgba(0, 0, 0, 0.24);
+}
+.tl-synergy-head,
+.tl-synergy-row {
+  display: grid;
+  grid-template-columns: 56px minmax(280px, 1fr) 76px 96px 110px 100px;
+  align-items: center;
+}
+.tl-synergy-head {
+  min-height: 42px;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--wr-line);
+  background: #15151a;
+  color: var(--wr-faint);
+  font: 800 9px/1 "Plus Jakarta Sans";
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.tl-synergy-head span:nth-child(n + 3) {
+  text-align: right;
+}
+.tl-synergy-row {
+  --tc: var(--t-d);
+  position: relative;
+  min-height: 66px;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--wr-line-soft);
+  color: inherit;
+  text-decoration: none;
+}
+.tl-synergy-row:last-child {
+  border-bottom: 0;
+}
+.tl-synergy-row::before {
+  content: "";
+  position: absolute;
+  inset: 10px auto 10px 0;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: var(--tc);
+  box-shadow: 0 0 14px color-mix(in oklab, var(--tc) 35%, transparent);
+}
+.tl-synergy-row:is(:hover, :focus-visible) {
+  background: color-mix(in oklab, var(--tc) 5%, #121217);
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--tc) 22%, transparent);
+}
+.tl-synergy-row:focus-visible {
+  z-index: 1;
+  outline: 2px solid var(--wr-purple);
+  outline-offset: -2px;
+}
+.tl-synergy-tier-splus {
+  --tc: var(--t-splus);
+}
+.tl-synergy-tier-s {
+  --tc: var(--t-s);
+}
+.tl-synergy-tier-a {
+  --tc: var(--t-a);
+}
+.tl-synergy-tier-b {
+  --tc: var(--t-b);
+}
+.tl-synergy-tier-c {
+  --tc: var(--t-c);
+}
+.tl-synergy-tier-d {
+  --tc: var(--t-d);
+}
+.tl-synergy-rank {
+  color: var(--wr-dim);
+  font: 750 12px/1 "Plus Jakarta Sans";
+}
+.tl-synergy-composition {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+.tl-synergy-composition .tl-faces {
+  gap: 0;
+}
+.tl-synergy-composition .tl-face {
+  width: 42px;
+  height: 42px;
+  border-radius: 0;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.08),
+    8px 0 18px rgba(0, 0, 0, 0.22);
+}
+.tl-synergy-composition .tl-face:first-child {
+  border-radius: 8px 0 0 8px;
+}
+.tl-synergy-composition .tl-face:last-child {
+  border-radius: 0 8px 8px 0;
+}
+.tl-synergy-composition .tl-comp-nm {
+  max-width: none;
+  color: #eef0f4;
+  font-size: 12px;
+}
+.tl-mobile-meta {
+  display: none;
+}
+.tl-synergy-tier {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+}
+.tl-synergy-tier b {
+  color: var(--tc);
+  font: 850 15px/1 "Plus Jakarta Sans";
+}
+.tl-synergy-tier span {
+  color: var(--wr-faint);
+  font: 700 7px/1 "Plus Jakarta Sans";
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.tl-synergy-top4 {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+}
+.tl-synergy-top4 b {
+  color: var(--wr-green);
+  font: 850 15px/1 "Plus Jakarta Sans";
+}
+.tl-synergy-top4 span {
+  color: var(--wr-faint);
+  font: 700 7px/1 "Plus Jakarta Sans";
+  letter-spacing: 0.1em;
+}
+.tl-synergy-place,
+.tl-synergy-games {
+  color: var(--wr-dim);
+  font: 700 11px/1 "Plus Jakarta Sans";
+  text-align: right;
+}
+
+/* ── card de comp (sinergias) ────────────────────────────────── */
+.tl-comp {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px 8px 8px;
+  border-radius: var(--wr-r-md);
+  background: var(--wr-panel-2);
+  border: 1px solid var(--wr-line-soft);
+  text-decoration: none;
+  color: inherit;
+}
+.tl-comp:is(:hover, :focus-visible) {
+  border-color: #3a3a44;
+}
+.tl-comp:focus-visible {
+  outline: 2px solid var(--wr-purple);
+  outline-offset: 3px;
+}
+.tl-faces {
+  display: flex;
+  gap: 4px;
+  flex: none;
+}
+.tl-comp-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.tl-comp-nm {
+  font: 700 11px/1.3 "Plus Jakarta Sans";
+  color: #d9dade;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 176px;
+}
+.tl-comp-sub {
+  font: 600 9px/1 "Plus Jakarta Sans";
+  color: var(--wr-faint);
+  letter-spacing: 0.03em;
+}
+.tl-comp-wr {
+  margin-left: 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+  flex: none;
+}
+.tl-comp-wr b {
+  font: 800 15px/1 "Plus Jakarta Sans";
+  color: var(--wr-green);
+}
+.tl-comp-wr span {
+  font: 700 7px/1 "Plus Jakarta Sans";
+  letter-spacing: 0.1em;
+  color: var(--wr-faint);
+}
+
+/* faces de campeão (mesma linguagem do /winrate) */
+.tl-face {
+  position: relative;
+  width: 38px;
+  height: 38px;
+  flex: none;
+  border-radius: 9px;
+  overflow: hidden;
+  background: linear-gradient(150deg, var(--c1, #333), var(--c2, #111));
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+.tl-face img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.tl-comp:is(:hover, :focus-visible) .tl-face {
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.14),
+    0 0 12px rgba(155, 92, 255, 0.18);
+}
+
+/* ── card de augment ─────────────────────────────────────────── */
+.tl-aug {
+  --tc: var(--t-d);
+  position: relative;
+  display: grid;
+  grid-template-rows: 112px minmax(54px, auto) auto;
+  gap: 10px;
+  min-width: 0;
+  min-height: 214px;
+  padding: 10px 12px 12px;
+  border-radius: var(--wr-r-md);
+  background: var(--wr-panel-2);
+  border: 1px solid var(--wr-line-soft);
+  box-shadow: inset 3px 0 0 color-mix(in oklab, var(--tc) 68%, transparent);
+  overflow: hidden;
+}
+.tl-aug:hover {
+  border-color: color-mix(in oklab, var(--tc) 42%, #3a3a44);
+  background: #0f1015;
+}
+.tl-aug-tier-splus {
+  --tc: var(--t-splus);
+}
+.tl-aug-tier-s {
+  --tc: var(--t-s);
+}
+.tl-aug-tier-a {
+  --tc: var(--t-a);
+}
+.tl-aug-tier-b {
+  --tc: var(--t-b);
+}
+.tl-aug-tier-c {
+  --tc: var(--t-c);
+}
+.tl-aug-tier-d {
+  --tc: var(--t-d);
+}
+.tl-aug-art {
+  position: relative;
+  display: grid;
+  min-width: 0;
+  place-items: center;
+  border: 1px solid color-mix(in oklab, var(--tc) 18%, var(--wr-line-soft));
+  border-radius: 9px;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 50% 45%, color-mix(in oklab, var(--tc) 18%, transparent), transparent 52%),
+    linear-gradient(145deg, #14151b, #0b0c10);
+}
+.tl-aug-art::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(115deg, transparent 25%, rgba(255, 255, 255, 0.035) 48%, transparent 70%);
+}
+.tl-aug-tier {
+  position: absolute;
+  z-index: 2;
+  top: 8px;
+  right: 8px;
+  border: 1px solid color-mix(in oklab, var(--tc) 42%, transparent);
+  border-radius: 5px;
+  padding: 4px 6px;
+  background: color-mix(in oklab, var(--tc) 13%, #0b0c10);
+  color: var(--tc);
+  font: 800 8px/1 "Plus Jakarta Sans";
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.tl-augt {
+  position: relative;
+  z-index: 1;
+  width: 82px;
+  height: 82px;
+  flex: none;
+  border-radius: var(--wr-r-md);
+  padding: 2px;
+  background: #2a2a32;
+  display: grid;
+}
+.tl-aug:hover .tl-augt {
+  box-shadow: 0 0 22px color-mix(in oklab, var(--tc) 28%, transparent);
+}
+.tl-augt-prism {
+  background: linear-gradient(135deg, #e9c6ff, #8ad7ff 40%, #ffe08a 72%, #ff9ad0);
+}
+.tl-augt-gold {
+  background: linear-gradient(135deg, #ffe08a, #d19a2e);
+}
+.tl-augt-silver {
+  background: linear-gradient(135deg, #eef2f6, #98a2ab);
+}
+.tl-augt-in {
+  border-radius: 9px;
+  background: #0b0e14;
+  width: 100%;
+  height: 100%;
+  display: block;
+  overflow: hidden;
+  box-shadow: inset 0 0 14px rgba(0, 0, 0, 0.5);
+}
+.tl-augt-in img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.tl-aug-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  align-self: start;
+}
+.tl-aug-nm {
+  font: 800 13px/1.3 "Plus Jakarta Sans";
+  color: #eef0f4;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+.tl-aug-rarity {
+  font: 700 9px/1 "Plus Jakarta Sans";
+  color: var(--wr-faint);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.tl-aug-stats {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--wr-line-soft);
+}
+.tl-aug-pick {
+  color: var(--wr-wr);
+  font: 800 11px/1 "Plus Jakarta Sans";
+}
+.tl-aug-games {
+  color: var(--wr-faint);
+  font: 650 9px/1 "Plus Jakarta Sans";
+}
+.tl-page-augments .tl-band-body {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  padding: 14px;
+}
+.tl-page-augments .tl-band-empty {
+  grid-column: 1 / -1;
+}
+
+/* ── rodapé / nota ───────────────────────────────────────────── */
+.tl-foot {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 18px 0 0;
+  font: 600 10px/1.6 "Plus Jakarta Sans";
+  letter-spacing: 0.03em;
+  color: var(--wr-faint);
+  max-width: 92ch;
+}
+.tl-foot .mi {
+  font-size: 14px;
+  color: var(--wr-gold-deep);
+  flex: none;
+}
+
+/* ── responsivo ──────────────────────────────────────────────── */
+@media (max-width: 760px) {
+  .tl-page {
+    padding: 14px 12px 48px;
+  }
+  .tl-h1 {
+    font-size: 26px;
+  }
+  .tl-tools {
+    margin-left: 0;
+    width: 100%;
+  }
+  .tl-tools-augments {
+    max-width: none;
+    justify-content: flex-start;
+  }
+  .tl-search,
+  .tl-search input {
+    width: 100%;
+  }
+  .tl-rarity-tabs {
+    width: 100%;
+    overflow-x: auto;
+  }
+  .tl-rarity-tabs button {
+    flex: 1 0 auto;
+  }
+  .tl-result-count {
+    width: 100%;
+    text-align: left;
+  }
+  .tl-band {
+    grid-template-columns: 62px minmax(0, 1fr);
+  }
+  .tl-seal b {
+    font-size: 22px;
+  }
+  .tl-aug {
+    width: 100%;
+  }
+  .tl-comp {
+    width: 100%;
+  }
+  /* No card de largura cheia o trio cabe quebrando em duas linhas — melhor
+     que truncar "Teemo · Shaco · Zyra" em reticências. */
+  .tl-comp-nm {
+    max-width: none;
+    white-space: normal;
+  }
+  .tl-page-synergies .tl-head {
+    margin-bottom: 14px;
+  }
+  .tl-page-synergies .tl-context {
+    margin-top: 10px;
+  }
+  .tl-synergy-table {
+    overflow: visible;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+  .tl-synergy-head {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
+  }
+  .tl-synergy-table [role="rowgroup"] {
+    display: grid;
+    gap: 8px;
+  }
+  .tl-synergy-row {
+    grid-template-columns: 42px minmax(0, 1fr) auto;
+    grid-template-rows: auto auto;
+    grid-template-areas:
+      "rank comp top4"
+      "tier comp top4";
+    gap: 5px 8px;
+    min-height: 82px;
+    padding: 10px 11px;
+    border: 1px solid var(--wr-line);
+    border-radius: var(--wr-r-md);
+    background: var(--wr-panel);
+  }
+  .tl-synergy-row::before {
+    inset: 8px auto 8px 0;
+  }
+  .tl-synergy-rank {
+    grid-area: rank;
+    align-self: end;
+    padding-left: 5px;
+  }
+  .tl-synergy-composition {
+    grid-area: comp;
+    align-self: center;
+    gap: 9px;
+  }
+  .tl-synergy-tier {
+    grid-area: tier;
+    align-items: flex-start;
+    align-self: start;
+    padding-left: 5px;
+  }
+  .tl-synergy-tier span {
+    display: none;
+  }
+  .tl-synergy-top4 {
+    grid-area: top4;
+    align-self: center;
+  }
+  .tl-synergy-place,
+  .tl-synergy-games {
+    display: none;
+  }
+  .tl-mobile-meta {
+    display: block;
+    white-space: normal;
+  }
+  .tl-synergy-composition .tl-face {
+    width: 34px;
+    height: 38px;
+  }
+  .tl-synergy-composition .tl-comp-nm {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+    font-size: 10px;
+    line-height: 1.25;
+  }
+}
+
+@media (max-width: 1050px) {
+  .tl-page-augments .tl-band-body {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 600px) {
+  .tl-page-augments .tl-band {
+    grid-template-columns: 1fr;
+  }
+  .tl-page-augments .tl-seal {
+    min-height: 68px;
+    box-shadow: inset 0 -1px 0 color-mix(in oklab, var(--tc, var(--t-d)) 40%, transparent);
+  }
+  .tl-page-augments .tl-band-body {
+    grid-template-columns: 1fr;
+    padding: 10px;
+  }
+}

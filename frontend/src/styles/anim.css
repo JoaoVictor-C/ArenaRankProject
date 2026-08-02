@@ -86,31 +86,8 @@
    TOQUES EXTRAVAGANTES (gradientes vivos, flutuação, brilho)
    ============================================================ */
 @media (prefers-reduced-motion: no-preference) {
-  html:not(.ar-anim-off) {
-    --ar-shine: linear-gradient(
-      100deg,
-      var(--gold) 0%,
-      var(--gold-bright) 30%,
-      #fff6e0 48%,
-      var(--gold-bright) 66%,
-      var(--gold) 100%
-    );
-  }
-  html:not(.ar-anim-off) .hero-copy h1 .g {
-    background: var(--ar-shine);
-    background-size: 260% 100%;
-    -webkit-background-clip: text;
-    background-clip: text;
-    -webkit-text-fill-color: transparent;
-    color: transparent;
-    animation: ar-shine 7s linear infinite;
-  }
-  @keyframes ar-shine {
-    to {
-      background-position: -260% 0;
-    }
-  }
-
+  /* (bloco ar-shine removido: era CSS morto do hero antigo — .hero-copy não
+     existe mais — e gradient-text é banido pelo design system) */
   html:not(.ar-anim-off) .eyebrow {
     position: relative;
   }
@@ -186,12 +163,19 @@
   pointer-events: none;
   z-index: 0;
   border-radius: inherit;
+  /* Véu na cor do campeão cobrindo o card inteiro: deep à esquerda (nome/CR
+     legíveis por cima) aprofundando ao escuro à direita. deep vem em L~0.34,
+     texto branco seguro. Sem janela de revelação — não há mais imagem atrás. */
   background: linear-gradient(
-    155deg,
-    color-mix(in srgb, var(--pc1, #2f9bd6) 60%, #06070a),
-    color-mix(in srgb, var(--pc2, #4cb6ec) 40%, #06070a) 60%,
-    color-mix(in srgb, var(--pc1, #2f9bd6) 50%, #06070a)
+    100deg,
+    var(--pc1, #2f9bd6) 0%,
+    color-mix(in srgb, var(--pc1, #2f9bd6) 58%, #000) 55%,
+    color-mix(in srgb, var(--pc1, #2f9bd6) 30%, #05060a) 100%
   );
+  /* Fog soft SEMPRE (inclui reduced-motion / animação off). Antes o blur vivia só
+     na media query de animação → com motion off os blobs viravam círculos duros.
+     Na base, o estado estático já é névoa suave. */
+  filter: blur(16px) saturate(1.16) contrast(1.04);
 }
 .pod-fx b {
   position: absolute;
@@ -207,11 +191,39 @@
     transparent 72%
   );
   mix-blend-mode: screen;
-  opacity: 0.72;
+  opacity: 0.42;
+}
+/* ---- aurora / luz de palco do campeão ----
+   Glow da cor do MAIN subindo pela base do card (atrás dos ícones de campeão),
+   respirando devagar — junto com os blobs. O bright (--pc2) fica só na base,
+   longe do nome (topo) e do CR (centro), então o texto branco fica seguro. */
+.pod-aura {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(
+    130% 80% at 50% 124%,
+    color-mix(in srgb, var(--pc2, #4cb6ec) 88%, transparent) 0%,
+    color-mix(in srgb, var(--pc1, #2f9bd6) 50%, transparent) 30%,
+    transparent 60%
+  );
+  mix-blend-mode: screen;
+  opacity: 0.45;
+  will-change: opacity, transform;
+}
+@keyframes ar-aura-breathe {
+  from {
+    opacity: 0.3;
+    transform: translateY(6%) scale(1);
+  }
+  to {
+    opacity: 0.55;
+    transform: translateY(0) scale(1.05);
+  }
 }
 @media (prefers-reduced-motion: no-preference) {
-  html:not(.ar-anim-off) .pod-fx {
-    filter: blur(18px) saturate(1.22) contrast(1.05);
+  html:not(.ar-anim-off) .pod-aura {
+    animation: ar-aura-breathe 6.5s ease-in-out infinite alternate;
   }
   html:not(.ar-anim-off) .pod-fx b {
     animation: var(--anim, ar-fl-a) var(--d, 24s) ease-in-out infinite var(--dl, 0s) alternate;
@@ -305,45 +317,20 @@
   flex: none;
   font: 800 27px/1 "Plus Jakarta Sans";
   letter-spacing: -0.03em;
-  background: linear-gradient(
-    var(--pa, 90deg),
-    var(--ra) 0%,
-    var(--rb) 38%,
-    var(--rhi) 50%,
-    var(--rb) 62%,
-    var(--ra) 100%
-  );
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-  -webkit-text-fill-color: transparent;
-  text-shadow: none;
-  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.5));
+  /* Medalha em cor SÓLIDA (ouro/prata/bronze). Sem background-clip:text (ban do
+     impeccable) e sem gradiente girando: ênfase por tamanho/peso, cor da medalha
+     carrega a hierarquia do topo. drop-shadow → text-shadow simples. */
+  color: var(--medal, #e9c161);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
 }
 .pod-rank.m1 {
-  --ra: #b9842b;
-  --rb: #e9c161;
-  --rhi: #fff1c4;
+  --medal: #e9c161;
 }
 .pod-rank.m2 {
-  --ra: #767f8e;
-  --rb: #c2cad6;
-  --rhi: #ffffff;
+  --medal: #c2cad6;
 }
 .pod-rank.m3 {
-  --ra: #9a5526;
-  --rb: #d6884a;
-  --rhi: #ffd6ad;
-}
-@media (prefers-reduced-motion: no-preference) {
-  html:not(.ar-anim-off) .pod-rank {
-    animation: ar-rank-rot 4.5s linear infinite;
-  }
-}
-@keyframes ar-rank-rot {
-  to {
-    --pa: 450deg;
-  }
+  --medal: #d6884a;
 }
 
 /* ============================================================
@@ -575,6 +562,15 @@ button:focus-visible,
 .tab:focus-visible {
   outline: 2px solid var(--primary-bright);
   outline-offset: 2px;
+}
+
+/* Rotas migradas: CSS entrega apenas estado visual final. Entrada, troca,
+   feedback e loops são propriedade exclusiva de lib/motion.ts (GSAP). */
+[data-gsap-scope] *,
+[data-gsap-scope] *::before,
+[data-gsap-scope] *::after {
+  animation: none !important;
+  transition: none !important;
 }
 
 /* tweak "Animações: Desligadas" — corta todo o movimento */

@@ -64,12 +64,12 @@ All read the same DB the online write path uses; run with `uv run python -m scri
 |---|---|
 | `backfill.py` | Unified Arena backfill CLI (`--mode refresh`\|`bootstrap`) — the reference implementation the online write path's ingestion logic mirrors. |
 | `rerate_matches.py` | Replay every stored match through the *current* rating engine, in chronological order — how you repair historical ratings after a params/engine change. |
+| `backfill_participant_telemetry.py` | One-time: re-fetch already-ingested matches from Riot to fill `match_participants.augments`/`.items` + combat telemetry (kills/deaths/assists/damage/gold/level and a few extras) — NULL on anything ingested before native capture landed. Idempotent/resumable — safe to kill and re-run. |
 | `audit_missing_matches.py` | Read-only: diff Riot's known match ids per tracked player against what's in the DB. |
 | `sweep_profile_icons.py` | Backfill `players.profile_icon_id` from already-stored match payloads (the field isn't on `match_participants`). |
 | `sync_season_config.py` | Mirror the active season's `config` JSONB display column onto the current `DEFAULT_PARAMS` (the engine always reads params from code, not the DB — this keeps the DB's *display* copy honest after a recalibration). |
 | `sim_params.py` / `sim_caps.py` | Non-destructive what-if simulators — replay stored matches in memory under candidate param/cap curves, no DB writes. |
 | `diag_gates.py` / `diag_inflation.py` | Non-destructive diagnostics from the 2026-06-15 rating recalibration (see `docs/rating_recalibration_2026-06-15.md` and `docs/trinity/`) — empirical gates and CR-inflation decomposition. Historical-debugging tools, not part of any regular workflow. |
-| `fetch_build_ref.py` | PROVISIONAL — populates `champion_build_ref` (per-champion augment/item/teammate stats) from an external aggregate snapshot. |
 | `e2e_process_fixture.py` | Drive one real Arena match-v5 fixture through the full write path as a smoke test. |
 | `sweep_profile_icons.py`, `replication/` | See above / EC2 replica-lag tooling companion to `services/replication_status.py`. |
 

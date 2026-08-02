@@ -1,13 +1,15 @@
 /* ============================================================
    ArenaRank — Header 3 tiers (compartilhado em todo o site)
    ============================================================ */
-:root { --entrar: #ec3a34; }
+/* Vermelho do CTA "Entrar". Escurecido de #ec3a34 (branco = 4.0:1, reprova AA)
+   para #d92d26 (~4.8:1) — mesma identidade de vermelho, agora acessível. */
+:root { --entrar: #d92d26; }
 
 .h3 { position: relative; z-index: 30; background: #0c0c0e; border-bottom: 1px solid var(--line, #262a33); }
 .h3-row { max-width: var(--maxw, 1240px); margin: 0 auto; padding: 0 24px; display: flex; align-items: center; }
 .h3-1 { height: 46px; gap: 24px; border-bottom: 1px solid rgba(255,255,255,0.045); }
 .h3-2 { height: 66px; gap: 16px; }
-.h3-3 { height: 52px; gap: 26px; border-top: 1px solid rgba(255,255,255,0.04); }
+.h3-3 { height: 52px; gap: 26px; border-top: 1px solid rgba(255,255,255,0.04); justify-content: center; }
 
 .h3 .mi {
   font-family: 'Material Symbols Outlined'; font-weight: normal; font-style: normal; line-height: 1;
@@ -32,9 +34,9 @@
 /* tier 2 — search + actions */
 .h3-search { position: relative; flex: 1; display: flex; align-items: center; gap: 12px; background: #141519; border: 1px solid #23252d; border-radius: 9px; height: 44px; padding: 0 8px 0 16px; }
 .h3-search:focus-within { border-color: var(--primary, #2f9bd6); }
-.h3-search .mi { color: #686d78; font-size: 19px; }
+.h3-search .mi { color: var(--text-faint); font-size: 19px; }
 .h3-search input { flex: 1; background: none; border: none; outline: none; color: #fff; font: 500 14px/1 "Plus Jakarta Sans"; min-width: 0; }
-.h3-search input::placeholder { color: #686d78; }
+.h3-search input::placeholder { color: var(--text-faint); }
 .h3-search .go { width: 30px; height: 30px; border-radius: 50%; background: #25272f; color: #cfd3da; display: flex; align-items: center; justify-content: center; border: none; cursor: pointer; flex: none; }
 .h3-search .go:hover { background: var(--primary, #2f9bd6); color: #fff; }
 .h3-search .br { display: flex; align-items: center; gap: 4px; color: #d5a038; font: 800 12px/1 "Plus Jakarta Sans"; letter-spacing: 0.04em; padding: 5px 9px; border-radius: 7px; background: transparent; border: 1.5px solid #d5a038; white-space: nowrap; }
@@ -135,7 +137,7 @@
   padding: 8px 11px 4px;
   border-top: 1px solid rgba(255, 255, 255, 0.05);
   font: 600 10px/1 "Plus Jakarta Sans";
-  color: #686d78;
+  color: var(--text-faint);
 }
 .h3s-foot .dot { color: #3a3e47; margin: 0 2px; }
 .h3s-foot kbd {
@@ -160,20 +162,174 @@
 .btn-entrar { background: var(--entrar, #ec3a34); color: #fff; border: none; border-radius: 8px; padding: 10px 19px; font: 800 13px/1 "Plus Jakarta Sans"; letter-spacing: 0.03em; cursor: pointer; }
 .btn-entrar:hover { filter: brightness(1.08); }
 
-/* tier 3 — mini modes + navigation */
-.mode-mini { display: flex; align-items: center; gap: 7px; flex: none; }
-.mode-mini .mm { width: 30px; height: 30px; border-radius: 7px; background-size: cover; background-position: center; }
-.mode-mini .mm.alt { width: 24px; height: 24px; filter: grayscale(1) brightness(1.12); }
-.mode-mini .swap { color: #686d78; font-size: 16px; }
+/* tier 3 — navegação (centralizada em referência ao tier 2: .h3-3 e .h3-2
+   compartilham max-width/padding, então justify-content:center alinha o eixo) */
 .h3-nav { display: flex; align-items: stretch; gap: 32px; align-self: stretch; }
 .h3-nav a { position: relative; display: flex; align-items: center; font: 700 11px/1 "Plus Jakarta Sans"; letter-spacing: 0.08em; color: var(--text-dim, #9aa0aa); text-decoration: none; transition: color .15s ease; }
 .h3-nav a:hover { color: #fff; }
 .h3-nav a.active { color: #fff; }
 .h3-nav a.active::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 8px; border-radius: 5px 5px 0 0; background: #d5a038; box-shadow: 0 0 16px 1px rgba(213,160,56,0.85), 0 -2px 8px rgba(213,160,56,0.6); }
 
-@media (max-width: 1060px) {
-  .h3-row { flex-wrap: wrap; }
-  .gm-tabs { gap: 12px; }
+/* item "Em breve" (desabilitado) — mesma tipografia dos links de .h3-nav;
+   estado sinalizado por strikethrough + label esmaecido + badge dourado nítido. */
+.nav-soon { display: inline-flex; align-items: center; gap: 6px; padding: 0; border: none; background: none; cursor: pointer; font: 700 11px/1 "Plus Jakarta Sans"; letter-spacing: 0.08em; color: var(--text-dim, #9aa0aa); }
+.nav-soon s { opacity: 0.5; }
+.nav-soon .soon-badge { font: 800 9px/1 "Plus Jakarta Sans"; letter-spacing: 0.5px; text-transform: uppercase; color: #141414; background: var(--gold, #d9b25f); border-radius: 4px; padding: 2px 5px; }
+
+/* ============================================================
+   MOBILE — elementos escondidos no desktop
+   ============================================================ */
+.h3-mobile,
+.h3m-searchsheet,
+.h3-drawer-layer,
+.h3-drawer,
+.h3-backdrop { display: none; }
+
+/* Banda tablet: aperta os gaps p/ o header de 3 tiers caber sem quebrar
+   entre ~900 e 1024px, antes de virar drawer. */
+@media (max-width: 1024px) and (min-width: 901px) {
+  .gm-tabs { gap: 10px; }
+  .h3-nav { gap: 22px; }
+  .h3-actions { gap: 9px; }
+}
+
+/* ============================================================
+   HEADER MOBILE (≤ 900px) — barra compacta sticky + drawer lateral
+   ============================================================ */
+@media (max-width: 900px) {
+  .h3 { position: sticky; top: 0; }
+  /* esconde os 3 tiers desktop */
+  .h3-1, .h3-2, .h3-3 { display: none; }
+
+  /* barra compacta: logo · [busca] [menu] */
+  .h3-mobile {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    height: 56px;
+    max-width: var(--maxw, 1240px);
+    margin: 0 auto;
+    padding-left: max(14px, env(safe-area-inset-left));
+    padding-right: max(14px, env(safe-area-inset-right));
+  }
+  .h3-mobile .gm-logo img { height: 30px; }
+
+  .h3m-actions { display: flex; align-items: center; gap: 4px; }
+  .h3m-icon {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 44px; height: 44px; border-radius: 9px;
+    background: transparent; border: 1px solid transparent;
+    color: var(--text); cursor: pointer; -webkit-tap-highlight-color: transparent;
+    transition: background .15s ease, border-color .15s ease;
+  }
+  .h3m-icon .mi { font-size: 24px; }
+  .h3m-icon:active { background: var(--surface-2); }
+  .h3m-icon.on { background: var(--surface-2); border-color: var(--line); color: #fff; }
+
+  /* sheet de busca full-width sob a barra */
+  .h3m-searchsheet {
+    display: block;
+    padding: 0 14px 12px;
+    max-width: var(--maxw, 1240px);
+    margin: 0 auto;
+    animation: h3m-sheet-in .18s ease;
+  }
+  .h3m-searchsheet .h3-search { width: 100%; }
+  .h3m-searchsheet .h3-search .br { display: none; } /* BR mora no drawer no mobile */
+
+  /* camada fixa do tamanho da viewport que CLIPA o drawer fora da tela.
+     `overflow:clip` no <html> não clipa position:fixed → o drawer fechado
+     (translateX 100%) somava largura fantasma à direita em TODA página. Aqui
+     o drawer vira position:absolute dentro desta camada fixed+overflow:hidden,
+     que o clipa de forma confiável em todo navegador (inclusive iOS Safari). */
+  .h3-drawer-layer {
+    display: block;
+    position: fixed; inset: 0; z-index: 90;
+    overflow: hidden;
+    pointer-events: none; /* fechado: não intercepta cliques/scroll da página */
+  }
+
+  /* backdrop */
+  .h3-backdrop {
+    display: block;
+    position: absolute; inset: 0;
+    background: rgba(4, 5, 7, 0.62);
+    opacity: 0; pointer-events: none;
+    transition: opacity .24s ease;
+  }
+  .h3-backdrop[data-open="true"] { opacity: 1; pointer-events: auto; }
+
+  /* drawer lateral (direita) — sempre montado, animando entrada/saída */
+  .h3-drawer {
+    display: flex; flex-direction: column; gap: 18px;
+    position: absolute; top: 0; right: 0; bottom: 0; z-index: 2;
+    pointer-events: auto;
+    width: min(86vw, 340px);
+    padding: 16px 18px calc(20px + env(safe-area-inset-bottom));
+    padding-right: max(18px, env(safe-area-inset-right));
+    background: var(--surface, #131419);
+    border-left: 1px solid var(--line);
+    box-shadow: -18px 0 50px rgba(0, 0, 0, 0.5);
+    overflow-y: auto; overscroll-behavior: contain;
+    transform: translateX(100%);
+    visibility: hidden;
+    transition: transform .26s cubic-bezier(.22, 1, .36, 1), visibility 0s linear .26s;
+  }
+  .h3-drawer[data-open="true"] {
+    transform: translateX(0);
+    visibility: visible;
+    transition: transform .26s cubic-bezier(.22, 1, .36, 1), visibility 0s;
+  }
+
+  .h3d-head { display: flex; align-items: center; justify-content: space-between; }
+  .h3d-title { font: 800 11px/1 "Plus Jakarta Sans"; letter-spacing: .14em; text-transform: uppercase; color: var(--text-faint); }
+
+  /* modos no drawer: empilhados largos */
+  .h3-drawer .gm-tabs { flex-direction: column; align-items: stretch; gap: 8px; }
+  .h3-drawer .gm-tab { justify-content: flex-start; padding: 11px 12px; border: 1px solid var(--line); background: var(--surface-2); border-radius: 8px; }
+  .h3-drawer .gm-tab.on { background: var(--surface-3); }
+  .h3-drawer .gm-tab .gi { width: 22px; height: 22px; }
+  .h3-drawer .gm-tab .gl { font-size: 12px; }
+
+  .h3d-nav { display: flex; flex-direction: column; }
+  .h3d-link {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 4px; border: none; border-bottom: 1px solid var(--line-soft);
+    font: 800 13px/1 "Plus Jakarta Sans"; letter-spacing: .05em;
+    color: var(--text-dim); text-decoration: none; background: none;
+    cursor: pointer; text-align: left; width: 100%;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .h3d-link .mi { color: var(--text-faint); font-size: 20px; }
+  .h3d-link:active { color: #fff; }
+  .h3d-link.active { color: #fff; }
+  .h3d-link.active .mi { color: var(--primary); }
+  .h3d-link.soon { justify-content: flex-start; gap: 8px; }
+  .h3d-link.soon s { opacity: .5; }
+
+  /* ações do drawer (grid 2-col: gold e entrar ocupam a linha inteira) */
+  .h3d-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .h3d-actions .perfil-gold { grid-column: 1 / -1; justify-content: center; padding: 12px; font-size: 13px; border-radius: 8px; }
+  .h3d-actions .trophy { width: auto; height: auto; gap: 8px; padding: 12px; border-radius: 8px; }
+  .h3d-actions .trophy .lbl { font: 800 12px/1 "Plus Jakarta Sans"; }
+  .h3d-actions .btn-perfil { padding: 13px; justify-content: center; }
+  .h3d-actions .btn-entrar { grid-column: 1 / -1; padding: 13px; justify-content: center; text-align: center; }
+
+  .h3d-region { display: flex; align-items: center; gap: 7px; margin-top: auto; padding-top: 4px; color: var(--text-faint); font: 700 12px/1 "Plus Jakarta Sans"; }
+  .h3d-region .mi { font-size: 18px; }
+  .h3d-region b { color: var(--gold-bright); }
+
+  @keyframes h3m-sheet-in {
+    from { opacity: 0; transform: translateY(-6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+}
+
+@media (max-width: 900px) and (prefers-reduced-motion: reduce) {
+  .h3-drawer { transition: transform 0s, visibility 0s; }
+  .h3-backdrop { transition: none; }
+  .h3m-searchsheet { animation: none; }
 }
 
 /* Toast "em breve" (login/perfil ainda não implementados). Overlay flutuante —

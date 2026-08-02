@@ -108,6 +108,25 @@ class RawParticipant:
     placement: int
     is_premade: bool = False
     party_id: str | None = None
+    # Augment/item picks — never read by the rating engine, carried through
+    # purely so _persist can snapshot them onto match_participants for the
+    # placement-derived champion_build_stats rollup.
+    augments: list[int] = field(default_factory=list)
+    items: list[int] = field(default_factory=list)
+    # Combat telemetry — same as above, never read by the rating engine, carried
+    # through purely for persistence (per-match display only, no rollup).
+    kills: int = 0
+    deaths: int = 0
+    assists: int = 0
+    damage_to_champions: int = 0
+    gold_earned: int = 0
+    champion_level: int = 0
+    damage_taken: int = 0
+    total_heal: int = 0
+    damage_self_mitigated: int = 0
+    largest_multi_kill: int = 0
+    killing_sprees: int = 0
+    time_spent_dead: int = 0
 
 
 @dataclass(slots=True)

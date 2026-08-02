@@ -23,6 +23,22 @@
   color: var(--text-dim);
   font: 500 14px/1.4 "Plus Jakarta Sans", sans-serif;
 }
+.lb-otp-entry {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 11px;
+  color: var(--gold-bright);
+  font: 700 11px/1 "Plus Jakarta Sans", sans-serif;
+  letter-spacing: 0.04em;
+  text-decoration: none;
+}
+.lb-otp-entry:hover {
+  color: #fff;
+}
+.lb-otp-entry .mi {
+  font-size: 16px;
+}
 
 /* ---------- season status card ---------- */
 .season-status {
@@ -335,10 +351,10 @@
 }
 .pod-champs .ch-icon {
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
-  /* borda normalizada: hairline neutro consistente em todos os campeões.
-     background-clip padding-box impede o gradiente --c1/--c2 de vazar sob a
-     borda semitransparente (o que antes tingia a borda de azul/roxo). */
-  border: 1px solid rgba(255, 255, 255, 0.16);
+  /* borda puxa a cor do ícone de invocador (--pc2) — o card inteiro lê como uma
+     identidade só. background-clip padding-box impede o gradiente --c1/--c2 do
+     próprio campeão de vazar sob a borda. */
+  border: 1px solid color-mix(in srgb, var(--pc2, #4cb6ec) 42%, rgba(255, 255, 255, 0.14));
   background-clip: padding-box;
 }
 /* hover do campeão → card de stats do jogador com o campeão */
@@ -895,6 +911,21 @@
   color: var(--text-dim);
   font-variant-numeric: tabular-nums;
 }
+/* separador "posições X–Y" */
+.lb-gap-row {
+  padding: 7px 18px;
+  background: rgba(255, 255, 255, 0.02);
+  display: grid;
+  grid-template-columns: 44px minmax(200px, 1.8fr) minmax(120px, 1fr) minmax(178px, 1.15fr) minmax(74px, 0.62fr);
+  gap: 16px;
+  align-items: center;
+}
+.lb-gap-row .gap-lbl {
+  font: 600 11px/1 "Plus Jakarta Sans", sans-serif;
+  letter-spacing: 0.1em;
+  color: var(--text-faint);
+}
+
 /* ---------- paginação ---------- */
 .pager {
   display: flex;
@@ -947,6 +978,921 @@
   font: 500 11px/1.5 "Plus Jakarta Sans", sans-serif;
   color: var(--text-faint);
   margin: 0 0 14px;
+}
+
+/* ── SEASON I — card off-white "metal iridescente" ───────────────────
+   Reflexo de arco-íris (rosa/verde/azul-claro) sobre off-white metálico.
+   O card é claro por decisão (destaque no rail escuro): toda a tinta interna
+   é escura. Tokens locais mantêm a rampa de tinta DRY. */
+.season-card {
+  --sc-ink: #1a1b21;
+  --sc-ink-mid: #43464e;
+  --sc-ink-faint: #666a72;
+  --sc-amber: #8a610f;
+  --sc-gold-a: #d9a83c;
+  --sc-gold-b: #f0c96a;
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  color: var(--sc-ink-mid);
+  border: 1px solid rgba(20, 22, 30, 0.07);
+  border-radius: 12px;
+  background: linear-gradient(140deg, #f8f9fb 0%, #e9ebf0 52%, #f4f5f8 100%);
+  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.34), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+/* camada de arco-íris: blobs pastel borrados que derivam devagar (reflexo vivo) */
+.season-card::before {
+  content: "";
+  position: absolute;
+  inset: -22%;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(27% 25% at 17% 19%, rgba(255, 138, 200, 0.62), transparent 70%),
+    radial-gradient(31% 29% at 83% 25%, rgba(138, 208, 255, 0.56), transparent 70%),
+    radial-gradient(34% 32% at 72% 90%, rgba(146, 240, 190, 0.52), transparent 72%),
+    radial-gradient(25% 25% at 26% 87%, rgba(203, 174, 255, 0.46), transparent 72%);
+  filter: blur(9px) saturate(1.12);
+  animation: sc-irid 15s ease-in-out infinite alternate;
+}
+/* faixa de brilho diagonal (gleam de metal) */
+.season-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: linear-gradient(114deg, transparent 34%, rgba(255, 255, 255, 0.55) 48%, transparent 62%);
+  mix-blend-mode: soft-light;
+}
+.season-card > * {
+  position: relative;
+  z-index: 1;
+}
+@keyframes sc-irid {
+  from { transform: translate3d(-2%, -1%, 0) scale(1.02) rotate(-1deg); }
+  to { transform: translate3d(2%, 2%, 0) scale(1.07) rotate(1.5deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .season-card::before { animation: none; }
+}
+
+.sc-name {
+  margin-top: 0;
+  font: 800 25px/1 "Plus Jakarta Sans", sans-serif;
+  letter-spacing: 0.05em; /* SEASON é caixa-alta → tracking aberto */
+  color: var(--sc-ink);
+}
+.sc-num {
+  color: var(--sc-amber);
+  margin-left: 5px;
+  font-size: 1.1em; /* numeral romano ganha presença */
+  letter-spacing: 0;
+}
+.sc-dates {
+  margin: 9px 0 0;
+  font: 500 11.5px/1.5 "Plus Jakarta Sans", sans-serif;
+  color: var(--sc-ink-faint);
+}
+.sc-dates b {
+  color: var(--sc-ink-mid);
+  font-weight: 700;
+}
+
+/* ── vaquinha da premiação — inset branco fosco p/ leitura sobre o reflexo ── */
+.sc-prize {
+  position: relative;
+  z-index: 0; /* contexto: a poça de sombra (-1) fica acima do fundo, atrás dos spans */
+  margin-top: 15px;
+  padding: 14px 15px 13px;
+  border-radius: 11px;
+  background: rgba(255, 255, 255, 0.55);
+  border: 1px solid rgba(20, 22, 30, 0.06);
+}
+.sc-prize-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.sc-ph-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  font: 800 10px/1 "Plus Jakarta Sans", sans-serif;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--sc-amber);
+}
+.sc-prize-head .mi {
+  font-size: 15px;
+}
+/* tag "TOP 3 MELHORES" — marrom café, texto branco (mesma família de badge do
+   leaderboard: caixa-alta, cantos 5px, fundo sólido semântico) */
+.sc-toptag {
+  flex: none;
+  font: 800 9px/1 "Plus Jakarta Sans", sans-serif;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #fff;
+  background: #6f4a2e;
+  padding: 4px 7px;
+  border-radius: 5px;
+  white-space: nowrap;
+  box-shadow: 0 1px 3px rgba(60, 40, 20, 0.3);
+}
+.sc-prize-val {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  margin-top: 8px;
+  color: var(--sc-ink);
+}
+.sc-cur {
+  font: 700 15px/1 "Plus Jakarta Sans", sans-serif;
+  letter-spacing: 0.01em;
+  color: var(--sc-ink-mid);
+}
+.sc-fig {
+  font: 800 33px/1 "Plus Jakarta Sans", sans-serif;
+  letter-spacing: -0.015em;
+  font-variant-numeric: tabular-nums; /* explícito: o shorthand `font` reseta a classe .tnum */
+}
+.sc-fund {
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(20, 22, 30, 0.12);
+  overflow: hidden;
+  margin-top: 12px;
+}
+.sc-fund > span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--sc-gold-a), var(--sc-gold-b));
+  box-shadow: 0 0 8px rgba(217, 168, 60, 0.5);
+  transition: width 0.8s cubic-bezier(0.16, 0.84, 0.44, 1);
+}
+@media (prefers-reduced-motion: reduce) {
+  .sc-fund > span { transition: none; }
+}
+.sc-fund-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 7px;
+  font: 700 10px/1 "Plus Jakarta Sans", sans-serif;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--sc-ink-faint);
+  font-variant-numeric: tabular-nums;
+}
+.sc-appeal {
+  margin: 13px 0 0;
+  font: 600 12.5px/1.5 "Plus Jakarta Sans", sans-serif;
+  color: var(--sc-ink-mid);
+  text-align: center;
+  text-wrap: balance;
+}
+
+/* ── palco do Poro — nicho 3D iluminado (luz de cima, chão sombreado) ── */
+/* wrap: contexto de posicionamento p/ a poça de sombra escapar do palco */
+.sc-poro-wrap {
+  position: relative;
+  margin-top: 6px;
+}
+/* poça de sombra circular sob o poro — NÃO clipada; some radialmente e
+   estende pra baixo, passando atrás dos spans de doação */
+.sc-poro-ground {
+  position: absolute;
+  left: 50%;
+  bottom: -46px;
+  width: 92%;
+  height: 150px;
+  transform: translateX(-50%);
+  border-radius: 50%;
+  background: radial-gradient(
+    closest-side,
+    rgba(44, 52, 72, 0.28),
+    rgba(44, 52, 72, 0.12) 52%,
+    transparent 78%
+  );
+  filter: blur(5px);
+  pointer-events: none;
+  z-index: -1; /* atrás dos spans estáticos, acima do fundo do painel */
+}
+.sc-poro-stage {
+  position: relative;
+  height: 108px;
+  z-index: 1;
+  /* sem moldura: o poro vive DENTRO do card. overflow contém a queda/saída
+     (invisível). Só uma luz frontal quente no chão; a sombra é a .sc-poro-ground. */
+  overflow: hidden;
+  background: radial-gradient(32% 12% at 50% 96%, rgba(255, 251, 238, 0.5), transparent 72%);
+}
+.sc-poro-mover {
+  position: absolute;
+  inset: 0;
+}
+.sc-poro-fig {
+  position: absolute;
+  left: 50%;
+  bottom: 7px;
+  /* proporção do canvas do PSD (1024×1021 ≈ quadrado) — caixa quadrada
+     p/ os sprites em % não distorcerem */
+  width: 84.5px;
+  height: 84.5px;
+  transform: translateX(-50%);
+  transform-origin: 50% 96%;
+  /* key light frontal: leve ganho de brilho/saturação em vez de drop-shadow
+     (a sombra real é a silhueta .sc-poro-cast projetada atrás) */
+  filter: brightness(1.05) saturate(1.04);
+  will-change: transform;
+}
+/* camadas do boneco: cada sprite posicionado em % da caixa da figura */
+.sc-poro-fig .pr {
+  position: absolute;
+  display: block;
+}
+/* pivô de articulação: ocupa a caixa do membro (origens em % ficam estáveis) */
+.pj {
+  position: absolute;
+  inset: 0;
+  will-change: transform;
+}
+.pj-seg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.pj-full {
+  clip-path: none;
+}
+/* sombra de estúdio: silhueta do próprio rig projetada no ciclorama atrás,
+   ancorada nos pés, enviesada pra direita (key light frontal vindo da esquerda).
+   brightness(0) achata em preto; blur + opacidade baixa = penumbra suave. */
+.sc-poro-cast {
+  position: absolute;
+  left: 50%;
+  bottom: 7px;
+  width: 84.5px;
+  height: 84.5px;
+  transform-origin: 50% 100%;
+  transform: translateX(-50%) translateX(9px) skewX(-16deg) scaleX(0.94) scaleY(0.97);
+  filter: brightness(0) blur(2.5px);
+  opacity: 0.17;
+  pointer-events: none;
+}
+/* dentro do cast, a figura mantém o próprio posicionamento (as keyframes
+   embutem translateX(-50%)) — só cola no chão do cast e perde o filtro de luz */
+.sc-poro-cast .sc-poro-fig {
+  bottom: 0;
+  filter: none;
+}
+
+/* ── membros SVG rigados (ossos deformáveis) ──
+   O <svg> preenche a caixa da figura. Cada junta (.pj) e cada osso (.pj-seg)
+   pivota em 50% 100% do próprio bbox (o pivô fica no FUNDO — os ossos são
+   desenhados subindo do pivô). Rotação = dobra; scaleY do .pj-seg = comprimento;
+   scaleX = largura. Follow-through/stretch vêm das keyframes por estado. */
+/* braços raster fatiados por clip-path (marionete FK), pivôs por junta */
+.pj-r-upper { clip-path: inset(38% 0 0 0); }
+.pj-r-fore { clip-path: inset(18% 0 30% 0); }
+.pj-r-paw { clip-path: inset(0 0 58% 0); }
+.pj-r-sh { transform-box: fill-box; transform-origin: 22% 94%; }
+.pj-r-el { transform-box: fill-box; transform-origin: 40% 56%; }
+.pj-r-wr { transform-box: fill-box; transform-origin: 52% 32%; }
+.pj-l-upper { clip-path: inset(0 0 0 42%); }
+.pj-l-paw { clip-path: inset(0 52% 0 0); }
+.pj-l-sh { transform-box: fill-box; transform-origin: 86% 22%; }
+.pj-l-wr { transform-box: fill-box; transform-origin: 48% 55%; }
+.pr-foot-l,
+.pr-foot-r { transform-box: fill-box; transform-origin: 50% 50%; }
+
+/* ── idle: aceno com follow-through (ombro lidera, cotovelo atrasa, punho
+   chicoteia), respiração, balanço do braço baixo e piscada humana ── */
+.sc-poro-stage[data-state="idle"] .sc-poro-fig {
+  animation: poro-breath 3.4s ease-in-out infinite;
+}
+@keyframes poro-breath {
+  0%, 100% { transform: translateX(-50%) scaleY(1); }
+  50% { transform: translateX(-50%) scaleY(1.014); }
+}
+.sc-poro-stage[data-state="idle"] .pj-r-sh {
+  animation: poro-wave-sh 2.6s ease-in-out infinite;
+}
+.sc-poro-stage[data-state="idle"] .pj-r-el {
+  animation: poro-wave-el 2.6s ease-in-out infinite;
+}
+.sc-poro-stage[data-state="idle"] .pj-r-wr {
+  animation: poro-wave-wr 2.6s ease-in-out infinite;
+}
+@keyframes poro-wave-sh {
+  0%, 44%, 100% { transform: rotate(0deg); }
+  10% { transform: rotate(-10deg); }
+  21% { transform: rotate(4deg); }
+  31% { transform: rotate(-7deg); }
+}
+@keyframes poro-wave-el {
+  0%, 4%, 48%, 100% { transform: rotate(0deg); }
+  13% { transform: rotate(-8deg); }
+  24% { transform: rotate(5deg); }
+  34% { transform: rotate(-5deg); }
+}
+@keyframes poro-wave-wr {
+  0%, 7%, 52%, 100% { transform: rotate(0deg); }
+  16% { transform: rotate(-15deg); }
+  27% { transform: rotate(9deg); }
+  37% { transform: rotate(-8deg); }
+}
+.sc-poro-stage[data-state="idle"] .pj-l-sh {
+  animation: poro-sway 3.4s ease-in-out infinite;
+}
+@keyframes poro-sway {
+  0%, 100% { transform: rotate(0deg); }
+  50% { transform: rotate(3.5deg); }
+}
+.pr-eye {
+  transform-origin: center;
+}
+.sc-poro-stage[data-state="idle"] .pr-eye {
+  animation: poro-blink 2.8s ease-in-out infinite;
+}
+@keyframes poro-blink {
+  0%, 91%, 100% { transform: scaleY(1); }
+  94%, 97% { transform: scaleY(0.08); }
+}
+/* ── downed (2s): caído, dá um chute suave no chão (birra/impulso), planta a
+   pata direita e se ergue com esforço em beats — quase escorrega, segura,
+   continua. Poses densas (estilo 24fps), interpolação suave. Termina a -40°
+   pronto pro rise. Scroll durante → refall (tomba de novo). ── */
+.sc-poro-stage[data-state="downed"] .sc-poro-fig {
+  animation: poro-downed 2s ease-in-out forwards;
+}
+@keyframes poro-downed {
+  0% { transform: translateX(-50%) rotate(-82deg) translateY(3px); }
+  9% { transform: translateX(-50%) rotate(-83deg) translateY(3px); }   /* respira caído */
+  15% { transform: translateX(-50%) rotate(-81deg) translateY(3px); }
+  22% { transform: translateX(-50%) rotate(-84deg) translateY(4px); }  /* recolhe p/ o chute */
+  28% { transform: translateX(-50%) rotate(-79deg) translateY(2px); }  /* reação do chute */
+  36% { transform: translateX(-50%) rotate(-80deg) translateY(3px); }
+  48% { transform: translateX(-50%) rotate(-66deg) translateY(2px); }  /* braço planta, ergue */
+  56% { transform: translateX(-50%) rotate(-70deg) translateY(2px); }  /* quase escorrega */
+  64% { transform: translateX(-50%) rotate(-58deg) translateY(2px); }
+  74% { transform: translateX(-50%) rotate(-56deg) translateY(2px); }  /* segura o esforço */
+  100% { transform: translateX(-50%) rotate(-40deg) translateY(2px); }
+}
+/* braço direito: recolhe no chute → PLANTA a pata no chão → empurra */
+.sc-poro-stage[data-state="downed"] .pj-r-sh {
+  animation: poro-downed-rsh 2s ease-in-out forwards;
+}
+.sc-poro-stage[data-state="downed"] .pj-r-el {
+  animation: poro-downed-rel 2s ease-in-out forwards;
+}
+.sc-poro-stage[data-state="downed"] .pj-r-wr {
+  animation: poro-downed-rwr 2s ease-in-out forwards;
+}
+@keyframes poro-downed-rsh {
+  0% { transform: rotate(-46deg); }
+  18% { transform: rotate(-52deg); }
+  34% { transform: rotate(22deg); }  /* planta a pata */
+  50% { transform: rotate(34deg); }  /* empurrando */
+  62% { transform: rotate(28deg); }  /* escorrega um tico */
+  78% { transform: rotate(36deg); }
+  100% { transform: rotate(30deg); }
+}
+@keyframes poro-downed-rel {
+  0% { transform: rotate(-21deg); }
+  34% { transform: rotate(16deg); }
+  62% { transform: rotate(10deg); }
+  100% { transform: rotate(14deg); }
+}
+@keyframes poro-downed-rwr {
+  0% { transform: rotate(-24deg); }
+  34% { transform: rotate(24deg); }
+  52% { transform: rotate(34deg); } /* pata flexiona sob carga */
+  70% { transform: rotate(26deg); }
+  100% { transform: rotate(24deg); }
+}
+/* braço esquerdo: recoil do chute, depois acompanha o esforço */
+.sc-poro-stage[data-state="downed"] .pj-l-sh {
+  animation: poro-downed-lsh 2s ease-in-out forwards;
+}
+.sc-poro-stage[data-state="downed"] .pj-l-wr {
+  animation: poro-downed-lwr 2s ease-in-out forwards;
+}
+@keyframes poro-downed-lsh {
+  0% { transform: rotate(36deg); }
+  24% { transform: rotate(44deg); }
+  55% { transform: rotate(22deg); }
+  100% { transform: rotate(12deg); }
+}
+@keyframes poro-downed-lwr {
+  0% { transform: rotate(29deg); }
+  30% { transform: rotate(34deg); }
+  100% { transform: rotate(10deg); }
+}
+/* o KICK suavizado: pé recolhe, estende contra o chão, recoil amortecido */
+.sc-poro-stage[data-state="downed"] .pr-foot-l {
+  animation: poro-kick 2s cubic-bezier(0.34, 0.02, 0.42, 0.98) forwards;
+}
+.sc-poro-stage[data-state="downed"] .pr-foot-r {
+  animation: poro-downed-footr 2s ease-in-out forwards;
+}
+@keyframes poro-kick {
+  0%, 14% { transform: translateY(0) rotate(0deg); }
+  21% { transform: translateY(-32%) rotate(-13deg); }  /* recolhe */
+  27% { transform: translateY(9%) rotate(7deg); }      /* estende no chão */
+  33% { transform: translateY(1%) rotate(2deg); }      /* recoil amortecido */
+  40% { transform: translateY(4%) rotate(3deg); }
+  50% { transform: translateY(0) rotate(0deg); }
+  72% { transform: translateY(-4%) rotate(-2deg); }    /* reajuste ao erguer */
+  100% { transform: translateY(0) rotate(0deg); }
+}
+@keyframes poro-downed-footr {
+  0%, 42% { transform: translateY(0); }
+  56% { transform: translateY(-8%) rotate(-4deg); }    /* busca apoio */
+  70% { transform: translateY(0) rotate(0deg); }
+  100% { transform: translateY(0); }
+}
+/* olhos: apertados → entreabrem → apertam no esforço → quase abertos */
+.sc-poro-stage[data-state="downed"] .pr-eye {
+  animation: poro-eyes-downed 2s ease-in-out forwards;
+}
+@keyframes poro-eyes-downed {
+  0%, 16% { transform: scaleY(0.12); }
+  34% { transform: scaleY(0.55); }
+  56% { transform: scaleY(0.28); }  /* esforço */
+  78% { transform: scaleY(0.6); }
+  100% { transform: scaleY(0.85); }
+}
+/* coroa chacoalha no chute e vai se ajeitando */
+.sc-poro-stage[data-state="downed"] .pj-crown {
+  animation: poro-crown-downed 2s ease-in-out forwards;
+}
+@keyframes poro-crown-downed {
+  0% { transform: translateY(2%) rotate(2deg); }
+  26% { transform: translateY(4%) rotate(5deg); }  /* chute chacoalha */
+  40% { transform: translateY(2%) rotate(3deg); }
+  100% { transform: translateY(0) rotate(1deg); }
+}
+
+/* ── refall (0.5s): scroll no meio da levantada → braço escorrega e tomba ── */
+.sc-poro-stage[data-state="refall"] .sc-poro-fig {
+  animation: poro-refall 0.5s linear forwards;
+}
+@keyframes poro-refall {
+  0% { transform: translateX(-50%) rotate(-40deg) translateY(2px); animation-timing-function: cubic-bezier(0.55, 0, 1, 0.45); }
+  58% { transform: translateX(-50%) rotate(-87deg) translateY(3px); animation-timing-function: cubic-bezier(0.25, 1, 0.5, 1); }
+  76% { transform: translateX(-50%) rotate(-78deg) translateY(3px); }
+  100% { transform: translateX(-50%) rotate(-82deg) translateY(3px); }
+}
+.sc-poro-stage[data-state="refall"] .pj-r-sh {
+  animation: poro-refall-rsh 0.5s ease-in forwards;
+}
+@keyframes poro-refall-rsh {
+  0% { transform: rotate(30deg); }
+  40% { transform: rotate(8deg); }   /* pata escorrega */
+  100% { transform: rotate(-46deg); }
+}
+.sc-poro-stage[data-state="refall"] .pj-r-wr {
+  animation: poro-refall-rwr 0.5s ease-in forwards;
+}
+@keyframes poro-refall-rwr {
+  0% { transform: rotate(24deg); }
+  100% { transform: rotate(-24deg); }
+}
+.sc-poro-stage[data-state="refall"] .pj-l-sh {
+  animation: poro-refall-lsh 0.5s ease-in forwards;
+}
+@keyframes poro-refall-lsh {
+  0% { transform: rotate(12deg); }
+  100% { transform: rotate(36deg); }
+}
+.sc-poro-stage[data-state="refall"] .pr-eye {
+  animation: poro-eyes-refall 0.5s ease-in forwards;
+}
+@keyframes poro-eyes-refall {
+  0% { transform: scaleY(0.85); }
+  30% { transform: scale(1.2); }   /* susto de novo */
+  70%, 100% { transform: scaleY(0.12); }
+}
+.sc-poro-stage[data-state="refall"] .pj-crown {
+  animation: poro-crown-refall 0.5s ease-in-out forwards;
+}
+@keyframes poro-crown-refall {
+  0% { transform: translateY(0) rotate(1deg); }
+  45% { transform: translateY(-10%) rotate(-6deg); }
+  100% { transform: translateY(2%) rotate(2deg); }
+}
+
+/* olhos: arregalam no susto, seguem abertos em pânico, fecham no impacto */
+.sc-poro-stage[data-state="fall"] .pr-eye {
+  animation: poro-eyes-fall 0.9s ease-in-out forwards;
+}
+@keyframes poro-eyes-fall {
+  0% { transform: scale(1); }
+  12% { transform: scale(1.24); }
+  62% { transform: scale(1.16); }
+  76%, 100% { transform: scaleY(0.12); }
+}
+/* coroa: inércia real — voa mais alto e aterrissa DEPOIS do corpo */
+.sc-poro-stage[data-state="fall"] .pj-crown {
+  animation: poro-crown-pop 1.05s ease-in-out forwards;
+}
+@keyframes poro-crown-pop {
+  0%, 8% { transform: none; }
+  30% { transform: translateY(-24%) rotate(-12deg); }
+  58% { transform: translateY(-10%) rotate(-6deg); }
+  78% { transform: translateY(5%) rotate(4deg); }
+  90% { transform: translateY(0%) rotate(1deg); }
+  100% { transform: translateY(2%) rotate(2deg); }
+}
+
+/* ── queda no scroll: tomba p/ trás com assentamento físico curto ── */
+/* corpo: sobressalto (antecipação) → queda acelerando (gravidade) → impacto
+   com micro-quique → assentamento. Easing declarado POR TRECHO nos keyframes. */
+.sc-poro-stage[data-state="fall"] .sc-poro-fig {
+  animation: poro-fall 0.9s linear forwards;
+}
+@keyframes poro-fall {
+  0% { transform: translateX(-50%) rotate(0deg); animation-timing-function: cubic-bezier(0.25, 1, 0.5, 1); }
+  14% { transform: translateX(-50%) rotate(6deg) translateY(-4px); animation-timing-function: cubic-bezier(0.55, 0, 1, 0.45); }
+  74% { transform: translateX(-50%) rotate(-88deg) translateY(2px) scaleY(0.96); animation-timing-function: cubic-bezier(0.25, 1, 0.5, 1); }
+  86% { transform: translateX(-50%) rotate(-78deg) translateY(3px) scaleY(1); animation-timing-function: cubic-bezier(0.45, 0, 0.75, 1); }
+  100% { transform: translateX(-50%) rotate(-82deg) translateY(3px); }
+}
+/* braço direito rodopia tentando equilibrar (windmill) e cai relaxado */
+.sc-poro-stage[data-state="fall"] .pj-r-sh {
+  animation: poro-fall-rsh 0.9s ease-in-out forwards;
+}
+.sc-poro-stage[data-state="fall"] .pj-r-el {
+  animation: poro-fall-rel 0.9s ease-in-out forwards;
+}
+.sc-poro-stage[data-state="fall"] .pj-r-wr {
+  animation: poro-fall-rwr 0.9s ease-in-out forwards;
+}
+@keyframes poro-fall-rsh {
+  0% { transform: rotate(0deg); }
+  16% { transform: rotate(24deg); }
+  48% { transform: rotate(-34deg); }
+  78% { transform: rotate(-52deg); }
+  100% { transform: rotate(-46deg); }
+}
+@keyframes poro-fall-rel {
+  0%, 6% { transform: rotate(0deg); }
+  22% { transform: rotate(16deg); }
+  54% { transform: rotate(-20deg); }
+  84% { transform: rotate(-26deg); }
+  100% { transform: rotate(-21deg); }
+}
+@keyframes poro-fall-rwr {
+  0%, 10% { transform: rotate(0deg); }
+  27% { transform: rotate(30deg); }
+  60% { transform: rotate(-38deg); }
+  90% { transform: rotate(-14deg); }
+  100% { transform: rotate(-24deg); }
+}
+/* braço esquerdo espelha (abre pro outro lado e cai por cima) */
+.sc-poro-stage[data-state="fall"] .pj-l-sh {
+  animation: poro-fall-lsh 0.9s ease-in-out forwards;
+}
+.sc-poro-stage[data-state="fall"] .pj-l-wr {
+  animation: poro-fall-lwr 0.9s ease-in-out forwards;
+}
+@keyframes poro-fall-lsh {
+  0% { transform: rotate(0deg); }
+  16% { transform: rotate(-22deg); }
+  48% { transform: rotate(26deg); }
+  78% { transform: rotate(42deg); }
+  100% { transform: rotate(36deg); }
+}
+@keyframes poro-fall-lwr {
+  0%, 10% { transform: rotate(0deg); }
+  30% { transform: rotate(-16deg); }
+  65% { transform: rotate(22deg); }
+  100% { transform: rotate(29deg); }
+}
+/* pés chutam no ar durante a queda (alternados) */
+.sc-poro-stage[data-state="fall"] .pr-foot-l {
+  animation: poro-fall-foot 0.9s ease-in-out forwards;
+}
+.sc-poro-stage[data-state="fall"] .pr-foot-r {
+  animation: poro-fall-foot 0.9s ease-in-out 0.08s forwards;
+}
+@keyframes poro-fall-foot {
+  0%, 12% { transform: translateY(0); }
+  34% { transform: translateY(-22%) rotate(-8deg); }
+  58% { transform: translateY(-8%) rotate(5deg); }
+  80% { transform: translateY(-16%) rotate(-4deg); }
+  100% { transform: translateY(0) rotate(0deg); }
+}
+/* na queda a sombra projetada encurta e escurece (corpo desce ao chão) */
+.sc-poro-stage[data-state="fall"] .sc-poro-cast,
+.sc-poro-stage[data-state="rise"] .sc-poro-cast {
+  transform: translateX(-50%) translateX(7px) skewX(-10deg) scaleX(0.96) scaleY(0.9);
+  opacity: 0.22;
+  transition: transform 0.5s ease, opacity 0.5s ease;
+}
+
+/* ── levanta: empurra de volta com leve inclinação à frente ── */
+.sc-poro-stage[data-state="rise"] .sc-poro-fig {
+  animation: poro-rise 0.95s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+}
+@keyframes poro-rise {
+  0% { transform: translateX(-50%) rotate(-40deg) translateY(2px); } /* vem do downed */
+  18% { transform: translateX(-50%) rotate(-36deg) translateY(2px); } /* último fôlego */
+  70% { transform: translateX(-50%) rotate(7deg); }
+  100% { transform: translateX(-50%) rotate(0deg); }
+}
+/* braços continuam da pose caída e EMPURRAM o chão pra levantar */
+.sc-poro-stage[data-state="rise"] .pj-r-sh {
+  animation: poro-rise-rsh 0.95s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+}
+.sc-poro-stage[data-state="rise"] .pj-r-el {
+  animation: poro-rise-rel 0.95s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+}
+.sc-poro-stage[data-state="rise"] .pj-r-wr {
+  animation: poro-rise-rwr 0.95s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+}
+@keyframes poro-rise-rsh {
+  0% { transform: rotate(30deg); } /* pata ainda no chão (downed) */
+  38% { transform: rotate(40deg); } /* empurrão final */
+  74% { transform: rotate(-8deg); } /* solta e balança */
+  100% { transform: rotate(0deg); }
+}
+@keyframes poro-rise-rel {
+  0% { transform: rotate(14deg); }
+  44% { transform: rotate(20deg); }
+  80% { transform: rotate(-5deg); }
+  100% { transform: rotate(0deg); }
+}
+@keyframes poro-rise-rwr {
+  0% { transform: rotate(24deg); }
+  50% { transform: rotate(30deg); }
+  86% { transform: rotate(-8deg); }
+  100% { transform: rotate(0deg); }
+}
+.sc-poro-stage[data-state="rise"] .pj-l-sh {
+  animation: poro-rise-lsh 0.95s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+}
+.sc-poro-stage[data-state="rise"] .pj-l-wr {
+  animation: poro-rise-lwr 0.95s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+}
+@keyframes poro-rise-lsh {
+  0% { transform: rotate(12deg); }
+  38% { transform: rotate(-14deg); }
+  74% { transform: rotate(5deg); }
+  100% { transform: rotate(0deg); }
+}
+@keyframes poro-rise-lwr {
+  0% { transform: rotate(10deg); }
+  50% { transform: rotate(-10deg); }
+  100% { transform: rotate(0deg); }
+}
+/* olhos: quase abertos do downed → abrem de vez com leve pop */
+.sc-poro-stage[data-state="rise"] .pr-eye {
+  animation: poro-eyes-rise 0.95s ease-out forwards;
+}
+@keyframes poro-eyes-rise {
+  0% { transform: scaleY(0.85); }
+  45% { transform: scale(1.08); }
+  100% { transform: scale(1); }
+}
+/* coroa reassenta com wobble curto */
+.sc-poro-stage[data-state="rise"] .pj-crown {
+  animation: poro-crown-settle 0.95s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+}
+@keyframes poro-crown-settle {
+  0% { transform: translateY(0) rotate(1deg); }
+  55% { transform: translateY(-4%) rotate(-3deg); }
+  100% { transform: none; }
+}
+
+/* ── sai andando pela borda direita (pés alternam passinhos) ── */
+.sc-poro-stage[data-state="exit"] .sc-poro-mover {
+  animation: poro-exit 1.7s cubic-bezier(0.5, 0, 0.85, 0.4) forwards;
+}
+@keyframes poro-exit {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(150%); }
+}
+.sc-poro-stage[data-state="exit"] .sc-poro-fig {
+  animation: poro-toddle 0.34s ease-in-out infinite;
+}
+@keyframes poro-toddle {
+  0%, 100% { transform: translateX(-50%) rotate(-2.5deg); }
+  50% { transform: translateX(-50%) rotate(2.5deg) translateY(-2px); }
+}
+.sc-poro-stage[data-state="exit"] .pr-foot-l {
+  animation: poro-step 0.34s ease-in-out infinite;
+}
+.sc-poro-stage[data-state="exit"] .pr-foot-r {
+  animation: poro-step 0.34s ease-in-out infinite;
+  animation-delay: 0.17s;
+}
+@keyframes poro-step {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-14%); }
+}
+/* braços balançam alternados no passo */
+.sc-poro-stage[data-state="exit"] .pj-r-sh {
+  animation: poro-swing 0.34s ease-in-out infinite;
+}
+.sc-poro-stage[data-state="exit"] .pj-l-sh {
+  animation: poro-swing 0.34s ease-in-out infinite reverse;
+}
+@keyframes poro-swing {
+  0%, 100% { transform: rotate(-6deg); }
+  50% { transform: rotate(6deg); }
+}
+
+/* ── fora do palco / retorno ── */
+.sc-poro-stage[data-state="gone"] .sc-poro-mover {
+  transform: translateX(150%);
+}
+.sc-poro-stage[data-state="return"] .sc-poro-mover {
+  animation: poro-return 1.3s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+@keyframes poro-return {
+  0% { transform: translateX(150%); }
+  100% { transform: translateX(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sc-poro-stage[data-state] .sc-poro-fig,
+  .sc-poro-stage[data-state] .sc-poro-mover,
+  .sc-poro-stage[data-state] .pj,
+  .sc-poro-stage[data-state] .pr-eye,
+  .sc-poro-stage[data-state] .pr-foot-l,
+  .sc-poro-stage[data-state] .pr-foot-r {
+    animation: none !important;
+  }
+  .sc-poro-cast {
+    transition: none;
+  }
+}
+.sc-thanks {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 12px;
+  padding: 9px 11px;
+  border-radius: 8px;
+  background: rgba(31, 138, 91, 0.15);
+  color: #1a7048;
+  font: 700 12px/1.3 "Plus Jakarta Sans", sans-serif;
+}
+.sc-thanks .mi {
+  font-size: 16px;
+}
+
+/* botão Doar — vermelho de urgência (destaca sobre o off-white), glow pulsante */
+.sc-donate {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  width: 100%;
+  margin-top: 13px;
+  padding: 12px 16px;
+  border: none;
+  border-radius: 9px;
+  background: var(--entrar, #d92d26);
+  color: #fff;
+  font: 800 13px/1 "Plus Jakarta Sans", sans-serif;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  box-shadow: 0 6px 18px rgba(217, 45, 38, 0.34);
+  animation: sc-urge 2.4s ease-in-out infinite;
+}
+.sc-donate .mi {
+  font-size: 17px;
+}
+.sc-donate:hover {
+  filter: brightness(1.07);
+}
+.sc-donate:disabled {
+  background: rgba(20, 22, 30, 0.1);
+  color: var(--sc-ink-faint);
+  box-shadow: none;
+  cursor: not-allowed;
+  animation: none;
+}
+@keyframes sc-urge {
+  0%, 100% { box-shadow: 0 6px 18px rgba(217, 45, 38, 0.30); }
+  50% { box-shadow: 0 8px 28px rgba(217, 45, 38, 0.62); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sc-donate { animation: none; }
+}
+
+/* seletor de valor */
+.sc-picker {
+  margin-top: 13px;
+}
+.sc-amts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+.sc-amt {
+  flex: 1 1 auto;
+  min-width: 52px;
+  padding: 9px 6px;
+  border: 1px solid rgba(20, 22, 30, 0.16);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.5);
+  color: var(--sc-ink);
+  font: 800 13px/1 "Plus Jakarta Sans", sans-serif;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  transition: background 0.14s ease, border-color 0.14s ease, color 0.14s ease;
+}
+.sc-amt:hover {
+  border-color: var(--sc-gold-a);
+}
+.sc-amt.on {
+  background: rgba(217, 168, 60, 0.2);
+  border-color: var(--sc-gold-a);
+  color: #6f4f0d;
+}
+.sc-custom {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  padding: 0 12px;
+  height: 42px;
+  border: 1px solid rgba(20, 22, 30, 0.16);
+  border-radius: 8px;
+  background: #fff;
+}
+.sc-custom[data-on="true"] {
+  border-color: var(--sc-gold-a);
+}
+.sc-custom > span {
+  font: 700 13px/1 "Plus Jakarta Sans", sans-serif;
+  color: var(--sc-ink-faint);
+}
+.sc-custom input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: none;
+  color: var(--sc-ink);
+  font: 700 14px/1 "Plus Jakarta Sans", sans-serif;
+  font-variant-numeric: tabular-nums;
+}
+.sc-custom input::placeholder {
+  color: var(--sc-ink-faint);
+  font-weight: 500;
+}
+.sc-custom input::-webkit-outer-spin-button,
+.sc-custom input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.sc-custom input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+.sc-err {
+  margin-top: 9px;
+  font: 600 11px/1.4 "Plus Jakarta Sans", sans-serif;
+  color: #c0261e;
+}
+.sc-picker-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 11px;
+  align-items: stretch;
+}
+.sc-picker-actions .sc-donate {
+  margin-top: 0;
+  flex: 1;
+}
+.sc-cancel {
+  flex: none;
+  padding: 12px 14px;
+  border: 1px solid rgba(20, 22, 30, 0.16);
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.5);
+  color: var(--sc-ink-mid);
+  font: 700 12px/1 "Plus Jakarta Sans", sans-serif;
+  cursor: pointer;
+}
+.sc-cancel:hover {
+  color: var(--sc-ink);
+  border-color: rgba(20, 22, 30, 0.3);
+}
+.sc-fine {
+  margin: 12px 0 0;
+  font: 400 10.5px/1.45 "Plus Jakarta Sans", sans-serif;
+  color: var(--sc-ink-faint);
 }
 
 /* recordes ao vivo (estatísticas rotativas) */
@@ -1088,43 +2034,10 @@
   margin-top: 14px;
 }
 
-/* ---------- tags inline (player tag chips) ---------- */
-.ptag {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font: 700 9px/1 "Plus Jakarta Sans", sans-serif;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  padding: 3px 6px 3px 5px;
-  border-radius: 5px;
-  white-space: nowrap;
-}
-/* sobreposição por kind */
-.ptag-global.ptag {
-  background: var(--gold);
-  color: #2a2008;
-}
-.ptag-region.ptag {
-  background: #1f5f86;
-  color: #d3ebff;
-}
-.ptag-hot.ptag {
-  background: #a85b27;
-  color: #ffe1c4;
-}
-.ptag-rookie.ptag {
-  background: #4a3f9e;
-  color: #ddd5ff;
-}
-.ptag-veteran.ptag {
-  background: #2a2e38;
-  color: var(--text-dim);
-}
-.ptag-otp.ptag {
-  background: #1d6a6a;
-  color: #bff0f0;
-}
+/* ---------- tags inline (player tag chips) ----------
+   O visual base de `.ptag` + variantes (hot / champ / otp / champrank) vive em
+   styles/base.css (fonte única, compartilhada com o /perfil). Aqui fica só o
+   contador de excedente "+N", que é exclusivo da linha do leaderboard. */
 .ptag-more {
   background: #2a2e38;
   color: var(--text-dim);
@@ -1163,17 +2076,7 @@
     grid-template-columns: 1fr;
   }
 }
-@media (max-width: 700px) {
-  .lb-table .head,
-  .lb-table .row {
-    grid-template-columns: 36px 1fr minmax(90px, 1fr) minmax(140px, 1fr) minmax(54px, 0.5fr);
-    gap: 10px;
-  }
-  .lb-table .head,
-  .lb-table .row {
-    padding-left: 10px;
-    padding-right: 10px;
-  }
+@media (max-width: 860px) {
   .lb-search {
     margin-left: 0;
     width: 100%;
@@ -1181,5 +2084,153 @@
   .lb-search input {
     min-width: 0;
     width: 100%;
+  }
+}
+
+/* banda tablet portrait: aperta as 5 colunas antes do reflow de telefone */
+@media (max-width: 760px) and (min-width: 601px) {
+  .lb-table .head,
+  .lb-table .row {
+    grid-template-columns: 36px minmax(0, 1fr) minmax(88px, 0.9fr) minmax(132px, 1fr) minmax(52px, 0.5fr);
+    gap: 10px;
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+}
+
+/* ---------- telefone: linha condensada em 2 níveis ----------
+   rank | jogador | CR   (linha 1)
+        | partidas+winrate (linha 2). O cabeçalho e a coluna Top-4 saem —
+   a densidade de 5 colunas não cabe no polegar. */
+@media (max-width: 600px) {
+  /* deixa a coluna e a tabela encolherem até a viewport (min-width:0 em toda a
+     cadeia — grid items têm min-width:auto por padrão e estouram o container) */
+  .lb-layout,
+  .lb-layout > *,
+  .lb-table {
+    min-width: 0;
+  }
+  .lb-table .head {
+    display: none;
+  }
+  .lb-table .row {
+    grid-template-columns: 24px minmax(0, 1fr) auto auto;
+    grid-template-areas: "rank player wr cr";
+    column-gap: 9px;
+    padding: 12px 10px;
+    min-width: 0;
+  }
+  .lb-rank {
+    grid-area: rank;
+    align-self: center;
+    font-size: 13px;
+  }
+  .lb-player {
+    grid-area: player;
+    min-width: 0;
+    gap: 9px;
+  }
+  .lb-player .pavatar {
+    width: 38px !important;
+    height: 38px !important;
+  }
+  .lb-player .info {
+    min-width: 0;
+  }
+  .lb-cr-cell {
+    grid-area: cr;
+    align-items: flex-end;
+    text-align: right;
+    min-width: 0;
+  }
+  /* linha única: só o winrate % fica ao lado do nome/hashtag; o span V–D some */
+  .lb-record {
+    grid-area: wr;
+    display: flex;
+    align-items: center;
+    min-width: 0;
+  }
+  .lb-record .rec {
+    display: none;
+  }
+  .lb-top4 {
+    display: none;
+  }
+  .lb-table .row.lb-row-you,
+  .lb-table .row.on-fire {
+    border-left-width: 3px;
+  }
+  /* pager: encolhe e permite quebrar linha p/ nunca estourar a viewport */
+  .pager {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .pager button {
+    min-width: 34px;
+    height: 34px;
+    font-size: 13px;
+  }
+
+  /* pódio compacto: 3 colunas curtas (medalha · avatar · nome · CR) em vez de
+     3 cards altos empilhados — economiza muito espaço vertical no telefone.
+     Campeões/rodapé/tags saem (stats completos vivem na tabela abaixo). */
+  .podium {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+  .pod {
+    padding: 12px 6px 13px;
+    align-items: center;
+    text-align: center;
+    min-width: 0;
+  }
+  .pod-top {
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 8px;
+    width: 100%;
+    min-width: 0;
+  }
+  .pod-top .pavatar {
+    width: 44px !important;
+    height: 44px !important;
+  }
+  .pod-id {
+    flex: none;
+    width: 100%;
+    min-width: 0;
+  }
+  .pod-id .nm {
+    font-size: 12px;
+  }
+  .pod-id .phandle {
+    display: none;
+  }
+  .pod-rank {
+    order: -1; /* medalha acima do avatar */
+    font-size: 19px;
+  }
+  .pod > .tagrow,
+  .pod-champs,
+  .pod-foot {
+    display: none;
+  }
+  .pod-cr-block {
+    padding: 0;
+    margin-bottom: 0;
+  }
+  .pod-cr-block .v {
+    font-size: 21px;
+    gap: 5px;
+  }
+  .pod-cr-block .punit {
+    font-size: 8px;
+    padding: 4px 6px;
+  }
+  .pod-cr-block .wl {
+    font-size: 11px;
+    margin-top: 6px;
   }
 }

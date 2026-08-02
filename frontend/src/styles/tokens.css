@@ -15,11 +15,14 @@
   --surface-3: #1e2128;
   --line: #262a33;
   --line-soft: #1c1f27;
+  --line-strong: #333845;
 
   /* texto */
   --text: #eef0f3;
   --text-dim: #9aa0aa;
-  --text-faint: #5e6470;
+  /* piso AA: 5,3:1 sobre surface-2 (o antigo #5e6470 media 2,9–3,3:1 e
+     reprovava em todo fundo — auditoria 20/07). Ainda lê como terciário. */
+  --text-faint: #878e9a;
 
   /* marca / interativo */
   --primary: #2f9bd6;
@@ -62,12 +65,14 @@
   --tier-gold: var(--gold);
   --accent: var(--primary);
 
-  /* placement (1 melhor .. 8 pior) */
+  /* placement (1 melhor .. 8 pior) — padrão único: 1 ouro · 2–4 verde · 5+ vermelho.
+     --place-red é um vermelho mais fundo que --red p/ carregar texto branco em AA
+     (branco/#c93e35 = 4,97:1; o coral --red só rende 3,7:1). */
   --place-1: var(--gold);
-  --place-2: var(--primary-bright);
+  --place-2: var(--green);
   --place-3: var(--green);
   --place-4: var(--green);
-  --place-low: #8a9099;
+  --place-low: #c93e35;
 
   /* escala / proporção */
   --r-sm: 6px;

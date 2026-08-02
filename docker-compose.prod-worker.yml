@@ -1,0 +1,301 @@
+# arenarank — PRODUCTION, worker box: EVERYTHING EXCEPT THE PUBLIC API.
+#
+# The other half of the split deployment. This box owns ingestion and
+# maintenance: discovery, rating, season lifecycle, read-path rollups, the
+# refill backlog drain and the chronological replay. No public traffic reaches
+# it; it has no TLS terminator and publishes no ports by default.
+#
+#   redis             arq queues / per-player locks / Riot token bucket / match cache
+#   pgbouncer-session SESSION pool to RDS (workers hold locks + prepared state)
+#   worker-sweep      discovery: sweep/rearm/reconcile/backfill cron ticks
+#   worker-priority-sweep   Top-1000 sweep -> arena:priority
+#   worker-standard / worker-priority   continuous process_match consumers
+#   scheduler         season/leaderboard/cache/snapshots/rollups/replay
+#   api-admin         admin-ONLY API for the operator console (profile: admin)
+#   admin-console     operator UI, static build + /api proxy  (profile: admin)
+#   migrate / seed / audit-missing-matches   one-shots     (profile: ops)
+#
+# Postgres is EXTERNAL (AWS RDS), shared with the EC2 box. THIS box owns the
+# schema: run every migration from here, never from EC2 — one owner, no races.
+#
+# ── Redis lives here, and it is NOT shared with the EC2 box ───────────────
+# The workers are by far the heaviest Redis user: arq queue polling, a lock per
+# player per match, and the Riot token bucket on every single API call. Putting
+# that across a network hop would throttle ingestion, and sharing would have
+# required a private network or a managed instance. It is safe to split because
+# the read API never calls Riot (no RiotClient under arena/api/), so the token
+# bucket is not divided and the Riot key cannot be over-spent by two boxes
+# disagreeing about the quota. See docker-compose.prod-ec2.yml for the full
+# reasoning and for what it costs.
+#
+# eviction policy: volatile-lru, NOT allkeys-lru (the opposite of the EC2 box).
+# Here Redis mixes disposable match payloads (TTL'd) with queues and locks that
+# have NO TTL — allkeys-* could evict a queue and lose in-flight jobs, and
+# noeviction would reject writes and stall the pipeline outright.
+#
+# ── Operator console ──────────────────────────────────────────────────────
+# Queue depth, DLQ, worker pause flags and the refill panel all read THIS box's
+# Redis, so the console has to talk to `api-admin` for them. The `admin` profile
+# brings up both the console and that API:
+#   docker compose -f docker-compose.prod-worker.yml --profile admin up -d
+#
+# Both bind to 127.0.0.1 — reach them over ONE SSH tunnel rather than exposing
+# another admin surface to the internet:
+#   ssh -L 5174:127.0.0.1:5174 <worker-box>     then open http://127.0.0.1:5174
+#
+# The console's own caddy proxies /api to api-admin, so the console and the API
+# share ONE origin: the "local" preset works as-is and no CORS entry is needed.
+# You only need the second tunnel (-L 8001:127.0.0.1:8001) to curl the admin API
+# directly.
+#
+# Required in `.env` (never committed):
+#   DATABASE_URL   postgresql+asyncpg://USER:PASS@<rds-host>:5432/arena
+#   RIOT_API_KEY   ADMIN_API_KEY   MATCH_MIN_STARTED_AT_MS
+#   PGB_DB_HOST / PGB_DB_USER / PGB_DB_PASSWORD  (RDS coordinates for pgbouncer)
+#   BOOTSTRAP_SEED_RIOT_IDS  — seeds for a season refill. Required HERE, not on
+#       the EC2 box: seeding resolves Riot IDs to puuids (needs the Riot key)
+#       and enqueues history backfills (needs the QUEUES Redis), and only this
+#       box has both. The console's refill button just records the request; this
+#       box's bootstrap_tick performs it and reports failures back through
+#       season_ingest_state.last_error.
+#
+# Bring up:  docker compose -f docker-compose.prod-worker.yml up -d --build
+# Migrate:   docker compose -f docker-compose.prod-worker.yml --profile ops run --rm migrate
+
+name: arenarank-worker
+
+x-build: &build
+  build:
+    context: ./backend
+    dockerfile: Dockerfile
+
+x-env-file: &env-file
+  env_file: [.env]
+
+# Workers go through the SESSION pool, not RDS directly: they hold advisory
+# locks and prepared state across statements, which transaction pooling breaks.
+# This also caps how many RDS connection slots this box can consume — the EC2
+# API shares the same instance.
+x-worker-env: &worker-env
+  REDIS_URL: redis://redis:6379/0
+  DATABASE_URL: postgresql+asyncpg://${PGB_DB_USER:?set in .env}:${PGB_DB_PASSWORD:?set in .env}@pgbouncer-session:6433/${PGB_DB_NAME:-arena}
+
+# The image HEALTHCHECK curls :8000/healthz (the api role); workers run arq,
+# so leaving it enabled marks them permanently unhealthy.
+x-worker-svc: &worker-svc
+  <<: [*build, *env-file]
+  healthcheck:
+    disable: true
+  restart: unless-stopped
+  depends_on:
+    redis:
+      condition: service_healthy
+    pgbouncer-session:
+      condition: service_started
+
+# Match payloads (~135 KB) only need to live in cache between fetch and rate.
+# The consumers fetch+cache them via get_match; a 10 min TTL stops 24 h of
+# payloads accumulating — this was the single biggest Redis memory consumer.
+x-consumer-env: &consumer-env
+  <<: *worker-env
+  RIOT_MATCH_CACHE_TTL_SECONDS: "${RIOT_MATCH_CACHE_TTL_SECONDS:-600}"
+
+services:
+  # ------------------------------------------------------------------ #
+  # Redis — queues, locks, token bucket, match cache. appendonly on: an arq
+  # queue is real work in flight, not a cache, and losing it on restart means
+  # silently dropped matches.
+  # ------------------------------------------------------------------ #
+  redis:
+    image: redis:7
+    command:
+      [
+        "redis-server",
+        "--appendonly", "yes",
+        "--maxmemory", "${REDIS_MAXMEMORY:-512mb}",
+        "--maxmemory-policy", "volatile-lru",
+      ]
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  # ------------------------------------------------------------------ #
+  # PgBouncer — SESSION pool in front of RDS (Trinity #9).
+  # ------------------------------------------------------------------ #
+  pgbouncer-session:
+    image: edoburu/pgbouncer:latest
+    environment:
+      DB_HOST: ${PGB_DB_HOST:?set in .env}
+      DB_PORT: "${PGB_DB_PORT:-5432}"
+      DB_USER: ${PGB_DB_USER:?set in .env}
+      DB_PASSWORD: ${PGB_DB_PASSWORD:?set in .env}
+      DB_NAME: ${PGB_DB_NAME:-arena}
+      POOL_MODE: session
+      AUTH_TYPE: scram-sha-256
+      MAX_CLIENT_CONN: "${PGB_MAX_CLIENT_CONN:-200}"
+      # Keep well under the RDS max_connections the EC2 API also draws from.
+      DEFAULT_POOL_SIZE: "${PGB_POOL_SIZE:-20}"
+      LISTEN_PORT: "6433"
+    restart: unless-stopped
+
+  # ------------------------------------------------------------------ #
+  # Discovery — a rotating DB cursor pages tracked players in bounded batches
+  # and enqueues match ids as process_match jobs. Cursor-paged, tick-locked
+  # (no overlap) and backpressured. Also hosts rearm / reconcile / history
+  # backfill ticks. Pausable at runtime (arena:worker:enabled:sweep).
+  # ------------------------------------------------------------------ #
+  worker-sweep:
+    <<: *worker-svc
+    command: ["arq", "arena.workers.main.SweepWorker", "--custom-log-dict", "arena.core.logging.ARQ_LOG_CONFIG"]
+    environment:
+      <<: *worker-env
+      SERVICE_NAME: arenarank-worker-sweep
+      SWEEP_INTERVAL_MINUTES: "${SWEEP_INTERVAL_MINUTES:-1}"
+      SWEEP_BATCH_SIZE: "${SWEEP_BATCH_SIZE:-40}"
+      SWEEP_MATCHES_PER_PLAYER: "${SWEEP_MATCHES_PER_PLAYER:-10}"
+
+  worker-priority-sweep:
+    <<: *worker-svc
+    command: ["arq", "arena.workers.main.PrioritySweepWorker", "--custom-log-dict", "arena.core.logging.ARQ_LOG_CONFIG"]
+    environment:
+      <<: *worker-env
+      SERVICE_NAME: arenarank-worker-priority-sweep
+
+  # ------------------------------------------------------------------ #
+  # Continuous process_match consumers — no cron, no idle window: each polls
+  # its arq queue forever (arena:standard / arena:priority).
+  # ------------------------------------------------------------------ #
+  worker-standard:
+    <<: *worker-svc
+    command: ["arq", "arena.workers.main.StandardWorker", "--custom-log-dict", "arena.core.logging.ARQ_LOG_CONFIG"]
+    environment:
+      <<: *consumer-env
+      SERVICE_NAME: arenarank-worker-standard
+
+  worker-priority:
+    <<: *worker-svc
+    command: ["arq", "arena.workers.main.PriorityWorker", "--custom-log-dict", "arena.core.logging.ARQ_LOG_CONFIG"]
+    environment:
+      <<: *consumer-env
+      SERVICE_NAME: arenarank-worker-priority
+
+  # ------------------------------------------------------------------ #
+  # Scheduler — EXACTLY ONE instance, on THIS box only. It owns season
+  # transitions, the read-path rollups, the refill backlog drain and the
+  # chronological replay. Running a second one (here or on EC2) would
+  # double-run transitions and replay; it is the one pool that does not
+  # scale out.
+  # ------------------------------------------------------------------ #
+  scheduler:
+    <<: *worker-svc
+    command: ["arq", "arena.workers.main.SchedulerWorker", "--custom-log-dict", "arena.core.logging.ARQ_LOG_CONFIG"]
+    environment:
+      <<: *worker-env
+      SERVICE_NAME: arenarank-scheduler
+
+  # ------------------------------------------------------------------ #
+  # Admin API (profile: admin) — NOT the public read path. It exists so the
+  # operator console can see the things that live in THIS box's Redis: queue
+  # depth, DLQ, worker pause flags, and the season-refill panel.
+  #
+  # Bound to 127.0.0.1: reach it over an SSH tunnel instead of publishing a
+  # second admin surface to the internet.
+  # ------------------------------------------------------------------ #
+  api-admin:
+    <<: [*build, *env-file]
+    profiles: ["admin"]
+    command:
+      ["uvicorn", "arena.api.app:app", "--host", "0.0.0.0", "--port", "8000"]
+    environment:
+      <<: *worker-env
+      SERVICE_NAME: arenarank-api-admin
+    ports:
+      - "127.0.0.1:${ADMIN_API_PORT:-8001}:8000"
+    depends_on:
+      redis:
+        condition: service_healthy
+      pgbouncer-session:
+        condition: service_started
+    restart: unless-stopped
+
+  # ------------------------------------------------------------------ #
+  # Admin console (profile: admin) — the operator UI, as a static build served
+  # by caddy, which also reverse-proxies /api to `api-admin`.
+  #
+  # Same-origin by design: the console's "local" preset uses an empty base and
+  # a relative /api path, so proxying here means no CORS entry and no absolute
+  # URL to configure. Bound to 127.0.0.1 — the SSH tunnel is the only way in,
+  # and it is what provides the encryption (the inner server is plain HTTP).
+  # ------------------------------------------------------------------ #
+  admin-console:
+    build:
+      context: ./admin-console
+      dockerfile: Dockerfile
+    profiles: ["admin"]
+    environment:
+      ADMIN_API_UPSTREAM: api-admin:8000
+    ports:
+      - "127.0.0.1:${ADMIN_CONSOLE_PORT:-5174}:8080"
+    depends_on:
+      - api-admin
+    restart: unless-stopped
+
+  # ------------------------------------------------------------------ #
+  # Ops one-shots (profile: ops) — never started by `up`.
+  #
+  # migrate uses DATABASE_URL from .env, which must point at the DIRECT RDS
+  # endpoint, NOT at pgbouncer-session: DDL and Timescale policy statements are
+  # not pool-safe. This box is the schema owner — never migrate from EC2.
+  # ------------------------------------------------------------------ #
+  migrate:
+    <<: [*build, *env-file]
+    profiles: ["ops"]
+    command: ["alembic", "upgrade", "head"]
+    healthcheck:
+      disable: true
+    restart: "no"
+
+  seed:
+    <<: [*build, *env-file]
+    profiles: ["ops"]
+    command: ["python", "-m", "arena.db.seed"]
+    environment:
+      REDIS_URL: redis://redis:6379/0
+      SERVICE_NAME: arenarank-seed
+    healthcheck:
+      disable: true
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: "no"
+
+  # Coverage audit — READ-ONLY. Competes for the same Riot token bucket as the
+  # sweep, so run it off-peak and bound it:
+  #   docker compose -f docker-compose.prod-worker.yml --profile ops run --rm \
+  #     audit-missing-matches --since-days 14 --max-api-calls 20000 --json /out/a.json
+  audit-missing-matches:
+    <<: [*build, *env-file]
+    profiles: ["ops"]
+    entrypoint: ["python", "-m", "scripts.audit_missing_matches"]
+    environment:
+      <<: *worker-env
+      SERVICE_NAME: arenarank-audit
+      PYTHONIOENCODING: utf-8
+    volumes:
+      - ./out:/out
+    healthcheck:
+      disable: true
+    depends_on:
+      redis:
+        condition: service_healthy
+      pgbouncer-session:
+        condition: service_started
+    restart: "no"
+
+volumes:
+  redisdata:

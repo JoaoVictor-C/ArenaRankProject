@@ -1,588 +1,1208 @@
 /* ============================================================
-   Winrate.css — Página Champ Winrate (ArenaRank)
-   CSS portado fielmente de "Champ Winrate.html" (design staging).
-   Nomenclatura de classes preservada para o motor de animação.
+   Winrate.css — Central de Campeões (/winrate)
+   Mundo "handoff" ESCOPADO à página (.wr-page): palco quase-preto
+   com glows ambient, rampa de 6 tiers colorida, accent roxo, rail
+   teal. Não toca os tokens globais — o resto do site segue no
+   mundo azul/ouro até a propagação. Profundidade tonal + fio.
    ============================================================ */
-
-/* ── Variáveis de cor da página ─────────────────────────────── */
 .wr-page {
-  --wr-panel:    #161616;
-  --wr-panel-2:  #1b1b1b;
-  --wr-panel-3:  #222226;
-  --wr-border:   #2a2a2e;
-  --wr-border-strong: #3a3535;
-  --wr-yellow:   #ffe26c;
-  --wr-yellow-line: #ffc300;
-  --wr-purple:   #9b5cff;
-  --wr-purple-bg: #5c316d;
-  --wr-red:      #ff4a4a;
-  --wr-red-soft: #ff6262;
-  --wr-green:    #006c41;
-  --wr-green-online: #00ff1e;
-  --wr-pink:     #ff32d9;
-  --wr-tier-splus: #f1c54a;
-  --wr-tier-s:   #ff32d9;
-  --wr-tier-a:   #9b5cff;
-  --wr-tier-b:   #48bdff;
-  --wr-tier-c:   #5a8a3a;
-  --wr-tier-d:   #6b6b70;
+  --wr-bg: #0a0a0c;
+  --wr-panel: #101014;
+  --wr-panel-2: #0c0c0f;
+  --wr-panel-3: #16161b;
+  --wr-teal: #020d11;
+  --wr-line: #242429;
+  --wr-line-soft: #1b1b20;
+  --wr-text: #f3f3f5;
+  --wr-dim: #9a9aa2;
+  --wr-faint: #6f7079;
+  --wr-gold: #ffcc00;
+  --wr-gold-deep: #d5a038;
+  --wr-purple: #9b5cff;
+  --wr-blue: #008cff;
+  --wr-green: #25e05a;
+  --wr-red: #ff5a5a;
+  --wr-wr: #5aa9ff;
+  --t-splus: #ffcc00;
+  --t-s: #ff04dd;
+  --t-a: #9b5cff;
+  --t-b: #008cff;
+  --t-c: #5fa83a;
+  --t-d: #6b6b70;
+  --wr-r-sm: 8px;
+  --wr-r-md: 11px;
+  --wr-r-lg: 14px;
+
+  position: relative;
+  background: var(--wr-bg);
+  color: var(--wr-text);
+  min-height: 100vh;
+  font-family: "Plus Jakarta Sans", system-ui, sans-serif;
+  padding: 22px 24px 60px;
+}
+.wr-page .tnum {
+  font-variant-numeric: tabular-nums;
 }
 
-/* ── Layout de página ────────────────────────────────────────── */
-.wr-page {
+/* luz ambiente + poeira suspensa */
+.wr-amb {
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 520px;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(760px 300px at 62% -60px, rgba(155, 92, 255, 0.16), transparent 70%),
+    radial-gradient(560px 260px at 30% -40px, rgba(0, 140, 255, 0.12), transparent 72%),
+    radial-gradient(620px 280px at 88% -30px, rgba(255, 140, 60, 0.1), transparent 72%);
+}
+.wr-page > .pfield--route {
+  -webkit-mask-image: linear-gradient(180deg, #000, transparent 560px);
+  mask-image: linear-gradient(180deg, #000, transparent 560px);
+}
+
+/* board 3-col */
+.wr-board {
   position: relative;
   z-index: 2;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 320px;
-  min-height: calc(100vh - 96px);
-  font-family: "Plus Jakarta Sans", system-ui, sans-serif;
+  grid-template-columns: 328px minmax(0, 1fr) 384px;
+  gap: 20px;
+  align-items: start;
+  max-width: 1520px;
+  margin: 0 auto;
+}
+.wr-panel {
+  background: var(--wr-panel);
+  border: 1px solid var(--wr-line);
+  border-radius: var(--wr-r-lg);
 }
 
-.wr-main {
-  padding: 48px 56px 80px 56px;
+/* rampa de tiers (texto colorido) */
+.wr-tier {
+  font: 800 18px/1 "Plus Jakarta Sans";
+  letter-spacing: -0.02em;
 }
-
-/* ── Bloco de título ─────────────────────────────────────────── */
-.title-block {
-  display: flex;
-  align-items: center;
-  gap: 26px;
-  margin-bottom: 8px;
+.wr-tier.wr-tier-sm {
+  font-size: 10px;
+  padding: 2px 5px;
+  border-radius: 5px;
+  color: #0a0a0a;
 }
-.title-block h1 {
-  margin: 0;
-  font: 400 40px/1 "Plus Jakarta Sans", sans-serif;
-  letter-spacing: 0.04em;
+.wr-tier.t-splus {
+  color: var(--t-splus);
 }
-.title-block .rule {
-  flex: 0 0 190px;
-  height: 2px;
-  background: var(--wr-yellow-line);
+.wr-tier.t-s {
+  color: var(--t-s);
 }
-.title-block .spacer { flex: 1; }
-
-/* ── Toggle TIER LIST ↔ TABELA ───────────────────────────────── */
-.view-toggle {
-  display: inline-flex;
-  background: rgba(255,255,255,0.04);
-  border: 1px solid var(--wr-border);
-  border-radius: 6px;
-  padding: 4px;
+.wr-tier.t-a {
+  color: var(--t-a);
 }
-.view-toggle button {
-  background: transparent;
-  border: none;
-  color: var(--text-dim, #acacac);
-  font: 700 12px/1 "Plus Jakarta Sans", sans-serif;
-  letter-spacing: 0.08em;
-  padding: 8px 14px;
-  border-radius: 4px;
-  cursor: pointer;
-  text-transform: uppercase;
-  transition: background 0.15s, color 0.15s;
+.wr-tier.t-b {
+  color: var(--t-b);
 }
-.view-toggle button.active {
-  background: var(--wr-purple-bg);
+.wr-tier.t-c {
+  color: var(--t-c);
+}
+.wr-tier.t-d {
+  color: var(--t-d);
+}
+.wr-tier-sm.t-splus {
+  background: var(--t-splus);
+  color: #241a00;
+}
+.wr-tier-sm.t-s {
+  background: var(--t-s);
   color: #fff;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+.wr-tier-sm.t-a {
+  background: var(--t-a);
+  color: #fff;
+}
+.wr-tier-sm.t-b {
+  background: var(--t-b);
+  color: #fff;
+}
+.wr-tier-sm.t-c {
+  background: var(--t-c);
+  color: #fff;
+}
+.wr-tier-sm.t-d {
+  background: var(--t-d);
+  color: #fff;
 }
 
-/* ── Subtítulo / metadados ───────────────────────────────────── */
-.wr-subtitle {
-  color: var(--text-dim, #acacac);
-  font: 400 14px/1 "Plus Jakarta Sans", sans-serif;
-  margin: 0 0 32px 0;
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  flex-wrap: wrap;
-}
-.wr-subtitle .dot {
-  width: 4px;
-  height: 4px;
-  border-radius: 50%;
-  background: var(--text-faint, #6b6b70);
-  display: inline-block;
-  flex-shrink: 0;
-}
-.wr-subtitle .meta-tag {
-  color: var(--wr-yellow);
-  font-weight: 700;
-  letter-spacing: 0.06em;
-}
-.wr-subtitle .live {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--wr-green-online);
-  box-shadow: 0 0 8px var(--wr-green-online);
-  flex-shrink: 0;
-}
-
-/* ── Barra de filtros ────────────────────────────────────────── */
-.lb-filters {
-  display: grid;
-  grid-template-columns: 280px auto auto 1fr auto;
-  gap: 14px;
-  margin-bottom: 28px;
-  align-items: center;
-}
-.filter-search {
+/* ícone de campeão: gradiente fallback + arte + anel na cor do tier */
+.wr-face {
+  --tc: #6b6b70;
   position: relative;
-}
-.filter-search input {
-  width: 100%;
-  background: var(--wr-panel);
-  border: 1px solid var(--wr-border);
-  color: var(--text, #fff);
-  font: 400 14px/1 "Plus Jakarta Sans", sans-serif;
-  padding: 12px 14px 12px 38px;
-  border-radius: 6px;
-  outline: none;
-  transition: border-color 0.15s;
-}
-.filter-search input::placeholder { color: var(--text-faint, #6b6b70); }
-.filter-search input:focus { border-color: var(--wr-purple); }
-.filter-search .icon {
-  position: absolute;
-  left: 12px;
-  top: 50%;
-  transform: translateY(-50%);
-  color: var(--text-faint, #6b6b70);
-  font-size: 14px;
-  pointer-events: none;
-}
-.filter-select {
-  background: var(--wr-panel);
-  border: 1px solid var(--wr-border);
-  color: var(--text, #fff);
-  font: 700 12px/1 "Plus Jakarta Sans", sans-serif;
-  letter-spacing: 0.06em;
-  padding: 12px 14px;
-  border-radius: 6px;
-  text-transform: uppercase;
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  cursor: pointer;
-  user-select: none;
-  transition: border-color 0.15s;
-  white-space: nowrap;
-}
-.filter-select .caret { color: var(--text-faint, #6b6b70); font-size: 9px; }
-.filter-select:hover { border-color: var(--wr-border-strong); }
-
-.role-chips {
-  display: flex;
-  gap: 8px;
-  justify-content: flex-end;
-  flex-wrap: wrap;
-}
-.role-chips button {
-  background: transparent;
-  border: 1px solid var(--wr-border);
-  color: var(--text-dim, #acacac);
-  font: 700 11px/1 "Plus Jakarta Sans", sans-serif;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  padding: 9px 14px;
-  border-radius: 999px;
-  cursor: pointer;
-  transition: color 0.15s, border-color 0.15s, background 0.15s;
-}
-.role-chips button:hover { color: white; border-color: var(--wr-border-strong); }
-.role-chips button.active {
-  background: rgba(155,92,255,0.18);
-  border-color: var(--wr-purple);
-  color: white;
-}
-
-/* ── Abas de métrica ─────────────────────────────────────────── */
-.metric-tabs {
-  display: flex;
-  gap: 0;
-  margin-bottom: 24px;
-  border-bottom: 1px solid var(--wr-border);
-}
-.metric-tabs button {
-  background: transparent;
-  border: none;
-  color: var(--text-dim, #acacac);
-  font: 700 13px/1 "Plus Jakarta Sans", sans-serif;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  padding: 16px 22px;
-  cursor: pointer;
-  position: relative;
-  white-space: nowrap;
-  transition: color 0.15s;
-}
-.metric-tabs button:hover { color: white; }
-.metric-tabs button.active { color: white; }
-.metric-tabs button.active::after {
-  content: "";
-  position: absolute;
-  left: 18px;
-  right: 18px;
-  bottom: -1px;
-  height: 2px;
-  background: var(--wr-red);
-}
-.metric-tabs .spacer { flex: 1; }
-.metric-tabs .legend {
-  display: inline-flex;
-  align-items: center;
-  gap: 14px;
-  padding: 16px 0;
-  font: 400 11px/1 "Plus Jakarta Sans", sans-serif;
-  color: var(--text-faint, #6b6b70);
-  letter-spacing: 0.04em;
-}
-.metric-tabs .legend-item { display: inline-flex; align-items: center; gap: 6px; }
-.metric-tabs .legend-item .swatch {
-  width: 10px;
-  height: 10px;
-  border-radius: 2px;
-  display: inline-block;
-  flex-shrink: 0;
-}
-
-/* ── Tier list ───────────────────────────────────────────────── */
-.tier-list {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-.tier-row {
-  display: grid;
-  grid-template-columns: 96px 1fr;
-  gap: 0;
-  background: var(--wr-panel);
-  border: 1px solid var(--wr-border);
-  border-radius: 6px;
+  flex: none;
+  border-radius: var(--wr-r-md);
+  background: linear-gradient(150deg, var(--c1, #333), var(--c2, #111));
+  box-shadow:
+    inset 0 0 0 2px var(--tc),
+    0 0 0 1px rgba(0, 0, 0, 0.55),
+    0 0 14px -3px color-mix(in oklab, var(--tc) 62%, transparent);
   overflow: hidden;
 }
-.tier-band {
-  background: var(--tier-color);
+.wr-face.t-splus {
+  --tc: var(--t-splus);
+}
+.wr-face.t-s {
+  --tc: var(--t-s);
+}
+.wr-face.t-a {
+  --tc: var(--t-a);
+}
+.wr-face.t-b {
+  --tc: var(--t-b);
+}
+.wr-face.t-c {
+  --tc: var(--t-c);
+}
+.wr-face.t-d {
+  --tc: var(--t-d);
+}
+.wr-face-sm {
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+}
+.wr-face-md {
+  width: 46px;
+  height: 46px;
+}
+.wr-face-lg {
+  width: 64px;
+  height: 64px;
+}
+.wr-face-xl {
+  width: 88px;
+  height: 88px;
+  border-radius: 16px;
+  box-shadow:
+    inset 0 0 0 2.5px var(--tc),
+    0 0 0 1px rgba(0, 0, 0, 0.6),
+    0 0 24px -3px color-mix(in oklab, var(--tc) 62%, transparent);
+}
+
+/* blocos internos + rótulos */
+.wr-block {
+  margin-top: 16px;
+}
+.wr-block-h {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font: 800 11px/1 "Plus Jakarta Sans";
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: #e7e7ea;
+  margin-bottom: 12px;
+}
+.wr-block-h .mi {
+  font-size: 16px;
+  color: var(--wr-gold-deep);
+}
+.wr-empty,
+.wr-empty-sm {
+  color: var(--wr-dim);
+  font: 600 13px/1.5 "Plus Jakarta Sans";
+}
+.wr-empty {
+  padding: 32px 12px;
+  text-align: center;
+}
+.wr-empty-sm {
+  padding: 8px 2px;
+}
+.wr-retry-sm {
+  background: none;
+  border: none;
+  color: var(--wr-wr);
+  font: 700 13px/1 "Plus Jakarta Sans";
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+/* ============ ESQUERDA — detalhe ============ */
+.wr-side {
+  padding: 16px;
+}
+.wr-detail-empty {
+  color: var(--wr-dim);
+  font: 600 13px/1.5 "Plus Jakarta Sans";
+  padding: 40px 8px;
+  text-align: center;
+}
+.wr-hero {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 14px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--wr-line-soft);
+}
+.wr-hero-id {
+  min-width: 0;
+}
+.wr-hero-role {
+  font: 700 10px/1 "Plus Jakarta Sans";
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--wr-dim);
+}
+.wr-hero-name {
+  margin: 8px 0 6px;
+  font: 800 26px/1 "Plus Jakarta Sans";
+  letter-spacing: -0.01em;
+}
+.wr-hero-sub {
+  font: 600 12px/1 "Plus Jakarta Sans";
+  color: var(--wr-dim);
+}
+.wr-hero-tier {
+  --tc: var(--t-d);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  color: #0a0a0b;
-  text-align: center;
-  padding: 16px 8px;
-  position: relative;
-  flex-shrink: 0;
+  width: 58px;
+  height: 58px;
+  flex: none;
+  border-radius: 13px;
+  background: color-mix(in oklab, var(--tc) 18%, #0b0d12);
+  box-shadow:
+    inset 0 0 0 1.5px color-mix(in oklab, var(--tc) 70%, transparent),
+    0 0 16px -5px var(--tc);
 }
-.tier-band::after {
+.wr-hero-tier[data-t="splus"] {
+  --tc: var(--t-splus);
+}
+.wr-hero-tier[data-t="s"] {
+  --tc: var(--t-s);
+}
+.wr-hero-tier[data-t="a"] {
+  --tc: var(--t-a);
+}
+.wr-hero-tier[data-t="b"] {
+  --tc: var(--t-b);
+}
+.wr-hero-tier[data-t="c"] {
+  --tc: var(--t-c);
+}
+.wr-hero-tier[data-t="d"] {
+  --tc: var(--t-d);
+}
+.wr-hero-tier b {
+  font: 800 22px/1 "Plus Jakarta Sans";
+  color: var(--tc);
+}
+.wr-hero-tier span {
+  margin-top: 4px;
+  font: 800 7px/1 "Plus Jakarta Sans";
+  letter-spacing: 0.14em;
+  color: var(--wr-faint);
+}
+
+.wr-hero-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  border-bottom: 1px solid var(--wr-line-soft);
+}
+.wr-hs {
+  padding: 13px 4px;
+  text-align: center;
+  position: relative;
+}
+.wr-hs + .wr-hs::before {
   content: "";
   position: absolute;
-  right: -1px;
-  top: 0;
-  bottom: 0;
-  width: 8px;
-  background: linear-gradient(to right, var(--tier-color), transparent);
+  left: 0;
+  top: 22%;
+  bottom: 22%;
+  width: 1px;
+  background: var(--wr-line-soft);
 }
-.tier-band .label {
-  font: 800 38px/1 "Plus Jakarta Sans", sans-serif;
-  letter-spacing: -0.04em;
+.wr-hs-v {
+  font: 800 18px/1 "Plus Jakarta Sans";
+  letter-spacing: -0.01em;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 3px;
 }
-.tier-band .count {
-  margin-top: 8px;
-  font: 700 10px/1 "Plus Jakarta Sans", sans-serif;
-  letter-spacing: 0.1em;
-  color: rgba(0,0,0,0.65);
+.wr-hs-v.gold {
+  color: var(--wr-gold);
+}
+.wr-hs-delta {
+  font: 800 10px/1 "Plus Jakarta Sans";
+  display: inline-flex;
+  align-items: center;
+}
+.wr-hs-delta .mi {
+  font-size: 14px;
+  margin-right: -2px;
+}
+.wr-hs-delta.up {
+  color: var(--wr-green);
+}
+.wr-hs-delta.dn {
+  color: var(--wr-red);
+}
+.wr-hs-l {
+  margin-top: 7px;
+  font: 700 9px/1.1 "Plus Jakarta Sans";
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--wr-faint);
 }
 
-/* Tiers C e D têm fundo escuro — texto branco */
-.tier-row[data-tier="d"] .tier-band { color: #fff; }
-.tier-row[data-tier="d"] .tier-band .count { color: rgba(255,255,255,0.6); }
-.tier-row[data-tier="c"] .tier-band { color: #fff; }
-.tier-row[data-tier="c"] .tier-band .count { color: rgba(255,255,255,0.7); }
-
-/* Vincula a var --tier-color por data-tier */
-.tier-row[data-tier="splus"] { --tier-color: var(--wr-tier-splus); }
-.tier-row[data-tier="s"]     { --tier-color: var(--wr-tier-s); }
-.tier-row[data-tier="a"]     { --tier-color: var(--wr-tier-a); }
-.tier-row[data-tier="b"]     { --tier-color: var(--wr-tier-b); }
-.tier-row[data-tier="c"]     { --tier-color: var(--wr-tier-c); }
-.tier-row[data-tier="d"]     { --tier-color: var(--wr-tier-d); }
-
-.tier-cards {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  padding: 16px 18px;
-  align-content: center;
-}
-
-/* ── Card de campeão ─────────────────────────────────────────── */
-.champ-card {
-  width: 96px;
-  background: var(--wr-panel-3);
-  border: 1px solid var(--wr-border);
-  border-radius: 6px;
-  padding: 8px;
-  text-align: center;
-  cursor: pointer;
-  transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+/* mains */
+.wr-mains {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  position: relative;
 }
-.champ-card:hover {
-  transform: translateY(-2px);
-  border-color: var(--tier-color, var(--wr-purple));
-  background: #2a2a30;
+.wr-main-row {
+  display: grid;
+  grid-template-columns: 16px 1fr auto;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 2px;
 }
-.champ-card .ch-rank {
-  position: absolute;
-  left: 6px;
-  top: 6px;
-  background: rgba(0,0,0,0.6);
-  color: white;
-  font: 700 9px/1 "Plus Jakarta Sans", sans-serif;
+.wr-main-pos {
+  font: 800 12px/1 "Plus Jakarta Sans";
+  color: var(--wr-faint);
+  text-align: center;
+}
+.wr-main-pos.gold {
+  color: var(--wr-gold);
+}
+.wr-main-games {
+  font: 600 10px/1 "Plus Jakarta Sans";
+  color: var(--wr-faint);
+  white-space: nowrap;
+}
+.wr-ref {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+  color: inherit;
+  text-decoration: none;
+  border-radius: 8px;
   padding: 3px 5px;
-  border-radius: 3px;
-  letter-spacing: 0.04em;
+  margin: 0 -5px;
 }
-.champ-card .ch-avatar {
-  width: 56px;
-  height: 56px;
-  margin: 6px auto 0 auto;
-  border-radius: 6px;
-  background: radial-gradient(circle at 30% 30%, var(--c2, #ff7af0), var(--c1, #5a1f8c) 70%);
-  border: 1px solid rgba(255,255,255,0.08);
-  position: relative;
-  overflow: hidden;
+.wr-ref-link:is(:hover, :focus-visible) {
+  background: rgba(255, 255, 255, 0.04);
 }
-.champ-card .ch-avatar::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(circle at 50% 35%, rgba(255,255,255,0.22), transparent 55%);
+.wr-ref-link:focus-visible {
+  outline: 2px solid var(--wr-purple);
+  outline-offset: 2px;
 }
-.champ-card .ch-name {
-  font: 700 12px/1.1 "Plus Jakarta Sans", sans-serif;
-  color: white;
+.wr-ref-id {
+  min-width: 0;
+  flex: 1;
+}
+.wr-ref-name {
+  font: 700 13px/1.1 "Plus Jakarta Sans";
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  display: block;
 }
-.champ-card .ch-stat {
-  font: 800 13px/1 "Plus Jakarta Sans", sans-serif;
-  color: var(--tier-color, var(--wr-purple));
-  letter-spacing: 0.02em;
+.wr-ref-wr {
+  font: 800 13px/1 "Plus Jakarta Sans";
+  color: var(--wr-green);
 }
-.champ-card .ch-sub {
-  font: 600 9px/1 "Plus Jakarta Sans", sans-serif;
-  color: var(--text-faint, #6b6b70);
+
+/* build strips */
+.wr-build-h {
+  justify-content: space-between;
+}
+.wr-build-h-l {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.wr-build-expand {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font: 800 9px/1 "Plus Jakarta Sans";
   letter-spacing: 0.06em;
   text-transform: uppercase;
+  color: var(--wr-purple);
+  text-decoration: none;
 }
-
-/* ── Painel de detalhe ───────────────────────────────────────── */
-.panel.detail {
-  margin-top: 32px;
-  background: var(--wr-panel);
-  border: 1px solid var(--wr-border);
-  border-radius: 6px;
-  padding: 22px 28px;
-  display: grid;
-  grid-template-columns: 96px minmax(0, 1fr) auto;
-  gap: 22px;
-  align-items: center;
+.wr-build-expand .mi {
+  font-size: 14px;
 }
-.detail .d-av {
-  width: 96px;
-  height: 96px;
-  border-radius: 8px;
-  background: radial-gradient(circle at 30% 30%, var(--c2, #ff7af0), var(--c1, #5a1f8c) 70%);
-  border: 1px solid rgba(255,255,255,0.1);
-  position: relative;
-  overflow: hidden;
-  flex-shrink: 0;
+.wr-build-expand:focus-visible {
+  border-radius: 4px;
+  outline: 2px solid var(--wr-purple);
+  outline-offset: 2px;
 }
-.detail .d-av::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(circle at 50% 35%, rgba(255,255,255,0.22), transparent 55%);
+.wr-build-meta,
+.wr-build-note {
+  font: 600 10px/1.4 "Plus Jakarta Sans";
+  color: var(--wr-dim);
 }
-.detail h2 {
-  margin: 0 0 6px 0;
-  font: 800 28px/1 "Plus Jakarta Sans", sans-serif;
+.wr-build-meta {
+  margin: 0 0 10px;
 }
-.detail .d-meta {
-  color: var(--text-dim, #acacac);
-  font: 400 13px/1 "Plus Jakarta Sans", sans-serif;
+.wr-build-note {
+  margin: 10px 0 0;
+  color: var(--wr-faint);
+}
+.wr-bstrips {
   display: flex;
-  gap: 12px;
+  flex-direction: column;
+  gap: 9px;
+}
+.wr-bstrip {
+  display: grid;
+  grid-template-columns: 58px 1fr;
   align-items: center;
+  gap: 8px;
+}
+.wr-bstrip-h {
+  font: 700 9px/1.2 "Plus Jakarta Sans";
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--wr-faint);
+}
+.wr-bstrip-row {
+  display: flex;
+  gap: 6px;
   flex-wrap: wrap;
 }
-.detail .d-tier {
-  font: 800 11px/1 "Plus Jakarta Sans", sans-serif;
-  padding: 4px 8px;
-  border-radius: 3px;
-  letter-spacing: 0.08em;
+.wr-bchip {
+  position: relative;
+  display: inline-flex;
 }
-.detail .d-stats {
-  display: flex;
-  gap: 32px;
+.wr-bchip .wr-tier-sm {
+  position: absolute;
+  right: -3px;
+  bottom: -4px;
+  font-size: 8px;
+  padding: 1px 3px;
 }
-.detail .d-stat { text-align: right; }
-.detail .d-stat .v {
-  font: 800 24px/1 "Plus Jakarta Sans", sans-serif;
-  margin-bottom: 4px;
+.wr-bi {
+  width: 30px;
+  height: 30px;
+  border-radius: 7px;
+  background: #0c0c10 center/cover;
+  border: 1px solid var(--wr-line);
+  display: block;
+  overflow: hidden;
 }
-.detail .d-stat .v.cyan   { color: #48d9d9; }
-.detail .d-stat .v.blue   { color: #4a78ff; }
-.detail .d-stat .v.orange { color: #ff9a3a; }
-.detail .d-stat .v.pink   { color: var(--wr-pink); }
-.detail .d-stat .l {
-  font: 600 9px/1 "Plus Jakarta Sans", sans-serif;
-  color: var(--text-faint, #6b6b70);
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+.wr-bi img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }
 
-/* ── View de tabela ──────────────────────────────────────────── */
-.tbl.wr-table {
-  background: rgba(0,0,0,0.25);
-  border: 1px solid var(--wr-border);
-  border-radius: 4px;
+/* ============ CENTRO — tabela ============ */
+.wr-col-table {
+  min-width: 0;
+}
+.wr-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+.wr-title {
+  margin: 0;
+  font: 800 20px/1.1 "Plus Jakarta Sans";
+  letter-spacing: 0.01em;
+}
+.wr-title span {
+  color: var(--wr-faint);
+  font-weight: 700;
+}
+.wr-search {
+  margin-left: auto;
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.wr-search .mi {
+  position: absolute;
+  left: 11px;
+  color: var(--wr-faint);
+  font-size: 17px;
+  pointer-events: none;
+}
+.wr-search input {
+  width: 220px;
+  max-width: 100%;
+  background: var(--wr-panel-3);
+  border: 1px solid var(--wr-line);
+  color: var(--wr-text);
+  font: 500 13px/1 "Plus Jakarta Sans";
+  padding: 10px 12px 10px 34px;
+  border-radius: 9px;
+  outline: none;
+}
+.wr-search input::placeholder {
+  color: var(--wr-faint);
+}
+.wr-search input:focus {
+  border-color: var(--wr-purple);
+}
+
+.wr-chips-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+.wr-chips {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.wr-chips button {
+  background: transparent;
+  border: 1px solid var(--wr-line);
+  color: var(--wr-dim);
+  font: 700 10px/1 "Plus Jakarta Sans";
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 9px 12px;
+  border-radius: 999px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.wr-chips button:is(:hover, :focus-visible) {
+  color: #fff;
+  border-color: #3a3a42;
+}
+.wr-chips button:focus-visible {
+  outline: 2px solid var(--wr-purple);
+  outline-offset: 2px;
+}
+.wr-chips button.on {
+  background: rgba(155, 92, 255, 0.16);
+  border-color: var(--wr-purple);
+  color: #fff;
+}
+.wr-patch {
+  margin-left: auto;
+  font: 700 10px/1.4 "Plus Jakarta Sans";
+  letter-spacing: 0.04em;
+  color: var(--wr-faint);
+}
+.wr-tbl {
+  background: var(--wr-panel-2);
+  border: 1px solid var(--wr-line);
+  border-radius: 12px;
   overflow: hidden;
 }
 .wr-row {
   display: grid;
-  grid-template-columns:
-    80px
-    minmax(0, 1.6fr)
-    70px
-    minmax(0, 1fr)
-    minmax(0, 1fr)
-    minmax(0, 1fr)
-    minmax(0, 1.1fr)
-    minmax(0, 0.8fr)
-    minmax(0, 1fr);
-  gap: 8px;
-  padding: 12px 22px;
+  grid-template-columns: 44px minmax(0, 1fr) 52px 70px 104px 78px 78px;
   align-items: center;
-  border-bottom: 1px solid var(--wr-border);
+  gap: 8px;
+  padding: 0 16px;
 }
-.wr-row:last-child { border-bottom: none; }
-.wr-row.wr-head {
-  background: rgba(255,255,255,0.02);
-  font: 700 11px/1 "Plus Jakarta Sans", sans-serif;
-  color: var(--text-dim, #acacac);
-  letter-spacing: 0.08em;
+.wr-thead {
+  height: 44px;
+  background: rgba(255, 255, 255, 0.025);
+  border-bottom: 1px solid var(--wr-line);
+  font: 800 10px/1 "Plus Jakarta Sans";
+  letter-spacing: 0.09em;
   text-transform: uppercase;
+  color: var(--wr-dim);
 }
-.wr-row .wr-rank {
-  font: 200 22px/1 "Plus Jakarta Sans", sans-serif;
-  color: white;
-  text-align: center;
-}
-.wr-row .wr-champ { display: flex; align-items: center; gap: 12px; }
-.wr-row .wr-champ .av {
-  width: 30px;
-  height: 30px;
-  border-radius: 4px;
-  background: radial-gradient(circle at 30% 30%, var(--c2, #ff7af0), var(--c1, #5a1f8c) 70%);
-  border: 1px solid rgba(255,255,255,0.08);
-  flex-shrink: 0;
-}
-.wr-row .wr-champ span {
-  font: 700 14px/1 "Plus Jakarta Sans", sans-serif;
-}
-
-/* Chips de tier na tabela */
-.tier-chip {
+.wr-thead .wr-sort {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  min-width: 26px;
-  height: 22px;
-  padding: 0 6px;
-  border-radius: 4px;
-  font: 800 12px/1 "Plus Jakarta Sans", sans-serif;
-  color: #0a0a0b;
-  letter-spacing: -0.02em;
+  gap: 3px;
+  background: none;
+  border: none;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  cursor: pointer;
+  padding: 0;
 }
-.tier-chip[data-tier="splus"] { background: var(--wr-tier-splus); color: #0a0a0b; }
-.tier-chip[data-tier="s"]     { background: var(--wr-tier-s); color: white; }
-.tier-chip[data-tier="a"]     { background: var(--wr-tier-a); color: white; }
-.tier-chip[data-tier="b"]     { background: var(--wr-tier-b); color: #0a0a0b; }
-.tier-chip[data-tier="c"]     { background: var(--wr-tier-c); color: white; }
-.tier-chip[data-tier="d"]     { background: var(--wr-tier-d); color: white; }
+.wr-thead .wr-sort .mi {
+  font-size: 15px;
+  color: var(--wr-faint);
+}
+.wr-thead .wr-sort:is(:hover, :focus-visible) {
+  color: #fff;
+}
+.wr-thead .wr-sort:focus-visible {
+  border-radius: 3px;
+  outline: 2px solid var(--wr-purple);
+  outline-offset: 3px;
+}
+.wr-thead .wr-sort.on {
+  color: #fff;
+}
+.wr-thead .wr-sort.on .mi {
+  color: var(--wr-gold);
+}
+.wr-c-num {
+  justify-self: end;
+  text-align: right;
+}
+.wr-c-tier {
+  justify-self: center;
+}
 
-/* Stat + barra tracejada colorida */
-.wr-stat {
-  font: 700 15px/1 "Plus Jakarta Sans", sans-serif;
+.wr-row:not(.wr-thead) {
+  height: 68px;
+  border-bottom: 1px solid var(--wr-line-soft);
+  cursor: pointer;
+  outline: none;
+}
+.wr-row:not(.wr-thead):last-child {
+  border-bottom: none;
+}
+.wr-row:not(.wr-thead):is(:hover, :focus-visible) {
+  background: rgba(255, 255, 255, 0.035);
+}
+.wr-row.sel {
+  background: rgba(155, 92, 255, 0.1);
+  box-shadow: inset 3px 0 0 var(--wr-purple);
+}
+.wr-row:focus-visible {
+  box-shadow:
+    inset 0 0 0 1.5px var(--wr-purple),
+    inset 3px 0 0 var(--wr-purple);
+}
+.wr-c-rank {
+  font: 300 22px/1 "Inter", "Plus Jakarta Sans";
+  color: #cfcfd4;
+  text-align: center;
+}
+.wr-c-champ {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  min-width: 0;
+}
+.wr-champ-meta {
+  min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 6px;
 }
-.wr-stat .bar {
-  height: 2px;
-  width: 70%;
-  background-image: linear-gradient(to right, var(--bar-c, #48d9d9) 0 6px, transparent 6px 9px);
-  background-size: 9px 100%;
-  background-repeat: repeat-x;
+.wr-champ-name {
+  font: 800 15px/1.1 "Plus Jakarta Sans";
+  color: var(--wr-text);
+  text-decoration: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
-.wr-stat .bar.cyan   { --bar-c: #48d9d9; }
-.wr-stat .bar.blue   { --bar-c: #4a78ff; }
-.wr-stat .bar.orange { --bar-c: #ff9a3a; }
-.wr-stat .bar.purple { --bar-c: #9b5cff; }
-.wr-stat .bar.yellow { --bar-c: #d4c43a; }
+.wr-champ-name:is(:hover, :focus-visible) {
+  color: var(--wr-wr);
+}
+.wr-champ-role {
+  font: 600 10px/1 "Plus Jakarta Sans";
+  color: var(--wr-faint);
+  margin-top: 4px;
+  letter-spacing: 0.03em;
+}
+.wr-wr {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+.wr-wr b {
+  font: 800 16px/1 "Plus Jakarta Sans";
+}
+.wr-wr small {
+  font: 700 10px/1 "Plus Jakarta Sans";
+  display: inline-flex;
+  align-items: center;
+}
+.wr-wr small .mi {
+  font-size: 13px;
+  margin-right: -2px;
+}
+.wr-wr small.up {
+  color: var(--wr-green);
+}
+.wr-wr small.dn {
+  color: var(--wr-red);
+}
+.wr-c-num.tnum {
+  font: 700 14px/1 "Plus Jakarta Sans";
+  color: #dfe0e5;
+}
 
-/* ── Sidebar ─────────────────────────────────────────────────── */
-.wr-sidebar {
-  background: var(--wr-panel-2);
-  border-left: 1px solid var(--wr-border);
-  padding: 28px 22px;
+.wr-pager {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 10px 0 12px;
+  border-top: 1px solid var(--wr-line-soft);
+}
+.wr-pager-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1px solid var(--wr-line);
+  background: var(--wr-panel-3);
+  color: #dcdce2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.wr-pager-btn:is(:hover, :focus-visible) {
+  background: #22222a;
+}
+.wr-pager-btn:focus-visible {
+  outline: 2px solid var(--wr-purple);
+  outline-offset: 2px;
+}
+.wr-pager-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.35;
+  transform: none;
+}
+.wr-pager-range {
+  min-width: 96px;
+  color: var(--wr-dim);
+  font: 700 11px/1 "Plus Jakarta Sans";
+  letter-spacing: 0.04em;
+  text-align: center;
+}
+
+/* ============ DIREITA — rail teal ============ */
+.wr-rail-panel {
+  background: linear-gradient(180deg, #0a1216, var(--wr-teal));
+  border-color: #14262c;
+  padding: 15px 15px 16px;
+}
+.wr-rail {
+  display: flex;
+  flex-direction: column;
+}
+.wr-rail-h {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 13px;
+}
+.wr-rail-h.wr-rail-h-sub {
+  margin-top: 18px;
+}
+.wr-rail-h .mi {
+  font-size: 17px;
+  color: #79e0ff;
+}
+.wr-rail-h h2 {
+  margin: 0;
+  font: 800 12px/1 "Plus Jakarta Sans";
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: #dfeaee;
+}
+.wr-rail-s {
+  margin-left: auto;
+  font: 600 10px/1 "Plus Jakarta Sans";
+  color: #6f8288;
+  letter-spacing: 0.04em;
+}
+
+/* featured augments */
+.wr-feat {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+.wr-fcard {
+  position: relative;
+  height: 128px;
+  border-radius: 11px;
+  overflow: hidden;
+  cursor: pointer;
+  border: 1px solid #1b3138;
+  background:
+    radial-gradient(circle at 50% 40%, rgba(140, 180, 255, 0.12), transparent 64%), #06121a;
+}
+.wr-fcard.prism {
+  border: none;
+  padding: 1.5px;
+  background: linear-gradient(150deg, #e9c6ff, #8ad7ff 40%, #ffe08a 72%, #ff9ad0);
+}
+.wr-fcard.prism .wr-fcard-inner {
+  position: absolute;
+  inset: 1.5px;
+  border-radius: 9px;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 50% 40%, rgba(160, 190, 255, 0.14), transparent 64%), #06121a;
+}
+.wr-fcard-art {
+  position: absolute;
+  inset: -6px -3px auto;
+  height: 96px;
+  overflow: hidden;
+  pointer-events: none;
+  -webkit-mask-image: linear-gradient(to bottom, black 0, rgba(0, 0, 0, 0.65) 48%, transparent 100%);
+  mask-image: linear-gradient(to bottom, black 0, rgba(0, 0, 0, 0.65) 48%, transparent 100%);
+}
+.wr-fcard-art::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 50% 18%, transparent 0, rgba(6, 18, 26, 0.2) 42%, rgba(6, 18, 26, 0.78) 100%),
+    linear-gradient(to bottom, transparent 38%, #06121a 100%);
+}
+.wr-fcard-art-image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 22%;
+  opacity: 0.3;
+  filter: saturate(0.8) contrast(1.08);
+  scale: 1.08;
+}
+.wr-aug-art {
+  position: absolute;
+  inset: 6px 6px 34px;
+  display: block;
+}
+.wr-aug-art img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.45));
+}
+.wr-fcard-shade {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(184deg, rgba(3, 10, 14, 0) 46%, rgba(3, 10, 14, 0.5) 80%, rgba(3, 10, 14, 0.92) 100%);
+}
+.wr-fcard-tb {
+  position: absolute;
+  left: 7px;
+  top: 7px;
+  font: 800 9px/1 "Plus Jakarta Sans";
+  padding: 3px 5px;
+  border-radius: 5px;
+  color: #241a00;
+  z-index: 2;
+}
+.wr-fcard-tb.t-splus {
+  background: var(--t-splus);
+}
+.wr-fcard-tb.t-s {
+  background: var(--t-s);
+  color: #fff;
+}
+.wr-fcard-tb.t-a {
+  background: var(--t-a);
+  color: #fff;
+}
+.wr-fcard-tb.t-b {
+  background: var(--t-b);
+  color: #fff;
+}
+.wr-fcard-tb.t-c {
+  background: var(--t-c);
+  color: #fff;
+}
+.wr-fcard-tb.t-d {
+  background: var(--t-d);
+  color: #fff;
+}
+.wr-fcard-cap {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 8px 8px 9px;
+  text-align: center;
+  z-index: 2;
+}
+.wr-fcard-nm {
+  font: 800 8.5px/1.15 "Plus Jakarta Sans";
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #fff;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+}
+.wr-fcard-wr {
+  margin-top: 4px;
+  font: 800 15px/1 "Plus Jakarta Sans";
+  color: #fff;
+}
+.wr-fcard-wr sub {
+  font: 700 8px/1 "Plus Jakarta Sans";
+  color: #cbd2d6;
+  vertical-align: baseline;
+  margin-left: 2px;
+}
+
+/* augment pick-rate grid */
+.wr-agrid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 8px 6px;
+}
+.wr-acell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+}
+.wr-atile {
+  --tc: #2a3a40;
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #0b1418;
+  box-shadow: inset 0 0 0 1.5px var(--tc);
+}
+.wr-atile::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border-radius: inherit;
+  box-shadow: inset 0 0 0 1.5px var(--tc);
+  pointer-events: none;
+}
+.wr-atile .wr-bi {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  border-radius: 0;
+}
+.wr-atile img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.wr-atile[data-t="splus"] {
+  --tc: var(--wr-gold);
+}
+.wr-atile[data-t="s"] {
+  --tc: var(--t-s);
+}
+.wr-atile[data-t="a"] {
+  --tc: var(--t-a);
+}
+.wr-atile[data-t="b"] {
+  --tc: var(--t-b);
+}
+.wr-atile[data-t="c"] {
+  --tc: var(--t-c);
+}
+.wr-atile-b {
+  position: absolute;
+  left: -1px;
+  top: -1px;
+  min-width: 14px;
+  height: 14px;
+  padding: 0 2px;
+  border-radius: 6px 0 8px 0;
+  background: var(--tc);
+  color: #0a0a0a;
+  font: 800 8px/14px "Plus Jakarta Sans";
+  text-align: center;
+}
+.wr-acell-pr {
+  font: 800 11px/1 "Plus Jakarta Sans";
+  color: #eef1f3;
+}
+
+/* top sinergy (trio) */
+.wr-synlist {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.wr-synrow {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 11px;
+  padding: 8px 10px 8px 8px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid #14262c;
+}
+.wr-synrow:hover {
+  background: rgba(120, 180, 255, 0.06);
+  border-color: #23424c;
+}
+.wr-syntrio {
+  display: flex;
+}
+.wr-syntrio .wr-face {
+  width: 38px;
+  height: 38px;
+  border: 2px solid #081319;
+}
+.wr-syntrio .wr-face + .wr-face {
+  margin-left: -11px;
+}
+.wr-syntrio .wr-face:nth-child(2) {
+  z-index: 2;
+}
+.wr-synmeta {
+  min-width: 0;
+}
+.wr-synmeta-nm {
+  font: 800 12px/1.1 "Plus Jakarta Sans";
+  color: #eaf2f5;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.wr-synmeta-tag {
+  margin-top: 4px;
+  font: 600 9.5px/1 "Plus Jakarta Sans";
+  color: #6f8288;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.wr-synpct {
+  text-align: right;
+  white-space: nowrap;
+}
+.wr-synpct b {
+  font: 800 15px/1 "Plus Jakarta Sans";
+  color: var(--wr-green);
+}
+.wr-synpct span {
+  display: block;
+  margin-top: 3px;
+  font: 700 8px/1 "Plus Jakarta Sans";
+  letter-spacing: 0.1em;
+  color: #6f8288;
+}
+.wr-synmore {
+  margin-top: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  height: 38px;
+  border-radius: 10px;
+  cursor: pointer;
+  background: rgba(120, 180, 255, 0.06);
+  border: 1px solid #1c3540;
+  color: #bfe0ee;
+  font: 800 11px/1 "Plus Jakarta Sans";
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  text-decoration: none;
+}
+.wr-synmore:is(:hover, :focus-visible) {
+  background: rgba(120, 180, 255, 0.13);
+  border-color: #2c5464;
+}
+.wr-synmore:focus-visible {
+  outline: 2px solid var(--wr-purple);
+  outline-offset: 2px;
+}
+.wr-synmore .mi {
+  font-size: 16px;
+}
+
+/* ============ bottom sheet (estreito) ============ */
+.wr-sheet {
+  position: fixed;
+  inset: auto 0 0 0;
+  z-index: 60;
+  max-height: 88vh;
+  overflow-y: auto;
+  background: var(--wr-panel);
+  border-top: 1px solid var(--wr-line);
+  border-radius: 16px 16px 0 0;
+  padding: 0 16px 24px;
+  box-shadow: 0 -18px 50px rgba(0, 0, 0, 0.55);
+}
+.wr-sheet-head {
   position: sticky;
   top: 0;
-  align-self: start;
-  max-height: 100vh;
-  overflow-y: auto;
-  z-index: 4;
-  scrollbar-width: thin;
-  scrollbar-color: var(--wr-border) transparent;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 0 12px;
+  background: var(--wr-panel);
+  border-bottom: 1px solid var(--wr-line-soft);
+  margin-bottom: 6px;
 }
-.wr-sidebar::-webkit-scrollbar { width: 6px; }
-.wr-sidebar::-webkit-scrollbar-thumb { background: var(--wr-border); border-radius: 3px; }
-
-/* Seções da sidebar */
-.wr-side-h {
-  font: 700 11px/1 "Plus Jakarta Sans", sans-serif;
-  letter-spacing: 0.1em;
-  color: white;
-  margin: 18px 0 10px 0;
+.wr-sheet-title {
+  font: 800 11px/1 "Plus Jakarta Sans";
+  letter-spacing: 0.11em;
   text-transform: uppercase;
+  color: var(--wr-dim);
 }
-.wr-side-h:first-child { margin-top: 0; }
+.wr-sheet-close {
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  border: 1px solid var(--wr-line);
+  background: var(--wr-panel-3);
+  color: var(--wr-text);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
 
-/* ── Responsivo ──────────────────────────────────────────────── */
-@media (max-width: 1280px) {
+/* ============ responsivo ============ */
+@media (max-width: 1240px) {
+  .wr-board {
+    grid-template-columns: 300px minmax(0, 1fr) 340px;
+    gap: 16px;
+  }
+  .wr-agrid {
+    grid-template-columns: repeat(6, 1fr);
+  }
+}
+@media (max-width: 1080px) {
+  .wr-board {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .wr-col-rail {
+    order: 3;
+  }
+  .wr-agrid {
+    grid-template-columns: repeat(7, 1fr);
+  }
+}
+@media (max-width: 560px) {
   .wr-page {
-    grid-template-columns: 1fr;
+    padding: 16px 12px 48px;
   }
-  .wr-sidebar {
-    display: none; /* sidebar fica oculta em telas menores */
+  .wr-row {
+    grid-template-columns: 34px minmax(0, 1fr) 42px 74px 62px;
+    gap: 6px;
+    padding: 0 12px;
   }
-  .lb-filters {
-    grid-template-columns: 1fr;
+  /* esconde pickrate + jogos no mobile (mantém rank·champ·tier·position·winrate) */
+  .wr-row > .wr-c-num:nth-last-child(1),
+  .wr-row > .wr-c-num:nth-last-child(2) {
+    display: none;
   }
-  .role-chips { justify-content: flex-start; }
-  .panel.detail {
-    grid-template-columns: 80px 1fr;
-  }
-  .detail .d-stats {
-    grid-column: 1 / -1;
-    justify-content: space-between;
-    gap: 12px;
+  .wr-feat {
+    grid-template-columns: repeat(3, 1fr);
   }
 }

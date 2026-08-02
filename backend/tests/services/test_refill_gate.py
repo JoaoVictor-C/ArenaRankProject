@@ -35,6 +35,20 @@ def _payload(match_id: str = "BR1_GATE0001", started_ms: int = 1_784_246_400_000
             "profileIcon": 42,
             "timePlayed": 812,
             "gameEndedInEarlySurrender": False,
+            # 4 real picks + 2 zero-padded unused slots — the common shape.
+            "playerAugment1": 63,
+            "playerAugment2": 220,
+            "playerAugment3": 120,
+            "playerAugment4": 251,
+            "playerAugment5": 0,
+            "playerAugment6": 0,
+            "item0": 223008,
+            "item1": 443090,
+            "item2": 0,  # empty slot
+            "item3": 226672,
+            "item4": 223091,
+            "item5": 222517,
+            "item6": 3348,
         }
 
     return {
@@ -89,6 +103,80 @@ def test_backlog_codec_preserves_eligibility_and_placement() -> None:
         for p in t.participants
     }
     assert original == restored
+
+
+def test_extracts_augment_and_item_picks_dropping_zero_slots() -> None:
+    """Riot pads unused slots with 0 rather than omitting the key — those must
+    not read as real picks, and the payload's specific values must survive."""
+    parsed = parse_arena_match(_payload())
+    p0 = next(p for t in parsed.subteams for p in t.participants if p.puuid == "p0")
+    assert p0.augments == [63, 220, 120, 251]  # the two 0-padded slots dropped
+    # item2=0 (empty slot) dropped; item6=3348 (the auto-equipped Arena
+    # trinket) dropped too — see test_excludes_the_auto_equipped_arena_trinket.
+    assert p0.items == [223008, 443090, 226672, 223091, 222517]
+
+
+def test_excludes_the_auto_equipped_arena_trinket() -> None:
+    """Item 3348 ("Analisador Arcano" / Arcane Sweeper) is auto-equipped for
+    every participant in every Arena game — not a real build choice — so it
+    must never land in captured items, or it pollutes champion_build_stats
+    with a ~100%-pick-rate item nobody actually picked."""
+    parsed = parse_arena_match(_payload())
+    for t in parsed.subteams:
+        for p in t.participants:
+            assert 3348 not in p.items
+
+
+def test_augment_grant_effect_can_push_a_fifth_or_sixth_real_pick() -> None:
+    """Some augments grant an EXTRA augment (observed live: id 390 twice on a
+    single participant) — a real 5th/6th pick, not padding. Must not be
+    deduped or truncated to 4."""
+    payload = _payload()
+    payload["info"]["participants"][0]["playerAugment5"] = 390
+    payload["info"]["participants"][0]["playerAugment6"] = 390
+    parsed = parse_arena_match(payload)
+    p0 = next(p for t in parsed.subteams for p in t.participants if p.puuid == "p0")
+    assert p0.augments == [63, 220, 120, 251, 390, 390]
+
+
+def test_backlog_codec_round_trips_augments_and_items_exactly() -> None:
+    parsed = parse_arena_match(_payload())
+    back = parsed_from_json(json.loads(json.dumps(parsed_to_json(parsed))))
+    for original, restored in zip(
+        (p for t in parsed.subteams for p in t.participants),
+        (p for t in back.subteams for p in t.participants),
+        strict=True,
+    ):
+        assert restored.augments == original.augments
+        assert restored.items == original.items
+
+
+def test_backlog_codec_round_trips_combat_telemetry_exactly() -> None:
+    payload = _payload()
+    payload["info"]["participants"][0].update(
+        {
+            "kills": 7,
+            "deaths": 2,
+            "assists": 11,
+            "totalDamageDealtToChampions": 18770,
+            "goldEarned": 7206,
+            "champLevel": 13,
+            "totalDamageTaken": 20008,
+            "totalHeal": 4961,
+            "damageSelfMitigated": 19843,
+            "largestMultiKill": 2,
+            "killingSprees": 1,
+            "totalTimeSpentDead": 243,
+        }
+    )
+    parsed = parse_arena_match(payload)
+    back = parsed_from_json(json.loads(json.dumps(parsed_to_json(parsed))))
+    assert back == parsed
+    p0 = next(p for t in back.subteams for p in t.participants if p.puuid == "p0")
+    assert p0.kills == 7
+    assert p0.damage_to_champions == 18770
+    assert p0.champion_level == 13
+    assert p0.time_spent_dead == 243
 
 
 def test_backlog_size_is_independent_of_payload_bloat() -> None:
@@ -152,12 +240,17 @@ def test_malformed_entries_do_not_discard_the_good_ones(
     assert bootstrap.seed_riot_ids() == [("Bom", "BR1")]
 
 
-async def test_bootstrap_refuses_without_seeds(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Sem semente não há como começar — falhar explícito, não silenciosamente."""
+async def test_seeding_refuses_without_seeds(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Sem semente não há como começar — falhar explícito, não silenciosamente.
+
+    A checagem vive em ``seed_now`` (caixa de workers), não na rota de admin: só
+    a caixa que semeia sabe se ELA tem as sementes configuradas. A mensagem volta
+    ao console por ``season_ingest_state.last_error``.
+    """
     monkeypatch.setattr(settings, "bootstrap_seed_riot_ids", "")
-    result = await bootstrap.start_bootstrap(None, "season-x")
+    result = await bootstrap.seed_now(None, "season-x")
     assert result["status"] == "error"
-    assert result["reason"] == "no seeds configured"
+    assert "BOOTSTRAP_SEED_RIOT_IDS" in result["reason"]
 
 
 # ---------------------------------------------------------------------------
@@ -189,3 +282,67 @@ def test_write_floor_of_replay_is_bounded() -> None:
     assert settings.replay_max_matches_per_tick > 0
     assert settings.out_of_order_tolerance_ms > 0
     assert settings.replay_min_idle_seconds >= 0
+
+
+# ---------------------------------------------------------------------------
+# Regressões do refill (bugs reais encontrados ao apertar o botão)
+# ---------------------------------------------------------------------------
+
+
+def test_seed_region_is_coerced_to_the_routing_enum(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A config é texto; os construtores de URL usam ``region.host``.
+
+    Passar a string crua levantava ``AttributeError: 'str' object has no
+    attribute 'host'`` DENTRO do try/except que envolve a resolução, então toda
+    semente era descartada como se a Riot tivesse recusado e o operador via
+    "Nenhuma semente resolvida na Riot" com a chave perfeitamente válida.
+    """
+    from arena.riot.routing import Region
+
+    monkeypatch.setattr(settings, "bootstrap_seed_region", "americas")
+    region = bootstrap.seed_region()
+    assert isinstance(region, Region)
+    assert region.host  # é o atributo cujo acesso quebrava
+
+
+def test_bad_seed_region_falls_back_instead_of_exploding(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from arena.riot.routing import Region
+
+    monkeypatch.setattr(settings, "bootstrap_seed_region", "nao-existe")
+    assert bootstrap.seed_region() is Region.AMERICAS
+
+
+def test_requesting_a_refill_needs_no_riot_key_or_queue_redis() -> None:
+    """A rota de admin só registra INTENÇÃO — nada de Riot, nada de fila.
+
+    Semear exige a chave da Riot e o Redis das FILAS, e a API do EC2 não tem
+    nenhum dos dois. Enquanto a rota tentava semear, o botão era inutilizável a
+    partir do EC2. Se alguém reintroduzir isso aqui, este teste quebra.
+    """
+    import inspect
+
+    src = inspect.getsource(bootstrap.request_bootstrap)
+    assert "resolve_seed_puuids" not in src
+    assert "enqueue_backfill" not in src
+    assert "get_client" not in src
+
+
+def test_backlog_drain_does_not_depend_on_ingest_mode() -> None:
+    """O drenador tem de rodar em QUALQUER modo.
+
+    Ele pulava fora de ``catching_up``, então encerrar um refill encalhava o
+    backlog para sempre — 215 partidas já descobertas paradas sem nunca virar
+    rating, o oposto do que ``stop_bootstrap`` promete. O modo decide se
+    partidas NOVAS são estacionadas; o que já está estacionado tem de sair.
+    """
+    import inspect
+
+    from arena.workers.scheduler import backlog_drain_tick
+
+    src = inspect.getsource(backlog_drain_tick)
+    assert "not catching up" not in src
+    assert "IngestMode.catching_up" not in src

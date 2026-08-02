@@ -17,11 +17,18 @@ from arena.schemas.admin import (
     AdminWorker,
 )
 from arena.schemas.champions import (
+    AugmentCatalogEntry,
+    AugmentCatalogResponse,
     BuildEntry,
     BuildTeammate,
     ChampionAugments,
     ChampionBuildResponse,
+    ChampionBuildVariant,
+    ChampionBuildVariantsResponse,
     ChampionMainsResponse,
+    ChampionMatchupsResponse,
+    ChampionRoundPoint,
+    ChampionRoundsResponse,
     ChampionSynergy,
     ChampionSynergyGroup,
     ChampionSynergyGroupResponse,
@@ -32,6 +39,7 @@ from arena.schemas.champions import (
     ChampTier,
     ChampTierlistResponse,
     ChampTopPlayer,
+    MatchupEntry,
     SynergyChampion,
     SynergyTier,
     SynergyTierlistResponse,
@@ -49,8 +57,10 @@ from arena.schemas.common import (
 )
 from arena.schemas.leaderboard import LeaderboardChampion, LeaderboardResponse, LeaderboardRow
 from arena.schemas.match import (
+    MatchAugmentEntry,
     MatchDetail,
     MatchIntegrityFlag,
+    MatchLoadoutEntry,
     MatchPlayer,
     SubTeam,
 )
@@ -136,11 +146,15 @@ __all__ = [
     "PlayerProfile",
     "SeasonArchive",
     # match
+    "MatchAugmentEntry",
     "MatchDetail",
     "MatchIntegrityFlag",
+    "MatchLoadoutEntry",
     "MatchPlayer",
     "SubTeam",
     # champions
+    "AugmentCatalogEntry",
+    "AugmentCatalogResponse",
     "ChampRow",
     "ChampTier",
     "ChampTierlistResponse",
@@ -154,11 +168,17 @@ __all__ = [
     "ChampionTrendPoint",
     "ChampionTrendResponse",
     "ChampionMainsResponse",
+    "ChampionMatchupsResponse",
+    "ChampionRoundPoint",
+    "ChampionRoundsResponse",
+    "MatchupEntry",
     "SynergyChampion",
     "BuildEntry",
     "BuildTeammate",
     "ChampionAugments",
     "ChampionBuildResponse",
+    "ChampionBuildVariant",
+    "ChampionBuildVariantsResponse",
     "TopBuildResponse",
     # tournaments
     "AccessRequest",

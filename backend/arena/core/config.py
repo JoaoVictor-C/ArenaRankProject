@@ -305,6 +305,28 @@ class Settings(BaseSettings):
         "than sweep_fetch_concurrency: history import is background work and "
         "must not crowd the live sweep out of the Riot token bucket.")
 
+    # --- Telemetria de workers (deploy dividido EC2 <-> notebook) ------------
+    worker_telemetry_source: str = Field(
+        default="redis",
+        description="De onde as rotas de telemetria (workers/live, riot/usage, "
+        "profundidade de fila do overview) leem. 'redis' = deste processo "
+        "mesmo, correto onde a API divide o Redis com os workers (local e "
+        "prod numa caixa só). 'db' = da tabela worker_telemetry, publicada pela "
+        "caixa de workers — é o que a API do EC2 usa, porque o Redis DELA não "
+        "tem fila, heartbeat nem token-bucket e responderia zero com cara de "
+        "verdade. Explícito de propósito: adivinhar pela ausência de dados "
+        "confundiria 'não enxergo' com 'está tudo parado'.")
+    worker_telemetry_stale_after_seconds: int = Field(
+        default=180,
+        description="Idade a partir da qual um snapshot conta como obsoleto e a "
+        "UI passa a mostrar 'indisponível' em vez do número. Precisa ser vários "
+        "múltiplos do intervalo de publicação para um tick perdido não acender "
+        "alarme — a caixa de workers é um notebook e pode dormir.")
+    worker_telemetry_publish_source: str = Field(
+        default="worker",
+        description="Nome com que ESTA caixa publica em worker_telemetry. Só "
+        "importa se um dia houver mais de uma caixa de ingestão.")
+
     # --- Refill / ordem cronológica ------------------------------------------
     bootstrap_seed_riot_ids: str = Field(
         default="",
@@ -355,6 +377,14 @@ class Settings(BaseSettings):
         "(309k trios -> ~21k on the live season). MUST stay strictly below the "
         "READ floor SYNERGY_MIN_GAMES (15, stats_service) — above it, the synergy "
         "routes would silently lose combos they are entitled to show.")
+    champion_build_min_games: int = Field(
+        default=3,
+        description="WRITE floor for champion_build_stats (native augment/item "
+        "rollup): a (champion, pick) cell with fewer eligible games is never "
+        "stored. MUST stay strictly below the READ floors in build_ref_service "
+        "(BUILD_MIN_GAMES=50 per-champion, TOP_MIN_GAMES=200 global) for the "
+        "same reason as synergy_combo_min_games — above them, entries the read "
+        "path is entitled to show would silently vanish at write time instead.")
 
     # --- Live-queue sweep + session re-arm + rotation-detection sample ------
     arena_live_queue_ids: str = Field(

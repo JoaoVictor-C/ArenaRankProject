@@ -5,7 +5,7 @@ import {
   type FormEvent,
   type KeyboardEvent as ReactKeyboardEvent,
 } from "react";
-import { Link, NavLink, useNavigate, type NavigateFunction } from "react-router-dom";
+import { Link, NavLink, useNavigate, useLocation, type NavigateFunction } from "react-router-dom";
 import { api } from "../lib/api";
 import type { SearchPlayer, TierKey } from "../lib/types";
 import { PlayerAvatar } from "./Avatar";
@@ -20,12 +20,16 @@ const TIER_LABEL: Record<TierKey, string> = {
   none: "",
 };
 
-const NAV: { to: string; label: string; end: boolean; soon?: boolean }[] = [
-  { to: "/", label: "INICIO", end: true },
+const NAV: { to: string; label: string; end: boolean; soon?: boolean; soonMsg?: string }[] = [
+  { to: "/", label: "INÍCIO", end: true },
   { to: "/leaderboard", label: "LEADERBOARD", end: false },
-  { to: "/duo", label: "ACHE SEU DUO", end: false, soon: true },
-  { to: "/campeonatos", label: "CAMPEONATOS", end: false },
-  { to: "/sistema", label: "PROBUILDS", end: false },
+  { to: "/duo", label: "ACHE SEU DUO", end: false, soon: true, soonMsg: "Ache seu Duo chega em breve" },
+  { to: "/campeonatos", label: "CAMPEONATOS", end: false, soon: true, soonMsg: "Campeonatos chegam em breve" },
+  { to: "/winrate", label: "WINRATE", end: false },
+  // Mesmo gate do WINRATE de propósito: os três formam um cluster só (campeões
+  // → augments → sinergias). Abrir um sem os outros deixa a navegação manca.
+  { to: "/augments", label: "AUGMENTS", end: false },
+  { to: "/sinergias", label: "SINERGIAS", end: false },
 ];
 
 /**
@@ -33,15 +37,30 @@ const NAV: { to: string; label: string; end: boolean; soon?: boolean }[] = [
  * `GET /players/search`). Digita (debounce ~220ms, mín. 2 chars) → dropdown
  * sob o input; clique/Enter abre `/perfil/{riotId}`; ↑/↓ percorrem; Esc/clique
  * fora fecham. Sem resultados mas com "Nome#TAG" digitado, Enter abre direto.
+ * `autoFocus` foca ao montar (usado no sheet mobile); `onNavigate` avisa o pai
+ * para fechar o overlay após abrir um perfil.
  */
-function HeaderSearch({ navigate }: { navigate: NavigateFunction }) {
+function HeaderSearch({
+  navigate,
+  autoFocus,
+  onNavigate,
+}: {
+  navigate: NavigateFunction;
+  autoFocus?: boolean;
+  onNavigate?: () => void;
+}) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchPlayer[]>([]);
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(0);
   const [loading, setLoading] = useState(false);
   const boxRef = useRef<HTMLFormElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const reqId = useRef(0); // descarta respostas fora de ordem
+
+  useEffect(() => {
+    if (autoFocus) inputRef.current?.focus();
+  }, [autoFocus]);
 
   useEffect(() => {
     const q = query.trim();
@@ -84,6 +103,7 @@ function HeaderSearch({ navigate }: { navigate: NavigateFunction }) {
     setQuery("");
     setResults([]);
     navigate(`/perfil/${encodeURIComponent(p.riotId)}`);
+    onNavigate?.();
   }
 
   function onKeyDown(e: ReactKeyboardEvent<HTMLInputElement>) {
@@ -104,8 +124,12 @@ function HeaderSearch({ navigate }: { navigate: NavigateFunction }) {
   function onSubmit(e: FormEvent) {
     e.preventDefault();
     const pick = results[active] ?? results[0];
-    if (pick) go(pick);
-    else if (query.includes("#")) navigate(`/perfil/${encodeURIComponent(query.trim())}`);
+    if (pick) {
+      go(pick);
+    } else if (query.includes("#")) {
+      navigate(`/perfil/${encodeURIComponent(query.trim())}`);
+      onNavigate?.();
+    }
   }
 
   const showPanel = open && query.trim().length >= 2;
@@ -114,6 +138,7 @@ function HeaderSearch({ navigate }: { navigate: NavigateFunction }) {
     <form className="h3-search" onSubmit={onSubmit} role="search" ref={boxRef}>
       <span className="mi">search</span>
       <input
+        ref={inputRef}
         type="text"
         placeholder="Busque jogadores com Nick#Tagline, campeões, campeonatos, etc..."
         value={query}
@@ -194,12 +219,36 @@ function HeaderSearch({ navigate }: { navigate: NavigateFunction }) {
   );
 }
 
+/** Modos de jogo — compartilhado entre o tier 1 (desktop) e o drawer (mobile). */
+function GameModes() {
+  return (
+    <nav className="gm-tabs" aria-label="Modos">
+      <span className="gm-tab on">
+        <span className="gi" style={{ backgroundImage: "url(/assets/fig/icon-arena.png)" }} />
+        <span className="gl">
+          ARENA<sup>3V3</sup>
+        </span>
+      </span>
+      <span className="gm-tab">
+        <span className="gi" style={{ backgroundImage: "url(/assets/fig/icon-aram.png)" }} />
+        <span className="gl">ARAM MAYHEM</span>
+      </span>
+    </nav>
+  );
+}
+
 export function Header() {
   const navigate = useNavigate();
+  const { pathname } = useLocation();
 
   // Toast "em breve" — login/perfil ainda não implementados (OAuth virá depois).
   const [toast, setToast] = useState<string | null>(null);
   const toastTimer = useRef<number | undefined>(undefined);
+
+  // Overlays mobile: menu (drawer lateral) e busca (sheet full-width).
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const drawerRef = useRef<HTMLElement>(null);
 
   function showComingSoon(msg: string) {
     setToast(msg);
@@ -209,31 +258,93 @@ export function Header() {
 
   useEffect(() => () => window.clearTimeout(toastTimer.current), []);
 
+  // Navegar fecha qualquer overlay aberto.
+  useEffect(() => {
+    setMenuOpen(false);
+    setSearchOpen(false);
+  }, [pathname]);
+
+  // Trava o scroll do body enquanto um overlay mobile está aberto.
+  useEffect(() => {
+    const lock = menuOpen || searchOpen;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = lock ? "hidden" : prev;
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [menuOpen, searchOpen]);
+
+  // Esc fecha; ao abrir o drawer, move o foco para dentro dele.
+  useEffect(() => {
+    if (!menuOpen && !searchOpen) return;
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        setMenuOpen(false);
+        setSearchOpen(false);
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    if (menuOpen) drawerRef.current?.focus();
+    return () => window.removeEventListener("keydown", onKey);
+  }, [menuOpen, searchOpen]);
+
   return (
     <header className="h3">
-      {/* Tier 1: Logo + game mode tabs */}
+      {/* Barra mobile (≤ 900px): logo + busca + menu. Escondida no desktop. */}
+      <div className="h3-mobile">
+        <Link className="gm-logo" to="/" aria-label="ArenaRank — início">
+          <img src="/assets/fig/logo-wordmark.png" alt="ArenaRank" />
+        </Link>
+        <div className="h3m-actions">
+          <button
+            className={`h3m-icon${searchOpen ? " on" : ""}`}
+            type="button"
+            aria-label={searchOpen ? "Fechar busca" : "Buscar"}
+            aria-expanded={searchOpen}
+            onClick={() => {
+              setSearchOpen((v) => !v);
+              setMenuOpen(false);
+            }}
+          >
+            <span className="mi">{searchOpen ? "close" : "search"}</span>
+          </button>
+          <button
+            className={`h3m-icon${menuOpen ? " on" : ""}`}
+            type="button"
+            aria-label={menuOpen ? "Fechar menu" : "Abrir menu"}
+            aria-expanded={menuOpen}
+            onClick={() => {
+              setMenuOpen((v) => !v);
+              setSearchOpen(false);
+            }}
+          >
+            <span className="mi">{menuOpen ? "close" : "menu"}</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Sheet de busca mobile — o mesmo typeahead, em largura cheia. */}
+      {searchOpen && (
+        <div className="h3m-searchsheet">
+          <HeaderSearch navigate={navigate} autoFocus onNavigate={() => setSearchOpen(false)} />
+        </div>
+      )}
+
+      {/* Tier 1: Logo + game mode tabs (desktop) */}
       <div className="h3-row h3-1">
         <Link className="gm-logo" to="/">
           <img src="/assets/fig/logo-wordmark.png" alt="ArenaRank" />
         </Link>
-        <nav className="gm-tabs" aria-label="Modos">
-          <span className="gm-tab on">
-            <span className="gi" style={{ backgroundImage: "url(/assets/fig/icon-arena.png)" }} />
-            <span className="gl">ARENA<sup>3V3</sup></span>
-          </span>
-          <span className="gm-tab">
-            <span className="gi" style={{ backgroundImage: "url(/assets/fig/icon-aram.png)" }} />
-            <span className="gl">ARAM MAYHEM</span>
-          </span>
-        </nav>
+        <GameModes />
       </div>
 
-      {/* Tier 2: Search + actions */}
+      {/* Tier 2: Search + actions (desktop) */}
       <div className="h3-row h3-2">
         <HeaderSearch navigate={navigate} />
         <div className="h3-actions">
           <Link className="perfil-gold" to="/leaderboard">
-            <span className="ico" />LEADERBOARD
+            <span className="ico" />
+            LEADERBOARD
           </Link>
           <Link className="trophy" to="/campeonatos" aria-label="Campeonatos">
             <span className="mi fill">emoji_events</span>
@@ -255,7 +366,7 @@ export function Header() {
         </div>
       </div>
 
-      {/* Tier 3: Mini mode + navigation */}
+      {/* Tier 3: Mini mode + navigation (desktop) */}
       <div className="h3-row h3-3">
         <nav className="h3-nav" aria-label="Principal">
           {NAV.map((n) =>
@@ -264,41 +375,15 @@ export function Header() {
                 key={n.to}
                 type="button"
                 className="nav-soon"
-                title="Ache seu Duo chega em breve"
+                title={n.soonMsg ?? "Em breve"}
                 aria-disabled="true"
-                onClick={() => showComingSoon("Ache seu Duo chega em breve")}
-                style={{
-                  background: "none",
-                  border: "none",
-                  cursor: "pointer",
-                  font: "inherit",
-                  color: "inherit",
-                  opacity: 0.5,
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 6,
-                  padding: 0,
-                }}
+                onClick={() => showComingSoon(n.soonMsg ?? "Em breve")}
               >
                 <s>{n.label}</s>
-                <span
-                  style={{
-                    fontSize: 9,
-                    fontWeight: 800,
-                    letterSpacing: 0.5,
-                    lineHeight: 1,
-                    background: "var(--gold, #d9b25f)",
-                    color: "#141414",
-                    borderRadius: 4,
-                    padding: "2px 5px",
-                    textTransform: "uppercase",
-                  }}
-                >
-                  em breve
-                </span>
+                <span className="soon-badge">em breve</span>
               </button>
             ) : (
-              <NavLink key={n.to} to={n.to} end={n.end} className={({ isActive }) => isActive ? "active" : ""}>
+              <NavLink key={n.to} to={n.to} end={n.end} className={({ isActive }) => (isActive ? "active" : "")}>
                 {n.label}
               </NavLink>
             ),
@@ -306,9 +391,104 @@ export function Header() {
         </nav>
       </div>
 
+      {/* Camada fixa do tamanho da viewport que CLIPA o drawer fora da tela.
+          Necessária porque o drawer é position:fixed e `overflow:clip` no <html>
+          não clipa elementos fixed → o drawer fechado (translateX(100%)) somava
+          largura fantasma à direita em toda página (cards "comidos" no iOS). */}
+      <div className="h3-drawer-layer" data-open={menuOpen}>
+      <div
+        className="h3-backdrop"
+        data-open={menuOpen}
+        onClick={() => setMenuOpen(false)}
+        aria-hidden="true"
+      />
+      <aside
+        className="h3-drawer"
+        data-open={menuOpen}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Menu de navegação"
+        aria-hidden={!menuOpen}
+        tabIndex={-1}
+        ref={drawerRef}
+      >
+        <div className="h3d-head">
+          <span className="h3d-title">Menu</span>
+          <button
+            className="h3m-icon"
+            type="button"
+            aria-label="Fechar menu"
+            onClick={() => setMenuOpen(false)}
+          >
+            <span className="mi">close</span>
+          </button>
+        </div>
+
+        <GameModes />
+
+        <nav className="h3d-nav" aria-label="Navegação">
+          {NAV.map((n) =>
+            n.soon ? (
+              <button
+                key={n.to}
+                type="button"
+                className="h3d-link soon"
+                onClick={() => showComingSoon(n.soonMsg ?? "Em breve")}
+              >
+                <s>{n.label}</s>
+                <span className="soon-badge">em breve</span>
+              </button>
+            ) : (
+              <NavLink
+                key={n.to}
+                to={n.to}
+                end={n.end}
+                className={({ isActive }) => `h3d-link${isActive ? " active" : ""}`}
+              >
+                {n.label}
+                <span className="mi">chevron_right</span>
+              </NavLink>
+            ),
+          )}
+        </nav>
+
+        <div className="h3d-actions">
+          <Link className="perfil-gold" to="/leaderboard">
+            <span className="ico" />
+            LEADERBOARD
+          </Link>
+          <Link className="trophy" to="/campeonatos" aria-label="Campeonatos">
+            <span className="mi fill">emoji_events</span>
+            <span className="lbl">Campeonatos</span>
+          </Link>
+          <button
+            className="btn-perfil"
+            type="button"
+            onClick={() => showComingSoon("Perfil chega em breve")}
+          >
+            PERFIL
+          </button>
+          <button
+            className="btn-entrar"
+            type="button"
+            onClick={() => showComingSoon("Login chega em breve")}
+          >
+            ENTRAR
+          </button>
+        </div>
+
+        <div className="h3d-region">
+          <span className="mi">public</span>
+          Região <b>BR</b>
+        </div>
+      </aside>
+      </div>
+
       {toast && (
         <div className="h3-toast" role="status" aria-live="polite">
-          <span className="mi fill" aria-hidden="true">construction</span>
+          <span className="mi fill" aria-hidden="true">
+            construction
+          </span>
           {toast}
         </div>
       )}

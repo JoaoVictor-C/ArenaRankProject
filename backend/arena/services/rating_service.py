@@ -275,6 +275,28 @@ class RatingService:
         team_by_player = {p.player_id: p.team_id for p in match.participants}
         premade_by_player = {p.player_id: p.is_premade for p in match.participants}
         party_by_player = {p.player_id: p.party_id for p in match.participants}
+        augments_by_player = {p.player_id: p.augments for p in match.participants}
+        items_by_player = {p.player_id: p.items for p in match.participants}
+        kills_by_player = {p.player_id: p.kills for p in match.participants}
+        deaths_by_player = {p.player_id: p.deaths for p in match.participants}
+        assists_by_player = {p.player_id: p.assists for p in match.participants}
+        damage_to_champions_by_player = {
+            p.player_id: p.damage_to_champions for p in match.participants
+        }
+        gold_earned_by_player = {p.player_id: p.gold_earned for p in match.participants}
+        champion_level_by_player = {p.player_id: p.champion_level for p in match.participants}
+        damage_taken_by_player = {p.player_id: p.damage_taken for p in match.participants}
+        total_heal_by_player = {p.player_id: p.total_heal for p in match.participants}
+        damage_self_mitigated_by_player = {
+            p.player_id: p.damage_self_mitigated for p in match.participants
+        }
+        largest_multi_kill_by_player = {
+            p.player_id: p.largest_multi_kill for p in match.participants
+        }
+        killing_sprees_by_player = {p.player_id: p.killing_sprees for p in match.participants}
+        time_spent_dead_by_player = {
+            p.player_id: p.time_spent_dead for p in match.participants
+        }
 
         # RESTORE POINTS — capturados AQUI, antes do laço abaixo mutar cada
         # ``player_seasons`` in-place. Depois da primeira iteração ``states`` já
@@ -355,6 +377,20 @@ class RatingService:
                     party_id=party_by_player[pr.player_id],
                     modifiers=modifiers_json,
                     state_before=state_before_by_player.get(pr.player_id),
+                    augments=augments_by_player[pr.player_id],
+                    items=items_by_player[pr.player_id],
+                    kills=kills_by_player[pr.player_id],
+                    deaths=deaths_by_player[pr.player_id],
+                    assists=assists_by_player[pr.player_id],
+                    damage_to_champions=damage_to_champions_by_player[pr.player_id],
+                    gold_earned=gold_earned_by_player[pr.player_id],
+                    champion_level=champion_level_by_player[pr.player_id],
+                    damage_taken=damage_taken_by_player[pr.player_id],
+                    total_heal=total_heal_by_player[pr.player_id],
+                    damage_self_mitigated=damage_self_mitigated_by_player[pr.player_id],
+                    largest_multi_kill=largest_multi_kill_by_player[pr.player_id],
+                    killing_sprees=killing_sprees_by_player[pr.player_id],
+                    time_spent_dead=time_spent_dead_by_player[pr.player_id],
                 )
             )
 

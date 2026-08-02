@@ -1,0 +1,630 @@
+{
+  "tierlist": {
+    "updatedAt": "2026-07-30T12:00:00Z",
+    "patch": "MOCK",
+    "region": "br",
+    "format": "3v3",
+    "metric": "top4",
+    "sampleSize": 48210,
+    "tiers": [],
+    "table": [
+      {
+        "rank": 1,
+        "championId": 50,
+        "champion": { "c1": "#8f2d56", "c2": "#241023" },
+        "championIconUrl": null,
+        "name": "Swain",
+        "role": "Mago",
+        "games": 6770,
+        "top4": 74.8,
+        "first": 31.2,
+        "avgPlace": 2.64,
+        "pickRate": 8.4,
+        "banRate": 2.1,
+        "tier": "S+",
+        "winrateDelta": 2.7,
+        "topPlayer": null
+      },
+      {
+        "rank": 2,
+        "championId": 875,
+        "champion": { "c1": "#d1495b", "c2": "#3a0f19" },
+        "championIconUrl": null,
+        "name": "Sett",
+        "role": "Lutador",
+        "games": 6310,
+        "top4": 71.3,
+        "first": 28.6,
+        "avgPlace": 2.82,
+        "pickRate": 7.9,
+        "banRate": 3.2,
+        "tier": "S+",
+        "winrateDelta": 1.4,
+        "topPlayer": null
+      },
+      {
+        "rank": 3,
+        "championId": 10,
+        "champion": { "c1": "#ffd166", "c2": "#6c4b00" },
+        "championIconUrl": null,
+        "name": "Kayle",
+        "role": "Lutador",
+        "games": 5988,
+        "top4": 68.9,
+        "first": 26.8,
+        "avgPlace": 2.96,
+        "pickRate": 7.2,
+        "banRate": 1.7,
+        "tier": "S",
+        "winrateDelta": 0.8,
+        "topPlayer": null
+      },
+      {
+        "rank": 4,
+        "championId": 254,
+        "champion": { "c1": "#ee6c4d", "c2": "#3d1c16" },
+        "championIconUrl": null,
+        "name": "Vi",
+        "role": "Lutador",
+        "games": 5574,
+        "top4": 66.7,
+        "first": 25.4,
+        "avgPlace": 3.08,
+        "pickRate": 6.8,
+        "banRate": 1.3,
+        "tier": "S",
+        "winrateDelta": 1.9,
+        "topPlayer": null
+      },
+      {
+        "rank": 5,
+        "championId": 267,
+        "champion": { "c1": "#48cae4", "c2": "#023e8a" },
+        "championIconUrl": null,
+        "name": "Nami",
+        "role": "Suporte",
+        "games": 5211,
+        "top4": 64.2,
+        "first": 23.6,
+        "avgPlace": 3.19,
+        "pickRate": 6.1,
+        "banRate": 0.8,
+        "tier": "A",
+        "winrateDelta": -0.4,
+        "topPlayer": null
+      },
+      {
+        "rank": 6,
+        "championId": 222,
+        "champion": { "c1": "#00b4d8", "c2": "#7209b7" },
+        "championIconUrl": null,
+        "name": "Jinx",
+        "role": "Atirador",
+        "games": 4897,
+        "top4": 62.5,
+        "first": 22.1,
+        "avgPlace": 3.27,
+        "pickRate": 5.8,
+        "banRate": 1.6,
+        "tier": "A",
+        "winrateDelta": 0.5,
+        "topPlayer": null
+      },
+      {
+        "rank": 7,
+        "championId": 238,
+        "champion": { "c1": "#adb5bd", "c2": "#212529" },
+        "championIconUrl": null,
+        "name": "Zed",
+        "role": "Assassino",
+        "games": 4610,
+        "top4": 60.3,
+        "first": 21.8,
+        "avgPlace": 3.34,
+        "pickRate": 5.5,
+        "banRate": 4.2,
+        "tier": "A",
+        "winrateDelta": -1.1,
+        "topPlayer": null
+      },
+      {
+        "rank": 8,
+        "championId": 54,
+        "champion": { "c1": "#8d99ae", "c2": "#2b2d42" },
+        "championIconUrl": null,
+        "name": "Malphite",
+        "role": "Tanque",
+        "games": 4392,
+        "top4": 58.7,
+        "first": 20.4,
+        "avgPlace": 3.42,
+        "pickRate": 5.1,
+        "banRate": 1.9,
+        "tier": "B",
+        "winrateDelta": 0.2,
+        "topPlayer": null
+      },
+      {
+        "rank": 9,
+        "championId": 157,
+        "champion": { "c1": "#90e0ef", "c2": "#264653" },
+        "championIconUrl": null,
+        "name": "Yasuo",
+        "role": "Lutador",
+        "games": 4120,
+        "top4": 57.4,
+        "first": 19.7,
+        "avgPlace": 3.48,
+        "pickRate": 4.9,
+        "banRate": 3.8,
+        "tier": "B",
+        "winrateDelta": -0.7,
+        "topPlayer": null
+      },
+      {
+        "rank": 10,
+        "championId": 777,
+        "champion": { "c1": "#80ffdb", "c2": "#22577a" },
+        "championIconUrl": null,
+        "name": "Yone",
+        "role": "Assassino",
+        "games": 3896,
+        "top4": 55.9,
+        "first": 18.5,
+        "avgPlace": 3.56,
+        "pickRate": 4.6,
+        "banRate": 3.1,
+        "tier": "B",
+        "winrateDelta": 1.2,
+        "topPlayer": null
+      },
+      {
+        "rank": 11,
+        "championId": 17,
+        "champion": { "c1": "#95d5b2", "c2": "#1b4332" },
+        "championIconUrl": null,
+        "name": "Teemo",
+        "role": "Atirador",
+        "games": 3644,
+        "top4": 53.6,
+        "first": 17.2,
+        "avgPlace": 3.67,
+        "pickRate": 4.3,
+        "banRate": 5.4,
+        "tier": "C",
+        "winrateDelta": -1.8,
+        "topPlayer": null
+      },
+      {
+        "rank": 12,
+        "championId": 35,
+        "champion": { "c1": "#c77dff", "c2": "#3c096c" },
+        "championIconUrl": null,
+        "name": "Shaco",
+        "role": "Assassino",
+        "games": 3412,
+        "top4": 51.8,
+        "first": 16.4,
+        "avgPlace": 3.75,
+        "pickRate": 4.0,
+        "banRate": 6.2,
+        "tier": "C",
+        "winrateDelta": -0.9,
+        "topPlayer": null
+      }
+    ]
+  },
+  "mains": {
+    "championId": 50,
+    "name": "Swain",
+    "championIconUrl": null,
+    "players": [
+      {
+        "name": "Corvo Rubro",
+        "handle": "#MOCK",
+        "avatar": { "c1": "#d90429", "c2": "#2b2d42" },
+        "profileIconUrl": null,
+        "games": 148,
+        "winrate": 78.4,
+        "avgPlace": 2.31
+      },
+      {
+        "name": "ArenaLab",
+        "handle": "#BR1",
+        "avatar": { "c1": "#00b4d8", "c2": "#03045e" },
+        "profileIconUrl": null,
+        "games": 122,
+        "winrate": 74.6,
+        "avgPlace": 2.48
+      },
+      {
+        "name": "Top Half",
+        "handle": "#3V3",
+        "avatar": { "c1": "#ffd166", "c2": "#7f4f24" },
+        "profileIconUrl": null,
+        "games": 111,
+        "winrate": 71.2,
+        "avgPlace": 2.59
+      },
+      {
+        "name": "Meta Reader",
+        "handle": "#MOCK",
+        "avatar": { "c1": "#80ffdb", "c2": "#22577a" },
+        "profileIconUrl": null,
+        "games": 94,
+        "winrate": 68.1,
+        "avgPlace": 2.76
+      },
+      {
+        "name": "Fila Flex",
+        "handle": "#LAB",
+        "avatar": { "c1": "#c77dff", "c2": "#3c096c" },
+        "profileIconUrl": null,
+        "games": 80,
+        "winrate": 65.0,
+        "avgPlace": 2.88
+      }
+    ]
+  },
+  "build": {
+    "championId": 50,
+    "name": "Swain",
+    "championIconUrl": null,
+    "patch": "MOCK",
+    "updatedAt": "2026-07-30T12:00:00Z",
+    "games": 6770,
+    "avgPlace": 2.64,
+    "tier": "S+",
+    "top1": 31.2,
+    "top4": 74.8,
+    "minGames": 20,
+    "augments": {
+      "prismatic": [
+        {
+          "id": 9001,
+          "name": "Sinfonia de Guerra",
+          "iconUrl": null,
+          "tier": "S+",
+          "games": 1304,
+          "avgPlace": 2.52,
+          "top1": 34.8,
+          "top4": 76.3,
+          "pickRate": 19.3,
+          "rarity": "prismatic"
+        },
+        {
+          "id": 9002,
+          "name": "Alma Infernal",
+          "iconUrl": null,
+          "tier": "S",
+          "games": 1108,
+          "avgPlace": 2.67,
+          "top1": 31.4,
+          "top4": 72.8,
+          "pickRate": 16.4,
+          "rarity": "prismatic"
+        }
+      ],
+      "gold": [
+        {
+          "id": 9011,
+          "name": "Golias",
+          "iconUrl": null,
+          "tier": "S",
+          "games": 986,
+          "avgPlace": 2.71,
+          "top1": 29.9,
+          "top4": 71.6,
+          "pickRate": 14.6,
+          "rarity": "gold"
+        },
+        {
+          "id": 9012,
+          "name": "Soco Místico",
+          "iconUrl": null,
+          "tier": "A",
+          "games": 822,
+          "avgPlace": 2.89,
+          "top1": 27.1,
+          "top4": 68.2,
+          "pickRate": 12.1,
+          "rarity": "gold"
+        }
+      ],
+      "silver": [
+        {
+          "id": 9021,
+          "name": "Queimadura Lenta",
+          "iconUrl": null,
+          "tier": "A",
+          "games": 774,
+          "avgPlace": 2.94,
+          "top1": 25.8,
+          "top4": 66.9,
+          "pickRate": 11.4,
+          "rarity": "silver"
+        },
+        {
+          "id": 9022,
+          "name": "Persistência",
+          "iconUrl": null,
+          "tier": "B",
+          "games": 698,
+          "avgPlace": 3.08,
+          "top1": 23.4,
+          "top4": 64.0,
+          "pickRate": 10.3,
+          "rarity": "silver"
+        }
+      ]
+    },
+    "items": [
+      {
+        "id": 9101,
+        "name": "Tormenta de Liandry",
+        "iconUrl": null,
+        "tier": "S+",
+        "games": 3880,
+        "avgPlace": 2.61,
+        "top1": 32.0,
+        "top4": 75.1,
+        "pickRate": 57.3
+      },
+      {
+        "id": 9102,
+        "name": "Cetro de Cristal de Rylai",
+        "iconUrl": null,
+        "tier": "S",
+        "games": 3408,
+        "avgPlace": 2.73,
+        "top1": 29.7,
+        "top4": 72.4,
+        "pickRate": 50.3
+      },
+      {
+        "id": 9103,
+        "name": "Criptoflora",
+        "iconUrl": null,
+        "tier": "A",
+        "games": 2711,
+        "avgPlace": 2.92,
+        "top1": 26.2,
+        "top4": 67.8,
+        "pickRate": 40.0
+      },
+      {
+        "id": 9104,
+        "name": "Abraço Demoníaco",
+        "iconUrl": null,
+        "tier": "A",
+        "games": 2480,
+        "avgPlace": 2.97,
+        "top1": 25.4,
+        "top4": 66.1,
+        "pickRate": 36.6
+      }
+    ],
+    "boots": [
+      {
+        "id": 9201,
+        "name": "Sapatos do Feiticeiro",
+        "iconUrl": null,
+        "tier": "S",
+        "games": 4110,
+        "avgPlace": 2.79,
+        "top1": 28.7,
+        "top4": 70.8,
+        "pickRate": 60.7
+      },
+      {
+        "id": 9202,
+        "name": "Passos de Mercúrio",
+        "iconUrl": null,
+        "tier": "A",
+        "games": 1890,
+        "avgPlace": 2.96,
+        "top1": 25.2,
+        "top4": 66.4,
+        "pickRate": 27.9
+      }
+    ],
+    "teammates": [
+      {
+        "championId": 267,
+        "name": "Nami",
+        "championIconUrl": null,
+        "colors": { "c1": "#48cae4", "c2": "#023e8a" },
+        "tier": "S+",
+        "games": 710,
+        "avgPlace": 2.48,
+        "top1": 35.1,
+        "top4": 78.7,
+        "pickRate": 10.5
+      },
+      {
+        "championId": 875,
+        "name": "Sett",
+        "championIconUrl": null,
+        "colors": { "c1": "#d1495b", "c2": "#3a0f19" },
+        "tier": "S",
+        "games": 644,
+        "avgPlace": 2.66,
+        "top1": 31.0,
+        "top4": 73.9,
+        "pickRate": 9.5
+      },
+      {
+        "championId": 54,
+        "name": "Malphite",
+        "championIconUrl": null,
+        "colors": { "c1": "#8d99ae", "c2": "#2b2d42" },
+        "tier": "A",
+        "games": 590,
+        "avgPlace": 2.83,
+        "top1": 28.2,
+        "top4": 69.1,
+        "pickRate": 8.7
+      }
+    ]
+  },
+  "topBuild": {
+    "updatedAt": "2026-07-30T12:00:00Z",
+    "patch": "MOCK",
+    "games": 48210,
+    "champions": 12,
+    "minGames": 20,
+    "augments": [
+      {
+        "id": 9301,
+        "name": "Manopla Adornada",
+        "iconUrl": null,
+        "tier": "S+",
+        "games": 6420,
+        "avgPlace": 2.72,
+        "top1": 30.4,
+        "top4": 71.8,
+        "pickRate": 13.3,
+        "rarity": "prismatic"
+      },
+      {
+        "id": 9302,
+        "name": "Golias",
+        "iconUrl": null,
+        "tier": "S",
+        "games": 5740,
+        "avgPlace": 2.84,
+        "top1": 28.7,
+        "top4": 69.4,
+        "pickRate": 11.9,
+        "rarity": "gold"
+      },
+      {
+        "id": 9303,
+        "name": "Ataque Duplo",
+        "iconUrl": null,
+        "tier": "S",
+        "games": 5210,
+        "avgPlace": 2.89,
+        "top1": 27.9,
+        "top4": 68.7,
+        "pickRate": 10.8,
+        "rarity": "gold"
+      },
+      {
+        "id": 9304,
+        "name": "Motor de Tanque",
+        "iconUrl": null,
+        "tier": "A",
+        "games": 4480,
+        "avgPlace": 3.01,
+        "top1": 25.2,
+        "top4": 65.3,
+        "pickRate": 9.3,
+        "rarity": "silver"
+      },
+      {
+        "id": 9305,
+        "name": "Soco Místico",
+        "iconUrl": null,
+        "tier": "A",
+        "games": 3910,
+        "avgPlace": 3.08,
+        "top1": 24.1,
+        "top4": 63.8,
+        "pickRate": 8.1,
+        "rarity": "gold"
+      },
+      {
+        "id": 9306,
+        "name": "Condutor Infernal",
+        "iconUrl": null,
+        "tier": "A",
+        "games": 3420,
+        "avgPlace": 3.12,
+        "top1": 23.7,
+        "top4": 62.9,
+        "pickRate": 7.1,
+        "rarity": "prismatic"
+      },
+      {
+        "id": 9307,
+        "name": "Eureca",
+        "iconUrl": null,
+        "tier": "B",
+        "games": 2980,
+        "avgPlace": 3.26,
+        "top1": 21.3,
+        "top4": 59.8,
+        "pickRate": 6.2,
+        "rarity": "gold"
+      },
+      {
+        "id": 9308,
+        "name": "Agouro",
+        "iconUrl": null,
+        "tier": "B",
+        "games": 2640,
+        "avgPlace": 3.34,
+        "top1": 20.0,
+        "top4": 57.6,
+        "pickRate": 5.5,
+        "rarity": "silver"
+      }
+    ],
+    "items": []
+  },
+  "synergyGroups": {
+    "updatedAt": "2026-07-30T12:00:00Z",
+    "season": 1,
+    "format": "3v3",
+    "size": 3,
+    "sampleSize": 2840,
+    "minGames": 20,
+    "groups": [
+      {
+        "champions": [
+          { "championId": 50, "name": "Swain", "championIconUrl": null, "colors": { "c1": "#8f2d56", "c2": "#241023" } },
+          { "championId": 875, "name": "Sett", "championIconUrl": null, "colors": { "c1": "#d1495b", "c2": "#3a0f19" } },
+          { "championId": 267, "name": "Nami", "championIconUrl": null, "colors": { "c1": "#48cae4", "c2": "#023e8a" } }
+        ],
+        "games": 804,
+        "winRate": 77.2,
+        "firstRate": 36.8,
+        "avgPlace": 2.43
+      },
+      {
+        "champions": [
+          { "championId": 54, "name": "Malphite", "championIconUrl": null, "colors": { "c1": "#8d99ae", "c2": "#2b2d42" } },
+          { "championId": 157, "name": "Yasuo", "championIconUrl": null, "colors": { "c1": "#90e0ef", "c2": "#264653" } },
+          { "championId": 777, "name": "Yone", "championIconUrl": null, "colors": { "c1": "#80ffdb", "c2": "#22577a" } }
+        ],
+        "games": 742,
+        "winRate": 72.4,
+        "firstRate": 32.1,
+        "avgPlace": 2.68
+      },
+      {
+        "champions": [
+          { "championId": 10, "name": "Kayle", "championIconUrl": null, "colors": { "c1": "#ffd166", "c2": "#6c4b00" } },
+          { "championId": 222, "name": "Jinx", "championIconUrl": null, "colors": { "c1": "#00b4d8", "c2": "#7209b7" } },
+          { "championId": 254, "name": "Vi", "championIconUrl": null, "colors": { "c1": "#ee6c4d", "c2": "#3d1c16" } }
+        ],
+        "games": 680,
+        "winRate": 69.8,
+        "firstRate": 29.7,
+        "avgPlace": 2.89
+      },
+      {
+        "champions": [
+          { "championId": 17, "name": "Teemo", "championIconUrl": null, "colors": { "c1": "#95d5b2", "c2": "#1b4332" } },
+          { "championId": 35, "name": "Shaco", "championIconUrl": null, "colors": { "c1": "#c77dff", "c2": "#3c096c" } },
+          { "championId": 238, "name": "Zed", "championIconUrl": null, "colors": { "c1": "#adb5bd", "c2": "#212529" } }
+        ],
+        "games": 614,
+        "winRate": 66.5,
+        "firstRate": 27.4,
+        "avgPlace": 3.07
+      }
+    ]
+  }
+}
