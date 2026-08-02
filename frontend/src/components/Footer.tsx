@@ -33,7 +33,7 @@ export function Footer() {
           <ul>
             <li><Link to="/sistema">Como o CR funciona</Link></li>
             <li><Link to="/sistema">Integridade</Link></li>
-            <li><Link to="/winrate">Champ Winrate</Link></li>
+            <li><Link to="/campeoes">Campeões</Link></li>
             <li><Link to="/leaderboard">Status</Link></li>
           </ul>
         </div>

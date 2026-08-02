@@ -1,5 +1,5 @@
 /* ============================================================
-   Winrate.tsx — Central de Campeões (/winrate · aba WINRATE)
+   Winrate.tsx — Central de Campeões (/campeoes · aba CAMPEÕES)
    Recriação do mock "Champ Winrate" (mundo handoff): board de 3
    colunas — DETALHE do campeão selecionado (esq.) · tabela
    sortável de CAMPEÕES com chips de classe + delta 7d (centro) ·
@@ -728,7 +728,7 @@ export function Winrate() {
         <section className="wr-col-table" aria-label="Ranking de campeões">
           <div className="wr-toolbar">
             <h1 className="wr-title">
-              Winrate de Campeões <span>· Arena</span>
+              Campeões <span>· Arena</span>
             </h1>
             <div className="wr-search">
               <Mi name="search" />

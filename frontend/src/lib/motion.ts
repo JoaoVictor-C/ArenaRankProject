@@ -1,6 +1,6 @@
 /* ============================================================
    motion.ts — o ÚNICO ponto de entrada de movimento do cluster de
-   campeões (/winrate · /campeao · /augments · /sinergias).
+   campeões (/campeoes · /campeao · /augments · /sinergias).
 
    Régua (frontend/.impeccable/motion-brief.md): movimento aqui é
    explicação, não enfeite. Vocabulário fechado de durações/easings;

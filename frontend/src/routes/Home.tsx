@@ -68,7 +68,7 @@ const HOME_PORTALS = [
     label: "Campeões",
     title: "Leia o meta antes da fila.",
     description: "Primeiro lugar, pick rate e colocação média lado a lado.",
-    to: "/winrate",
+    to: "/campeoes",
     cta: "Analisar campeões",
   },
   {
@@ -583,7 +583,7 @@ export function Home() {
                 Compare quem transforma presença em primeiro lugar antes de
                 escolher sua próxima composição.
               </p>
-              <Link to="/winrate">Abrir análise completa <Mi name="arrow_outward" /></Link>
+              <Link to="/campeoes">Abrir análise completa <Mi name="arrow_outward" /></Link>
             </div>
           </div>
 
@@ -597,7 +597,7 @@ export function Home() {
             {topChamps.map((champ) => (
               <Link
                 className="home-meta__specimen"
-                to="/winrate"
+                to="/campeoes"
                 key={champ.rank}
               >
                 <span className="home-meta__identity">

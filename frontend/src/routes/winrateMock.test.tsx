@@ -140,7 +140,7 @@ const fixture = {
 };
 
 beforeEach(() => {
-  window.history.replaceState({}, "", "/winrate?mock=1");
+  window.history.replaceState({}, "", "/campeoes?mock=1");
   Object.values(apiMocks).forEach((mock) => {
     mock.mockReset();
     mock.mockRejectedValue(new Error("A API real não deve ser chamada no mock."));
@@ -163,7 +163,7 @@ afterEach(() => {
 });
 
 describe("Winrate — dados mockados", () => {
-  it("renderiza todos os painéis de /winrate?mock=1 sem consultar a API real", async () => {
+  it("renderiza todos os painéis de /campeoes?mock=1 sem consultar a API real", async () => {
     const queryClient = new QueryClient({
       defaultOptions: { queries: { retry: false } },
     });
@@ -171,7 +171,7 @@ describe("Winrate — dados mockados", () => {
     render(
       <QueryClientProvider client={queryClient}>
         <MemoryRouter
-          initialEntries={["/winrate?mock=1"]}
+          initialEntries={["/campeoes?mock=1"]}
           future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
         >
           <Winrate />

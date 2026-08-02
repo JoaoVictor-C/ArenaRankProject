@@ -142,7 +142,7 @@ export function ChampionOtps() {
 
       <div className="otp-shell">
         <nav className="otp-crumb" aria-label="Navegação estrutural">
-          <Link to="/winrate">Campeões</Link>
+          <Link to="/campeoes">Campeões</Link>
           <Mi name="chevron_right" />
           {validId ? <Link to={`/campeao/${id}`}>{name}</Link> : <span>Campeão inválido</span>}
           <Mi name="chevron_right" />

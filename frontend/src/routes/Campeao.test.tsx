@@ -196,12 +196,12 @@ describe("Campeao", () => {
       </MemoryRouter>,
     );
 
-    expect(screen.getByText("Carregando força por round…")).toBeTruthy();
+    expect(screen.getByText("Carregando força por estágio…")).toBeTruthy();
     expect(screen.getByText("Carregando histórico diário…")).toBeTruthy();
     expect(screen.getByText("últimos 15 dias")).toBeTruthy();
     expect(screen.getByText("Carregando confrontos…")).toBeTruthy();
     expect(screen.getByText("Carregando variantes de build…")).toBeTruthy();
-    expect(screen.queryByText(/ingestão de rounds está em preparação/i)).toBeNull();
+    expect(screen.queryByText(/ainda sem amostra suficiente/i)).toBeNull();
     expect(screen.queryByText(/histórico diário ainda curto/i)).toBeNull();
 
     const heroMetrics = Array.from(container.querySelectorAll(".cmp-k-v"));

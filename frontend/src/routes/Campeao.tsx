@@ -558,7 +558,7 @@ const RARITY_OF: Record<string, Rarity> = { prismatic: "prism", gold: "gold", si
 
 /** A arte colorida do augment é a `_large`; a `_small` do CDragon é a versão
     chapada (foi o que fazia todos os tiles lerem como brancos). Degrada para
-    a `_small` se a grande não existir — mesmo par usado no /winrate. */
+    a `_small` se a grande não existir — mesmo par usado no /campeoes. */
 function AugArt({ url }: { url?: string | null }) {
   const large = url?.replace("_small.png", "_large.png") ?? null;
   const [failedLarge, setFailedLarge] = useState(false);
@@ -583,7 +583,7 @@ function AugTile({ entry, rarity, size }: { entry: BuildEntry; rarity: Rarity; s
 }
 
 /** `BuildEntry` -> dados do popup de hover (`BuildHoverIcon`, mesmo padrão
-    do /winrate e /augments — ver Winrate.tsx's buildHoverData). */
+    do /campeoes e /augments — ver Winrate.tsx's buildHoverData). */
 function buildHoverData(e: BuildEntry): BuildHoverData {
   return {
     name: e.name,
@@ -665,7 +665,7 @@ function MatchupTile({ f, unit }: { f: Face; unit: string }) {
 /** O tile do meio: a saída para a lista inteira, no lugar do 6º campeão. */
 function FullListTile() {
   return (
-    <Link to="/winrate" className="cmp-mtile cmp-mtile-more">
+    <Link to="/campeoes" className="cmp-mtile cmp-mtile-more">
       <Mi name="apps" />
       <small>Lista completa</small>
     </Link>
@@ -1009,9 +1009,9 @@ export function Campeao() {
 
       <main className="cmp-wrap">
         <nav className="cmp-crumb" aria-label="Trilha">
-          <Link to="/winrate">Winrate</Link>
+          <Link to="/campeoes">Campeões</Link>
           <Mi name="chevron_right" />
-          <Link to="/winrate">Arena 3v3</Link>
+          <Link to="/campeoes">Arena 3v3</Link>
           <Mi name="chevron_right" />
           <b>{name}</b>
         </nav>

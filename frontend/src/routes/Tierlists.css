@@ -544,7 +544,7 @@
   color: var(--wr-faint);
 }
 
-/* faces de campeão (mesma linguagem do /winrate) */
+/* faces de campeão (mesma linguagem do /campeoes) */
 .tl-face {
   position: relative;
   width: 38px;

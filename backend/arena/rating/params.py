@@ -12,7 +12,15 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from math import isfinite
 
-from .caps import CAPS_8, SYMMETRIC_CAPS_6, CapParams
+from .caps import (
+    CAPS_8,
+    LOSS_CAPS_6,
+    LOSS_CAPS_8,
+    MIN_GAIN_6,
+    MIN_GAIN_8,
+    SYMMETRIC_CAPS_6,
+    CapParams,
+)
 
 
 def _renorm(weights: list[float]) -> list[float]:
@@ -105,10 +113,19 @@ class RatingParams:
 # gains use the symmetric placement table (peak 40, mismatch override → ~50); losses
 # decoupled to a flat ~P95 clamp (68) so losses stay painful (mean ≈ raw −59) AND the
 # cap does not inflate (mean cr_delta +3.7, below the +4.2 baseline). See pdl-cap-layer.
+#
+# 2026-08-02 tail shaping: the flat 68 clamp is replaced by a position-relative loss
+# curve, and top-half placements gain a minimum payout. Both bind only below ~P5, so
+# the median player's numbers are unchanged — see the measured table in caps.py.
+# Motivation: players queued with much stronger friends were seeing +8 for a 1st and
+# -37 for a 4th (the Plackett-Luce expectation effect), which reads as a punishment
+# for playing with friends rather than as a rating signal.
 DEFAULT_PARAMS = RatingParams(
     caps=CapParams(
         base_cap_by_placement={**SYMMETRIC_CAPS_6, **CAPS_8},
-        loss_clamp=68.0,
+        loss_clamp=68.0,  # fallback only; superseded by loss_cap_by_placement below
+        loss_cap_by_placement={**LOSS_CAPS_6, **LOSS_CAPS_8},
+        min_gain_by_placement={**MIN_GAIN_6, **MIN_GAIN_8},
     )
 )
 

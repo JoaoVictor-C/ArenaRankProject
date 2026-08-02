@@ -169,7 +169,7 @@ export const api = {
     return get<ChampionSynergyResponse>(`/champions/synergy${qs(opts)}`);
   },
 
-  /** Sinergia de subteams (trios por padrão) por winrate — rail do /winrate. */
+  /** Sinergia de subteams (trios por padrão) por winrate — rail do /campeoes. */
   championSynergyGroups(
     opts: { format?: string; season?: number; size?: number; limit?: number } = {},
   ): Promise<ChampionSynergyGroupResponse> {
@@ -244,7 +244,7 @@ export const api = {
     return get<ChampionBuildResponse>(`/champions/${championId}/build`);
   },
 
-  /** Top global de augments/itens do patch (rail do /winrate). */
+  /** Top global de augments/itens do patch (rail do /campeoes). */
   topBuild(): Promise<TopBuildResponse> {
     return get<TopBuildResponse>(`/champions/build/top`);
   },

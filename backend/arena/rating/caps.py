@@ -45,6 +45,36 @@ ASYMMETRIC_CAPS_6: dict[int, list[float]] = {6: [40.0, 34.0, 28.0, 22.0, 34.0, 4
 # Duos (8 teams) — symmetric.
 CAPS_8: dict[int, list[float]] = {8: [40.0, 35.0, 28.0, 22.0, 22.0, 28.0, 35.0, 40.0]}
 
+# --- Tail shaping for the "strong player in a weak lobby" case (2026-08-02) ----
+#
+# Measured on 7d of production (99,909 rows per placement, trios):
+#   placement | p05   | median | p95   |    <- the TYPICAL player is fine:
+#      1      | +22.3 | +37.9  | +41.3 |       1st ≈ +38, 4th is already POSITIVE.
+#      4      |  -4.6 |  +5.6  | +16.5 |
+#      6      | -68.0 | -47.9  | -20.6 |
+#
+# The pain reported by players (e.g. +8 for a 1st, -37 for a 4th) is NOT the
+# global curve — it is the Plackett-Luce EXPECTATION effect in the tail: a player
+# queued with much stronger friends is expected to win, so a win teaches the model
+# almost nothing (tiny gain) while a 4th place is a big surprise (large loss).
+# Both of the curves below therefore bind ONLY below the 5th percentile — they
+# reshape the tail and leave the median player's numbers untouched.
+
+# LOSS caps, per placement (1-indexed), replacing the flat `loss_clamp`. The flat
+# clamp made a near-miss 4th and a dead-last 6th share one ceiling (-68), which
+# dropped the position-relative loss shaping that Trinity R1 actually asked for.
+# 6th keeps -68 (median -47.9 unchanged); 4th is bounded at -30 so only the
+# expectation-driven tail is pulled in. Top-half entries are inert (the gain
+# floor below keeps a top-half placement net-positive, per Trinity R4).
+LOSS_CAPS_6: dict[int, list[float]] = {6: [30.0, 30.0, 30.0, 30.0, 45.0, 68.0]}
+LOSS_CAPS_8: dict[int, list[float]] = {8: [30.0, 30.0, 30.0, 30.0, 30.0, 42.0, 55.0, 68.0]}
+
+# GAIN floors, per placement (1-indexed). Trinity R4: "a good placement must
+# ALWAYS be net-positive" — this makes that invariant literal instead of merely
+# usually-true. Only top-half placements carry a floor; 0.0 means "no floor".
+MIN_GAIN_6: dict[int, list[float]] = {6: [15.0, 10.0, 5.0, 0.0, 0.0, 0.0]}
+MIN_GAIN_8: dict[int, list[float]] = {8: [15.0, 11.0, 7.0, 4.0, 0.0, 0.0, 0.0, 0.0]}
+
 
 @dataclass(frozen=True, slots=True)
 class CapParams:
@@ -68,7 +98,14 @@ class CapParams:
     # asymmetric loss option: when set, the loss bound is a flat -loss_clamp (·composite_loss)
     # instead of the mirror of the placement table. Decouples "painful loss" from the
     # gain cap (resolves the symmetric-vs-painful spec tension; ~P95 keeps losses near raw).
+    # Superseded by `loss_cap_by_placement` when that is set (kept for season configs
+    # / tests that still pin the flat behavior).
     loss_clamp: float | None = None
+    # Position-relative LOSS caps (magnitude, 1-indexed by placement). Takes
+    # precedence over `loss_clamp`; falls back to the mirror table when neither set.
+    loss_cap_by_placement: dict[int, list[float]] | None = None
+    # Position-relative minimum GAIN (Trinity R4). 0.0 / missing => no floor.
+    min_gain_by_placement: dict[int, list[float]] | None = None
 
 
 def mismatch_override(
@@ -111,9 +148,26 @@ def cap_bounds(
     if base is None or not (1 <= placement <= len(base)):
         return (float("-inf"), float("inf"))
     c_win = base[placement - 1] * composite_win
-    loss_mag = cp.loss_clamp if cp.loss_clamp is not None else base[team_count - placement]
-    c_loss = -loss_mag * composite_loss  # mirror table, or flat loss_clamp if set
+    # Precedence: position-relative loss curve > flat loss_clamp > mirror of the
+    # gain table. The mirror stays the fallback so an unconfigured season keeps
+    # the original symmetric contract.
+    loss_curve = (cp.loss_cap_by_placement or {}).get(team_count)
+    if loss_curve is not None and len(loss_curve) == len(base):
+        loss_mag = loss_curve[placement - 1]
+    elif cp.loss_clamp is not None:
+        loss_mag = cp.loss_clamp
+    else:
+        loss_mag = base[team_count - placement]
+    c_loss = -loss_mag * composite_loss
     return (c_loss, c_win)
+
+
+def min_gain(placement: int, team_count: int, cp: CapParams) -> float:
+    """Minimum PDL a placement must pay out (0.0 when no floor is configured)."""
+    curve = (cp.min_gain_by_placement or {}).get(team_count)
+    if curve is None or not (1 <= placement <= len(curve)):
+        return 0.0
+    return curve[placement - 1]
 
 
 def apply_pdl_cap(
@@ -124,12 +178,22 @@ def apply_pdl_cap(
     composite_win: float,
     composite_loss: float,
     cp: CapParams,
+    gain_floor_mult: float = 1.0,
 ) -> tuple[float, bool]:
-    """Clamp a raw cr_delta to the placement-relative PDL bounds.
+    """Clamp a raw cr_delta to the placement-relative PDL bounds, then apply the
+    minimum-gain floor for good placements.
 
-    Returns (capped_delta, clamped) where `clamped` is True iff the raw value exceeded
-    a bound.
+    ``gain_floor_mult`` (0..1) scales the floor down; the engine passes
+    ``1 - boosting_penalty_factor`` so a flagged booster cannot be handed a free
+    floor by a rule meant to protect honest players.
+
+    Returns (adjusted_delta, changed) where `changed` is True iff the raw value was
+    moved by either the cap or the floor.
     """
     lo, hi = cap_bounds(placement, team_count, composite_win, composite_loss, cp)
     capped = _clamp(cr_delta_raw, lo, hi)
-    return capped, (cr_delta_raw < lo or cr_delta_raw > hi)
+    floor = min_gain(placement, team_count, cp) * _clamp(gain_floor_mult, 0.0, 1.0)
+    if floor > 0.0:
+        # Never let the floor exceed this placement's own gain ceiling.
+        capped = max(capped, min(floor, hi))
+    return capped, (capped != cr_delta_raw)

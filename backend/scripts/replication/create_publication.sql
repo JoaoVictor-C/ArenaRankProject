@@ -10,7 +10,13 @@
 --   champion_stats                            tierlist/mains/OTP
 --   tournaments, tournament_teams,
 --   tournament_matches                        superfície /tournaments
---   champion_build_ref                        /champions/{id}/build + /champions/build/top
+--   champion_build_stats                      /champions/{id}/build + /build/top + /builds
+--                                              (substituiu champion_build_ref — tabela
+--                                              removida pela migração 0020, augment/item
+--                                              picks nativos agora)
+--   champion_versus_stats                     /champions/{id}/matchups?kind=versus
+--   champion_build_variant_stats               /champions/{id}/builds (variantes por
+--                                              augment prismático)
 --   cr_snapshots_recent                       delta7d (espelho plano da T2.3)
 --   champion_daily_stats                      tierlist /champions + trend + delta7d (B1/B2)
 --   season_record_cache                       /meta/records materializado
@@ -43,7 +49,9 @@ CREATE PUBLICATION arena_read
         tournaments,
         tournament_teams,
         tournament_matches,
-        champion_build_ref,
+        champion_build_stats,
+        champion_versus_stats,
+        champion_build_variant_stats,
         cr_snapshots_recent,
         champion_daily_stats,
         season_record_cache,

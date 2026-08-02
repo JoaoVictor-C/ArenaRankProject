@@ -28,7 +28,7 @@ export function SmoothScroll({ children }: { children: ReactNode }) {
 
       refreshRef.current = () => motion.ScrollTrigger.refresh();
       media = motion.gsap.matchMedia();
-      // Acima do maior limiar de layout estreito do app (o bottom sheet de /winrate
+      // Acima do maior limiar de layout estreito do app (o bottom sheet de /campeoes
       // vive em `max-width: 1080px`). O #smooth-content é transformado, e transform
       // faz `position: fixed` descendente se comportar como `absolute` — cruzar os
       // dois limiares deixaria o sheet rolando junto com a página.

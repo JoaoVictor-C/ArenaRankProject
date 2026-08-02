@@ -42,7 +42,7 @@ export function App() {
           <Route path="/campeonatos/:id" element={<Campeonatos />} />
           <Route path="/campeonatos2" element={<Campeonatos2 />} />
           <Route path="/campeonatos2/:id" element={<Campeonatos2 />} />
-          <Route path="/winrate" element={<Winrate />} />
+          <Route path="/campeoes" element={<Winrate />} />
           <Route path="/campeao/:championId" element={<Campeao />} />
           <Route path="/campeao/:championId/otps" element={<ChampionOtps />} />
           <Route path="/augments" element={<Augments />} />

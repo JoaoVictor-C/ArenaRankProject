@@ -15,7 +15,7 @@ const ROUTE_MESSAGES: Array<[prefix: string, message: string]> = [
   ["/leaderboard", "Carregando tabela do Arena"],
   ["/campeonatos", "Carregando campeonatos do Arena"],
   ["/campeonatos2", "Carregando campeonatos do Arena"],
-  ["/winrate", "Carregando estatísticas de campeões"],
+  ["/campeoes", "Carregando estatísticas de campeões"],
   ["/campeao", "Carregando dados do campeão"],
   ["/augments", "Carregando catálogo de augments"],
   ["/sinergias", "Carregando sinergias do Arena"],

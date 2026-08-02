@@ -1095,7 +1095,7 @@ export function Leaderboard() {
             {format === "3v3" ? "Trios" : "Duos"} ·{" "}
             {data ? nf(data.total) : "…"} jogadores ranqueados nesta temporada
           </div>
-          <Link className="lb-otp-entry" to="/winrate">
+          <Link className="lb-otp-entry" to="/campeoes">
             <Mi name="workspace_premium" />
             OTPs por campeão
             <Mi name="arrow_forward" />

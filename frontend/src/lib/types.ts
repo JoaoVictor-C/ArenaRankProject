@@ -541,7 +541,7 @@ export interface ChampionAugments {
   gold: BuildEntry[];
   silver: BuildEntry[];
 }
-/** Top global de augments/itens do patch (rail do /winrate). Ordem = games
+/** Top global de augments/itens do patch (rail do /campeoes). Ordem = games
     desc ("em alta"); tier = bucket por colocação média ponderada; pickRate =
     fatia dos games da categoria (0..100). */
 export interface TopBuildResponse {

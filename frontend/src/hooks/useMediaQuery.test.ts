@@ -1,4 +1,4 @@
-/* useMediaQuery — o gate do bottom sheet do /winrate (≤1080px).
+/* useMediaQuery — o gate do bottom sheet do /campeoes (≤1080px).
    jsdom não tem matchMedia: mock com controle manual do estado + listeners. */
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { renderHook, act } from "@testing-library/react";

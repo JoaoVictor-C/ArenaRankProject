@@ -153,6 +153,8 @@ def rate(match: MatchInput) -> RatingResult:
                     composite_win=comp_win,
                     composite_loss=1.0,
                     cp=cp,
+                    # A flagged booster must not collect the minimum-gain floor.
+                    gain_floor_mult=1.0 - max(0.0, min(1.0, pt.boosting_penalty_factor)),
                 )
                 if clamped:
                     cr_after = s.cr + capped_delta

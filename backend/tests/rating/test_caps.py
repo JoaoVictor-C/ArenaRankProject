@@ -132,3 +132,79 @@ def test_composite_win_mult_clamped_to_ceiling(cp: CapParams) -> None:
 def test_composite_win_mult_clamped_to_floor(cp: CapParams) -> None:
     # ovr 1.0 * scf 0.30 * party 1.0 = 0.30 -> clamp up to floor 0.5
     assert composite_win_mult(1.0, 0.30, 1.0, cp) == pytest.approx(0.5)
+
+
+# ---- tail shaping: position-relative loss caps + minimum gain (2026-08-02) ---
+
+
+def _tail_cp() -> CapParams:
+    """The shipped DEFAULT_PARAMS cap config (both new curves active)."""
+    from arena.rating.params import DEFAULT_PARAMS
+
+    assert DEFAULT_PARAMS.caps is not None
+    return DEFAULT_PARAMS.caps
+
+
+def test_loss_curve_takes_precedence_over_flat_clamp() -> None:
+    """A near-miss 4th must NOT share the dead-last ceiling (Trinity R1)."""
+    cp = _tail_cp()
+    lo_4th, _ = cap_bounds(4, 6, 1.0, 1.0, cp)
+    lo_6th, _ = cap_bounds(6, 6, 1.0, 1.0, cp)
+    assert lo_4th == pytest.approx(-30.0)
+    assert lo_6th == pytest.approx(-68.0)  # bottom stays as painful as before
+    assert lo_4th > lo_6th
+
+
+def test_fourth_place_blowout_is_pulled_to_the_curve() -> None:
+    """The reported -37 at 4th (strong player, weak lobby) lands on -30."""
+    cp = _tail_cp()
+    out, changed = apply_pdl_cap(
+        -37.4, 4, 6, composite_win=0.75, composite_loss=1.0, cp=cp
+    )
+    assert out == pytest.approx(-30.0)
+    assert changed
+
+
+def test_minimum_gain_floor_lifts_a_hollow_win() -> None:
+    """+7.6 for a 1st place is floored to the placement minimum (Trinity R4)."""
+    cp = _tail_cp()
+    out, changed = apply_pdl_cap(
+        7.6, 1, 6, composite_win=0.75, composite_loss=1.0, cp=cp
+    )
+    assert out == pytest.approx(15.0)
+    assert changed
+
+
+def test_top_half_placement_is_never_net_negative() -> None:
+    """A 2nd place that computed NEGATIVE becomes positive (Trinity R4 made literal)."""
+    cp = _tail_cp()
+    out, _ = apply_pdl_cap(-8.9, 2, 6, composite_win=0.75, composite_loss=1.0, cp=cp)
+    assert out == pytest.approx(10.0)
+
+
+def test_healthy_gain_is_left_alone() -> None:
+    """The floor must not touch a player already earning above it."""
+    cp = _tail_cp()
+    out, changed = apply_pdl_cap(
+        25.5, 1, 6, composite_win=0.75, composite_loss=1.0, cp=cp
+    )
+    assert out == pytest.approx(25.5)
+    assert not changed
+
+
+def test_flagged_booster_gets_no_free_floor() -> None:
+    """gain_floor_mult=0 (fully flagged) must disable the minimum-gain payout."""
+    cp = _tail_cp()
+    out, _ = apply_pdl_cap(
+        0.0, 1, 6, composite_win=0.75, composite_loss=1.0, cp=cp, gain_floor_mult=0.0
+    )
+    assert out == pytest.approx(0.0)
+
+
+def test_floor_never_exceeds_the_placement_gain_ceiling() -> None:
+    """With a crushed composite the floor is capped by hi, not paid in full."""
+    cp = _tail_cp()
+    # composite_win 0.5 (floor) -> hi = 26 * 0.5 = 13.0 for a 3rd place; floor is 5.
+    _, hi = cap_bounds(3, 6, 0.5, 1.0, cp)
+    out, _ = apply_pdl_cap(0.0, 3, 6, composite_win=0.5, composite_loss=1.0, cp=cp)
+    assert out <= hi + 1e-9

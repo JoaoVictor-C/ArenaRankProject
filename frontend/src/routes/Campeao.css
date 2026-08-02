@@ -1,7 +1,7 @@
 /* ============================================================
    Campeao.css — página do campeão (/campeao/:id)
    Mundo "handoff" ESCOPADO à página (.cmp-page), mesmo bloco de
-   tokens do /winrate: palco quase-preto, luz ambiente + poeira suspensa,
+   tokens do /campeoes: palco quase-preto, luz ambiente + poeira suspensa,
    rampa de 6 tiers colorida, accent roxo. Não toca os tokens
    globais — o resto do site segue no mundo azul/ouro.
    ============================================================ */

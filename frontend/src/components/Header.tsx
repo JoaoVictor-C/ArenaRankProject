@@ -25,8 +25,8 @@ const NAV: { to: string; label: string; end: boolean; soon?: boolean; soonMsg?: 
   { to: "/leaderboard", label: "LEADERBOARD", end: false },
   { to: "/duo", label: "ACHE SEU DUO", end: false, soon: true, soonMsg: "Ache seu Duo chega em breve" },
   { to: "/campeonatos", label: "CAMPEONATOS", end: false, soon: true, soonMsg: "Campeonatos chegam em breve" },
-  { to: "/winrate", label: "WINRATE", end: false },
-  // Mesmo gate do WINRATE de propósito: os três formam um cluster só (campeões
+  { to: "/campeoes", label: "CAMPEÕES", end: false },
+  // Mesmo gate do CAMPEÕES de propósito: os três formam um cluster só (campeões
   // → augments → sinergias). Abrir um sem os outros deixa a navegação manca.
   { to: "/augments", label: "AUGMENTS", end: false },
   { to: "/sinergias", label: "SINERGIAS", end: false },

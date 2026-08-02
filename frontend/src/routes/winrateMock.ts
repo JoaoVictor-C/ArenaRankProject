@@ -22,7 +22,7 @@ export function isWinrateMockOn(): boolean {
   return (
     import.meta.env.DEV &&
     typeof window !== "undefined" &&
-    window.location.pathname === "/winrate" &&
+    window.location.pathname === "/campeoes" &&
     new URLSearchParams(window.location.search).get("mock") === "1"
   );
 }
