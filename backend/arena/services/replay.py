@@ -132,6 +132,16 @@ async def rebuild_raw_matches(
 
     # Uma consulta para TODOS os participantes da janela, agrupada em memória —
     # o rerate antigo fazia um SELECT por partida (71k round-trips).
+    #
+    # JOIN em matches filtrado pelas MESMAS condições acima, não
+    # ``match_id.in_([...])`` — um piso de replay velho (dias de ingestão
+    # contínua sem consumo) pode cobrir dezenas de milhares de partidas, e o
+    # asyncpg/Postgres rejeita uma prepared statement com mais de 32767
+    # parâmetros (visto em produção: ``InterfaceError: the number of query
+    # arguments cannot exceed 32767`` — 85k partidas / 150k jogadores na janela
+    # travada, todo tick subsequente falhava e o piso nunca era consumido). O
+    # JOIN não tem esse teto: o filtro é por season_id/played_at, não por uma
+    # lista de IDs materializada em parâmetros.
     part_rows = (
         await session.execute(
             select(
@@ -157,7 +167,13 @@ async def rebuild_raw_matches(
                 m.MatchParticipant.largest_multi_kill,
                 m.MatchParticipant.killing_sprees,
                 m.MatchParticipant.time_spent_dead,
-            ).where(m.MatchParticipant.match_id.in_([r.id for r in match_rows]))
+            )
+            .select_from(
+                m.MatchParticipant.__table__.join(
+                    m.Match.__table__, m.Match.__table__.c.id == m.MatchParticipant.match_id
+                )
+            )
+            .where(*conds)
         )
     ).all()
     by_match: dict[Any, list[Any]] = {}
@@ -253,13 +269,27 @@ async def restore_states_at(
             f"(ex.: {missing[:3]}); rode um rerate de temporada inteira primeiro"
         )
 
+    # Subquery, não ``player_id.in_([lista materializada])``: a mesma janela
+    # travada que estourou o teto de 32767 parâmetros em ``rebuild_raw_matches``
+    # (ver o comentário lá) tem 150k+ jogadores distintos aqui — um por linha de
+    # ``rows``. O subquery é avaliado no servidor; não materializa um parâmetro
+    # por jogador.
+    players_in_window = (
+        select(m.MatchParticipant.player_id.distinct())
+        .select_from(
+            m.MatchParticipant.__table__.join(
+                m.Match.__table__, m.Match.__table__.c.id == m.MatchParticipant.match_id
+            )
+        )
+        .where(m.Match.__table__.c.season_id == season_id, m.MatchParticipant.played_at >= since)
+    )
     states = {
         str(ps.player_id): ps
         for ps in (
             await session.execute(
                 select(m.PlayerSeason).where(
                     m.PlayerSeason.season_id == season_id,
-                    m.PlayerSeason.player_id.in_([r.player_id for r in rows]),
+                    m.PlayerSeason.player_id.in_(players_in_window),
                 )
             )
         ).scalars()

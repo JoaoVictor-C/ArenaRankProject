@@ -27,13 +27,88 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import time
+from typing import Any
 
 from sqlalchemy import select, text
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
+from arena.core.config import settings
 from arena.db import models as m
-from arena.db.session import get_sessionmaker
 from arena.services.protocols import IntegrityVerdict, RawMatch, RawParticipant
 from arena.services.rating_service import RatingService
+
+
+def _get_sessionmaker() -> async_sessionmaker[AsyncSession]:
+    """Direct-to-Postgres engine, deliberately separate from
+    ``arena.db.session.get_engine()``.
+
+    The shared engine sets ``connect_args={"statement_cache_size": 0}``
+    because the API tier goes through PgBouncer in *transaction* mode, where
+    a prepared statement can silently outlive the physical connection it was
+    prepared on. This script always opens one long-lived session straight
+    against Postgres (or a session-mode pooler) — never a tx-mode pooler —
+    so that restriction doesn't apply, and disabling asyncpg's client-side
+    statement cache is pure cost here: every query pays a full extra
+    parse+describe round trip instead of reusing the cached plan. Measured
+    locally (Docker Desktop networking) that's the difference between
+    ~0.6ms and ~44ms per query — with ~8-10 queries per match in the replay
+    write path, THAT was the ~1 match/sec bottleneck, not disk/fsync.
+    """
+    engine = create_async_engine(settings.database_url, echo=False, pool_pre_ping=True)
+    return async_sessionmaker(bind=engine, class_=AsyncSession, expire_on_commit=False, autoflush=False)
+
+
+class Progress:
+    """Time-boxed progress reporter for a long, single-threaded loop.
+
+    Prints at most once per ``min_interval_s`` (never more often, so a fast
+    phase doesn't spam), but ALWAYS ``flush=True`` — without it, Python
+    line-buffers stdout when it isn't a TTY (i.e. whenever output is piped or
+    redirected to a file, which is exactly how a long background run gets
+    watched), so nothing appears until the process exits. That silence is
+    indistinguishable from a hang from the outside.
+    """
+
+    def __init__(self, total: int, label: str, min_interval_s: float = 3.0) -> None:
+        self.total = total
+        self.label = label
+        self.min_interval_s = min_interval_s
+        self.start = time.monotonic()
+        self._last_print = 0.0
+        self._last_done = 0
+
+    def tick(self, done: int, *, force: bool = False) -> None:
+        now = time.monotonic()
+        if not force and (now - self._last_print) < self.min_interval_s:
+            return
+        elapsed = now - self.start
+        # Rate over the whole run so far — steady per-match cost here (no
+        # network/rate-limit bursts like live ingestion has), so this is a
+        # more stable ETA than a short rolling window would give.
+        rate = done / elapsed if elapsed > 0 else 0.0
+        remaining = self.total - done
+        eta_s = remaining / rate if rate > 0 else float("inf")
+        pct = 100 * done / self.total if self.total else 100.0
+        print(
+            f"  [{self.label}] {done}/{self.total} ({pct:.1f}%) "
+            f"| {rate:.2f}/s | elapsed {_fmt_hms(elapsed)} | ETA {_fmt_hms(eta_s)}",
+            flush=True,
+        )
+        self._last_print = now
+        self._last_done = done
+
+    def done(self, done: int) -> None:
+        self.tick(done, force=True)
+
+
+def _fmt_hms(seconds: float) -> str:
+    if seconds == float("inf"):
+        return "?"
+    seconds = int(seconds)
+    h, rem = divmod(seconds, 3600)
+    mnt, s = divmod(rem, 60)
+    return f"{h}h{mnt:02d}m{s:02d}s" if h else f"{mnt}m{s:02d}s"
 
 
 class _Clean:
@@ -105,7 +180,7 @@ async def main() -> None:
     ap.add_argument("--season", default=None, help="season UUID (default: active, else first)")
     args = ap.parse_args()
 
-    factory = get_sessionmaker()
+    factory = _get_sessionmaker()
     async with factory() as s:
         if args.season:
             season_id = args.season
@@ -133,35 +208,64 @@ async def main() -> None:
             )
         ).all()
 
-        replay: list[tuple[RawMatch, set[str]]] = []
-        for mr in match_rows:
-            parts = (
-                await s.execute(
-                    select(
-                        m.MatchParticipant.player_id,
-                        m.MatchParticipant.champion_id,
-                        m.MatchParticipant.team_id,
-                        m.MatchParticipant.placement,
-                        m.MatchParticipant.eligible,
-                        m.MatchParticipant.is_premade,
-                        m.MatchParticipant.party_id,
-                        m.MatchParticipant.augments,
-                        m.MatchParticipant.items,
-                        m.MatchParticipant.kills,
-                        m.MatchParticipant.deaths,
-                        m.MatchParticipant.assists,
-                        m.MatchParticipant.damage_to_champions,
-                        m.MatchParticipant.gold_earned,
-                        m.MatchParticipant.champion_level,
-                        m.MatchParticipant.damage_taken,
-                        m.MatchParticipant.total_heal,
-                        m.MatchParticipant.damage_self_mitigated,
-                        m.MatchParticipant.largest_multi_kill,
-                        m.MatchParticipant.killing_sprees,
-                        m.MatchParticipant.time_spent_dead,
-                    ).where(m.MatchParticipant.match_id == mr.id)
+        print(f"season={season_id}", flush=True)
+        print(f"reconstructing replay set from {len(match_rows)} matches ...", flush=True)
+
+        # ONE bulk scan of match_participants for the whole season, grouped by
+        # match_id in memory, instead of one query per match. match_participants
+        # is HASH-partitioned by player_id and matches is range-partitioned by
+        # time — a plain (non-self-join) scan across that partition mismatch is
+        # the known-safe pattern here (see StatsService.rebuild_champion_versus'
+        # docstring for the self-join catastrophe this avoids); a per-match
+        # round trip x83k was the actual bottleneck, not this join shape.
+        print("  bulk-fetching participants ...", flush=True)
+        t_fetch = time.monotonic()
+        all_parts = (
+            await s.execute(
+                select(
+                    m.MatchParticipant.match_id,
+                    m.MatchParticipant.player_id,
+                    m.MatchParticipant.champion_id,
+                    m.MatchParticipant.team_id,
+                    m.MatchParticipant.placement,
+                    m.MatchParticipant.eligible,
+                    m.MatchParticipant.is_premade,
+                    m.MatchParticipant.party_id,
+                    m.MatchParticipant.augments,
+                    m.MatchParticipant.items,
+                    m.MatchParticipant.kills,
+                    m.MatchParticipant.deaths,
+                    m.MatchParticipant.assists,
+                    m.MatchParticipant.damage_to_champions,
+                    m.MatchParticipant.gold_earned,
+                    m.MatchParticipant.champion_level,
+                    m.MatchParticipant.damage_taken,
+                    m.MatchParticipant.total_heal,
+                    m.MatchParticipant.damage_self_mitigated,
+                    m.MatchParticipant.largest_multi_kill,
+                    m.MatchParticipant.killing_sprees,
+                    m.MatchParticipant.time_spent_dead,
                 )
-            ).all()
+                .select_from(m.MatchParticipant.__table__.join(
+                    m.Match.__table__, m.Match.__table__.c.id == m.MatchParticipant.match_id
+                ))
+                .where(m.Match.__table__.c.season_id == season_id)
+            )
+        ).all()
+        parts_by_match: dict[object, list[Any]] = {}
+        for row in all_parts:
+            parts_by_match.setdefault(row.match_id, []).append(row)
+        print(
+            f"  bulk-fetch done: {len(all_parts)} rows in {_fmt_hms(time.monotonic() - t_fetch)}",
+            flush=True,
+        )
+
+        reconstruct_progress = Progress(len(match_rows), "reconstruct")
+
+        replay: list[tuple[RawMatch, set[str]]] = []
+        for i, mr in enumerate(match_rows, start=1):
+            reconstruct_progress.tick(i)
+            parts = parts_by_match.get(mr.id, [])
             if not parts:
                 continue
             ineligible = {str(p.player_id) for p in parts if p.eligible is False}
@@ -207,21 +311,22 @@ async def main() -> None:
                 duration_seconds=mr.duration_seconds,
             )
             replay.append((raw, ineligible))
+        reconstruct_progress.done(len(match_rows))
 
-        print(f"season={season_id}")
         print(
             f"replay set: {len(replay)} matches, "
-            f"{sum(len(r.participants) for r, _ in replay)} participations"
+            f"{sum(len(r.participants) for r, _ in replay)} participations",
+            flush=True,
         )
-        print("BEFORE:")
-        print(await _distribution(s, season_id))
+        print("BEFORE:", flush=True)
+        print(await _distribution(s, season_id), flush=True)
 
         if not args.apply:
-            print("\n[dry-run] no changes. Re-run with --apply to wipe+rebuild.")
+            print("\n[dry-run] no changes. Re-run with --apply to wipe+rebuild.", flush=True)
             return
 
         # 2) Wipe derived state for the season (facts in matches/players are kept).
-        print("\n[apply] wiping derived rating state ...")
+        print("\n[apply] wiping derived rating state ...", flush=True)
         await s.execute(text("DELETE FROM cr_snapshots WHERE season_id=:s"), {"s": season_id})
         await s.execute(text("DELETE FROM champion_stats WHERE season_id=:s"), {"s": season_id})
         await s.execute(
@@ -237,20 +342,22 @@ async def main() -> None:
             {"s": season_id},
         )
         await s.commit()
+        print("[apply] wipe complete — replaying ...", flush=True)
 
         # 3) Replay through the canonical write path (commits per match).
         svc = RatingService(_Clean(set()))
+        replay_progress = Progress(len(replay), "replay")
         done = 0
         for raw, ineligible in replay:
             svc._integrity = _Clean(ineligible)
             await svc.process_match(s, _noop_lock, raw)
             done += 1
-            if done % 25 == 0:
-                print(f"  re-rated {done}/{len(replay)}")
+            replay_progress.tick(done)
 
-        print(f"\n[apply] done: re-rated {done} matches")
-        print("AFTER:")
-        print(await _distribution(s, season_id))
+        replay_progress.done(done)
+        print(f"\n[apply] done: re-rated {done} matches", flush=True)
+        print("AFTER:", flush=True)
+        print(await _distribution(s, season_id), flush=True)
 
 
 if __name__ == "__main__":
