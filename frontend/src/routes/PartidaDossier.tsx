@@ -453,6 +453,8 @@ export function PartidaDossierView({
           placement={selectedTeam.placement}
           premade={focusedPlayer.premade ?? false}
           crDelta={focusedPlayer.crDelta}
+          matchId={dossier.detail.matchId}
+          riotId={focusedPlayer.riotId}
         />
       </section>
 

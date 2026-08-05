@@ -1361,6 +1361,8 @@ function HistRow({
               placement={match.place}
               premade={match.premade}
               crDelta={match.crDelta}
+              matchId={match.matchId}
+              riotId={profileRiotId}
             />
           )}
 

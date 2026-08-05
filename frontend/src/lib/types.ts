@@ -138,6 +138,82 @@ export interface Modifier {
   pdlImpact?: number;
   icon: string;
 }
+
+/* ---------- Raio-X do resultado (GET /match/{matchId}/pdl/{riotId}) ----------
+   "ver cálculo completo" — o detalhamento total e reconciliável do PDL de um
+   jogador numa partida. Buscado sob demanda (não vem junto do detalhe/histórico). */
+export type PdlFidelity = "exato" | "derivado" | "parcial";
+export type PdlCapRule = "nenhum" | "teto_ganho" | "teto_perda" | "piso_ganho";
+
+export interface PdlLedgerEntry {
+  kind: string;
+  label: string;
+  icon: string;
+  /** Valor inteiro exibido — a coluna de `pdl` sempre soma exatamente `totalPdl`. */
+  pdl: number;
+  pdlExact: number;
+  multiplierPct?: number | null;
+  runningTotal: number;
+  exact: boolean;
+  note?: string | null;
+}
+
+export interface PdlCapFactors {
+  mismatchBonusPct?: number | null;
+  highCrReductionPct?: number | null;
+  compositePct?: number | null;
+}
+
+/** Um ponto da curva-base de teto/piso (composto=1.0, sem ajuste de nível/CR) —
+ *  contexto: por que a colocação em si já paga/perde valores diferentes. */
+export interface PdlCurvePoint {
+  placement: number;
+  gainCap: number;
+  lossCap: number;
+  minGain: number;
+}
+
+export interface PdlCap {
+  active: boolean;
+  rule: PdlCapRule;
+  gainCap?: number | null;
+  lossCap?: number | null;
+  minGain?: number | null;
+  rawPdl?: number | null;
+  appliedPdl?: number | null;
+  adjustmentPdl?: number | null;
+  factors: PdlCapFactors;
+  label?: string | null;
+  description?: string | null;
+  placementCurve: PdlCurvePoint[];
+}
+
+/** Resultado de UM participante NESTA MESMA partida — "o que as outras equipes
+ *  ganharam/perderam", lado a lado com o seu próprio resultado. */
+export interface PdlLobbyEntry {
+  riotId: string;
+  name: string;
+  placement: number;
+  crDelta: number;
+  isYou: boolean;
+}
+
+export interface PdlExplanation {
+  fidelity: PdlFidelity;
+  crBefore: number;
+  crAfter: number;
+  totalPdl: number;
+  totalPdlExact: number;
+  placement: number;
+  teamCount: number;
+  entries: PdlLedgerEntry[];
+  cap: PdlCap;
+  reconciles: boolean;
+  residualPdl: number;
+  unrecoverable: string[];
+  summary: string;
+  lobby: PdlLobbyEntry[];
+}
 /* ---------- 2-bis. Histórico paginado (GET /player/{riotId}/matches) ---------- */
 export interface PlayerMatchRich extends PlayerMatch {
   crBefore: number;

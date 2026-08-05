@@ -55,6 +55,14 @@ from arena.schemas.common import (
     TierKey,
     arena_camel,
 )
+from arena.schemas.explain import (
+    PdlCap,
+    PdlCapFactors,
+    PdlCurvePoint,
+    PdlExplanation,
+    PdlLedgerEntry,
+    PdlLobbyEntry,
+)
 from arena.schemas.leaderboard import LeaderboardChampion, LeaderboardResponse, LeaderboardRow
 from arena.schemas.match import (
     MatchAugmentEntry,
@@ -128,6 +136,13 @@ __all__ = [
     "Severity",
     "TierKey",
     "arena_camel",
+    # explain (Raio-X do resultado)
+    "PdlCap",
+    "PdlCapFactors",
+    "PdlCurvePoint",
+    "PdlExplanation",
+    "PdlLedgerEntry",
+    "PdlLobbyEntry",
     # leaderboard
     "LeaderboardChampion",
     "LeaderboardResponse",

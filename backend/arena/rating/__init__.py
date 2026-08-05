@@ -22,9 +22,10 @@ from .modifiers import (
     streak_multiplier,
     to_cr,
 )
-from .params import DEFAULT_PARAMS, RatingParams, validate_params
+from .params import DEFAULT_PARAMS, PARAMS_EPOCH, RatingParams, validate_params
 from .types import (
     AppliedModifiers,
+    CapExplanation,
     MatchInput,
     ParticipantInput,
     PlayerRatingResult,
@@ -38,6 +39,7 @@ __all__ = [
     "to_cr",
     "soft_reset",
     "DEFAULT_PARAMS",
+    "PARAMS_EPOCH",
     "RatingParams",
     "validate_params",
     "placement_weight",
@@ -52,6 +54,7 @@ __all__ = [
     "TeamInput",
     "MatchInput",
     "AppliedModifiers",
+    "CapExplanation",
     "PlayerRatingResult",
     "RatingResult",
 ]

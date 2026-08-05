@@ -129,6 +129,18 @@ DEFAULT_PARAMS = RatingParams(
     )
 )
 
+# Raio-X transparency (arena/rating/explain.py): a discriminator persisted alongside
+# every rated participant (match_participants.modifiers.paramsEpoch) so a legacy row
+# can be reconstructed HONESTLY. The engine always reads DEFAULT_PARAMS from code
+# (never the DB — see backend/CLAUDE.md), so re-deriving an old row's soft_cap_factor
+# / dispersion threshold / cap bounds with TODAY's DEFAULT_PARAMS is only valid if
+# nothing that matters has changed since. Bump this string whenever a change to
+# RatingParams or CapParams' *values* (not just comments) would alter what
+# explain() recomputes for a row rated under the old params — the read path then
+# marks any row with a different (or missing) epoch as reduced-fidelity instead of
+# silently reconstructing a confidently-wrong number.
+PARAMS_EPOCH = "2026-08-02"
+
 
 def validate_params(p: RatingParams) -> None:
     """Zero-dependency guard. Rejects non-finite / out-of-range params (closes Trinity G2).

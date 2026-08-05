@@ -43,6 +43,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from arena.db import models as m
 from arena.rating import (
     DEFAULT_PARAMS,
+    PARAMS_EPOCH,
     MatchInput,
     ParticipantInput,
     PlayerRatingResult,
@@ -606,14 +607,29 @@ def apply_state_before(
     ps.is_provisional = ps.placement_matches_remaining > 0
 
 
+def _finite_or_none(x: float) -> float | None:
+    """``float('inf')``/``float('-inf')`` -> ``None`` (JSON has no Infinity
+    token; Postgres's json/jsonb parser rejects it). Finite values pass through
+    unchanged; NaN (should never occur here) also maps to ``None`` defensively."""
+    from math import isfinite
+
+    return x if isfinite(x) else None
+
+
 def _modifiers_to_json(pr: PlayerRatingResult) -> dict[str, object]:
     """Serialize the engine's AppliedModifiers snapshot for the JSONB column.
 
     Internal analytics shape (mu-space deltas); the API layer remaps to the
     UI-safe ``Modifier`` DTO and never exposes raw mu values.
+
+    The 11 original keys (through ``eligible``) are the pre-Raio-X contract and
+    stay byte-identical for the ~1.5M already-persisted rows. Everything from
+    ``explainVersion`` on is new, additive, CR-space-only input for
+    ``arena/rating/explain.py`` — a row missing these keys (``explainVersion``
+    absent/0) is handled by the read-time reconstruction path, not by a migration.
     """
     mods = pr.modifiers
-    return {
+    out: dict[str, object] = {
         "plBaseDeltaMu": mods.pl_base_delta_mu,
         "placementWeight": mods.placement_weight,
         "placementAmp": mods.placement_amp,
@@ -625,7 +641,37 @@ def _modifiers_to_json(pr: PlayerRatingResult) -> dict[str, object]:
         "finalDeltaMu": mods.final_delta_mu,
         "crDelta": pr.cr_delta,
         "eligible": pr.eligible,
+        "explainVersion": 1,
+        "paramsEpoch": PARAMS_EPOCH,
+        "confidencePdl": pr.confidence_cr,
+        "preCapCrDelta": pr.pre_cap_cr_delta,
+        "teamCount": pr.team_count,
     }
+    if pr.cap is not None:
+        c = pr.cap
+        out["cap"] = {
+            "active": c.active,
+            "bound": c.bound,
+            # JSON has no Infinity token — Postgres's json/jsonb parser rejects
+            # it outright ("invalid input syntax for type json"). cap_bounds()
+            # legitimately returns +-inf as its "no curve configured for this
+            # team_count" sentinel (e.g. a match shape caps.py has no curve
+            # for); null is the correct JSON-safe spelling of "unbounded".
+            "lo": _finite_or_none(c.lo),
+            "hi": _finite_or_none(c.hi),
+            "minGain": c.min_gain,
+            "mismatchOverride": c.mismatch_override,
+            "highCrScale": c.high_cr_scale,
+            "compositeWin": c.composite_win,
+            "compositeLoss": c.composite_loss,
+            "gainFloorMult": c.gain_floor_mult,
+            "teamCount": c.team_count,
+            # lobby_mean_mu is intentionally NOT persisted here: it never needs to
+            # leave the engine (the read path recomputes it from state_before when
+            # reconstructing a legacy row), and mu-space values must not sit in a
+            # JSONB column the API layer could someday serialize by accident.
+        }
+    return out
 
 
 def _to_severity(value: str) -> m.Severity:

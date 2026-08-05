@@ -1,0 +1,1449 @@
+{
+  "duos_boosting_and_party_combo_caps_on": {
+    "players": {
+      "duos_boosting_and_party_combo_caps_on_p0": {
+        "cr_after": 680.7660046866339,
+        "cr_delta": 30.76600468663389,
+        "eligible": true,
+        "is_win": true,
+        "mu_after": 1030.2551581294804,
+        "new_streak": 1,
+        "sigma_after": 199.82971781428216
+      },
+      "duos_boosting_and_party_combo_caps_on_p1": {
+        "cr_after": 680.5399506810345,
+        "cr_delta": 30.539950681034497,
+        "eligible": true,
+        "is_win": true,
+        "mu_after": 1028.3534053327703,
+        "new_streak": 1,
+        "sigma_after": 199.27115155057862
+      },
+      "duos_boosting_and_party_combo_caps_on_p2": {
+        "cr_after": 650.0,
+        "cr_delta": 0.0,
+        "eligible": true,
+        "is_win": true,
+        "mu_after": 1000.0,
+        "new_streak": 1,
+        "sigma_after": 200.0
+      },
+      "duos_boosting_and_party_combo_caps_on_p3": {
+        "cr_after": 659.293960944335,
+        "cr_delta": 9.293960944335026,
+        "eligible": true,
+        "is_win": true,
+        "mu_after": 1004.254520127532,
+        "new_streak": 1,
+        "sigma_after": 198.320186394399
+      },
+      "duos_boosting_and_party_combo_caps_on_p4": {
+        "cr_after": 660.8459543965771,
+        "cr_delta": 10.845954396577099,
+        "eligible": true,
+        "is_win": false,
+        "mu_after": 1005.3770482393563,
+        "new_streak": -1,
+        "sigma_after": 198.1770312809264
+      },
+      "duos_boosting_and_party_combo_caps_on_p5": {
+        "cr_after": 645.6644647045272,
+        "cr_delta": -4.335535295472823,
+        "eligible": true,
+        "is_win": false,
+        "mu_after": 986.6918467710734,
+        "new_streak": -1,
+        "sigma_after": 197.0091273555154
+      },
+      "duos_boosting_and_party_combo_caps_on_p6": {
+        "cr_after": 615.0518195300748,
+        "cr_delta": -34.948180469925205,
+        "eligible": true,
+        "is_win": false,
+        "mu_after": 953.6663864074243,
+        "new_streak": -1,
+        "sigma_after": 196.20485562578318
+      },
+      "duos_boosting_and_party_combo_caps_on_p7": {
+        "cr_after": 582.0,
+        "cr_delta": -68.0,
+        "eligible": true,
+        "is_win": false,
+        "mu_after": 920.6145668773495,
+        "new_streak": -1,
+        "sigma_after": 196.20485562578318
+      }
+    },
+    "voided": false
+  },
+  "duos_fresh_caps_off": {
+    "players": {
+      "duos_fresh_caps_off_p0": {
+        "cr_after": 711.5320093732678,
+        "cr_delta": 61.53200937326778,
+        "eligible": true,
+        "is_win": true,
+        "mu_after": 1060.5103162589608,
+        "new_streak": 1,
+        "sigma_after": 199.65943562856432
+      },
+      "duos_fresh_caps_off_p1": {
+        "cr_after": 699.4422209028812,
+        "cr_delta": 49.44222090288122,
+        "eligible": true,
+        "is_win": true,
+        "mu_after": 1047.255675554617,
+        "new_streak": 1,
+        "sigma_after": 199.27115155057862
+      },
+      "duos_fresh_caps_off_p2": {
+        "cr_after": 688.0535638444502,
+        "cr_delta": 38.053563844450196,
+        "eligible": true,
+        "is_win": true,
+        "mu_after": 1034.5430206761755,
+        "new_streak": 1,
+        "sigma_after": 198.82981894390844
+      },
+      "duos_fresh_caps_off_p3": {
+        "cr_after": 676.3120414544629,
+        "cr_delta": 26.31204145446293,
+        "eligible": true,
+        "is_win": true,
+        "mu_after": 1021.2726006376599,
+        "new_streak": 1,
+        "sigma_after": 198.320186394399
+      },
+      "duos_fresh_caps_off_p4": {
+        "cr_after": 663.5574429957214,
+        "cr_delta": 13.55744299572143,
+        "eligible": true,
+        "is_win": false,
+        "mu_after": 1006.7213102991955,
+        "new_streak": -1,
+        "sigma_after": 197.721289101158
+      },
+      "duos_fresh_caps_off_p5": {
+        "cr_after": 645.6644647045272,
+        "cr_delta": -4.335535295472823,
+        "eligible": true,
+        "is_win": false,
+        "mu_after": 986.6918467710734,
+        "new_streak": -1,
+        "sigma_after": 197.0091273555154
+      },
+      "duos_fresh_caps_off_p6": {
+        "cr_after": 615.0518195300748,
+        "cr_delta": -34.948180469925205,
+        "eligible": true,
+        "is_win": false,
+        "mu_after": 953.6663864074243,
+        "new_streak": -1,
+        "sigma_after": 196.20485562578318
+      },
+      "duos_fresh_caps_off_p7": {
+        "cr_after": 581.3854331226505,
+        "cr_delta": -68.61456687734949,
+        "eligible": true,
+        "is_win": false,
+        "mu_after": 920.0,
+        "new_streak": -1,
+        "sigma_after": 196.20485562578318
+      }
+    },
+    "voided": false
+  },
+  "duos_fresh_caps_on": {
+    "players": {
+      "duos_fresh_caps_on_p0": {
+        "cr_after": 689.9635940325431,
+        "cr_delta": 39.96359403254314,
+        "eligible": true,
+        "is_win": true,
+        "mu_after": 1038.9419009182361,
+        "new_streak": 1,
+        "sigma_after": 199.65943562856432
+      },
+      "duos_fresh_caps_on_p1": {
+        "cr_after": 684.9681447784752,
+        "cr_delta": 34.96814477847522,
+        "eligible": true,
+        "is_win": true,
+        "mu_after": 1032.781599430211,
+        "new_streak": 1,
+        "sigma_after": 199.27115155057862
+      },
+      "duos_fresh_caps_on_p2": {
+        "cr_after": 677.9745158227802,
+        "cr_delta": 27.974515822780177,
+        "eligible": true,
+        "is_win": true,
+        "mu_after": 1024.4639726545056,
+        "new_streak": 1,
+        "sigma_after": 198.82981894390844
+      },
+      "duos_fresh_caps_on_p3": {
+        "cr_after": 671.9799767178987,
+        "cr_delta": 21.979976717898694,
+        "eligible": true,
+        "is_win": true,
+        "mu_after": 1016.9405359010957,
+        "new_streak": 1,
+        "sigma_after": 198.320186394399
+      },
+      "duos_fresh_caps_on_p4": {
+        "cr_after": 663.5574429957214,
+        "cr_delta": 13.55744299572143,
+        "eligible": true,
+        "is_win": false,
+        "mu_after": 1006.7213102991955,
+        "new_streak": -1,
+        "sigma_after": 197.721289101158
+      },
+      "duos_fresh_caps_on_p5": {
+        "cr_after": 645.6644647045272,
+        "cr_delta": -4.335535295472823,
+        "eligible": true,
+        "is_win": false,
+        "mu_after": 986.6918467710734,
+        "new_streak": -1,
+        "sigma_after": 197.0091273555154
+      },
+      "duos_fresh_caps_on_p6": {
+        "cr_after": 615.0518195300748,
+        "cr_delta": -34.948180469925205,
+        "eligible": true,
+        "is_win": false,
+        "mu_after": 953.6663864074243,
+        "new_streak": -1,
+        "sigma_after": 196.20485562578318
+      },
+      "duos_fresh_caps_on_p7": {
+        "cr_after": 582.0,
+        "cr_delta": -68.0,
+        "eligible": true,
+        "is_win": false,
+        "mu_after": 920.6145668773495,
+        "new_streak": -1,
+        "sigma_after": 196.20485562578318
+      }
+    },
+    "voided": false
+  },
+  "duos_kitchen_sink_caps_on": {
+    "players": {
+      "duos_kitchen_sink_caps_on_p0": {
+        "cr_after": 1946.0,
+        "cr_delta": 6.0,
+        "eligible": true,
+        "is_win": true,
+        "mu_after": 1905.9891433067612,
+        "new_streak": 4,
+        "sigma_after": 69.99638110225376
+      },
+      "duos_kitchen_sink_caps_on_p1": {
+        "cr_after": 444.9956803659744,
+        "cr_delta": 34.99568036597441,
+        "eligible": true,
+        "is_win": true,
+        "mu_after": 734.3444165577454,
+        "new_streak": 1,
+        "sigma_after": 179.78291206392367
+      },
+      "duos_kitchen_sink_caps_on_p2": {
+        "cr_after": 1282.0327795387147,
+        "cr_delta": 17.03277953871475,
+        "eligible": true,
+        "is_win": true,
+        "mu_after": 1316.7709215836737,
+        "new_streak": 2,
+        "sigma_after": 94.91271401498632
+      },
+      "duos_kitchen_sink_caps_on_p3": {
+        "cr_after": 650.0,
+        "cr_delta": 0.0,
+        "eligible": false,
+        "is_win": true,
+        "mu_after": 1000.0,
+        "new_streak": 0,
+        "sigma_after": 200.0
+      },
+      "duos_kitchen_sink_caps_on_p4": {
+        "cr_after": 1525.8410099287948,
+        "cr_delta": 5.841009928794847,
+        "eligible": true,
+        "is_win": false,
+        "mu_after": 1604.14399630593,
+        "new_streak": -5,
+        "sigma_after": 109.43432879237841
+      },
+      "duos_kitchen_sink_caps_on_p5": {
+        "cr_after": 391.0455551417632,
+        "cr_delta": 11.045555141763202,
+        "eligible": true,
+        "is_win": false,
+        "mu_after": 411.00315430300185,
+        "new_streak": -1,
+        "sigma_after": 89.98586638707955
+      },
+      "duos_kitchen_sink_caps_on_p6": {
+        "cr_after": 986.4318590355848,
+        "cr_delta": 6.431859035584807,
+        "eligible": true,
+        "is_win": false,
+        "mu_after": 1006.106713069427,
+        "new_streak": -1,
+        "sigma_after": 89.89161801128073
+      },
+      "duos_kitchen_sink_caps_on_p7": {
+        "cr_after": 2225.377180870151,
+        "cr_delta": -44.62281912984918,
+        "eligible": true,
+        "is_win": false,
+        "mu_after": 2155.159973345602,
+        "new_streak": -1,
+        "sigma_after": 59.92759749181705
+      }
+    },
+    "voided": false
+  },
+  "duos_zero_floor_trigger_caps_on": {
+    "players": {
+      "duos_zero_floor_trigger_caps_on_p0": {
+        "cr_after": 0.0,
+        "cr_delta": 40.0,
+        "eligible": true,
+        "is_win": false,
+        "mu_after": 49.73914446656278,
+        "new_streak": -1,
+        "sigma_after": 99.91304815552093
+      },
+      "duos_zero_floor_trigger_caps_on_p1": {
+        "cr_after": 1200.0211059574578,
+        "cr_delta": 20.02110595745785,
+        "eligible": true,
+        "is_win": true,
+        "mu_after": 1219.845104026325,
+        "new_streak": 1,
+        "sigma_after": 89.94133268962243
+      },
+      "duos_zero_floor_trigger_caps_on_p2": {
+        "cr_after": 1195.3692348732584,
+        "cr_delta": 15.369234873258392,
+        "eligible": true,
+        "is_win": true,
+        "mu_after": 1214.9510190339531,
+        "new_streak": 1,
+        "sigma_after": 89.86059472023155
+      },
+      "duos_zero_floor_trigger_caps_on_p3": {
+        "cr_after": 1190.7976513997983,
+        "cr_delta": 10.79765139979827,
+        "eligible": true,
+        "is_win": true,
+        "mu_after": 1210.1003428765428,
+        "new_streak": 1,
+        "sigma_after": 89.76756382558145
+      },
+      "duos_zero_floor_trigger_caps_on_p4": {
+        "cr_after": 1185.8356973936202,
+        "cr_delta": 5.835697393620194,
+        "eligible": true,
+        "is_win": true,
+        "mu_after": 1204.8112039746045,
+        "new_streak": 1,
+        "sigma_after": 89.65850219366145
+      },
+      "duos_zero_floor_trigger_caps_on_p5": {
+        "cr_after": 1179.8306053053743,
+        "cr_delta": -0.16939469462568013,
+        "eligible": true,
+        "is_win": false,
+        "mu_after": 1198.4178367788186,
+        "new_streak": -1,
+        "sigma_after": 89.52907715781473
+      },
+      "duos_zero_floor_trigger_caps_on_p6": {
+        "cr_after": 1170.2014521650299,
+        "cr_delta": -9.798547834970122,
+        "eligible": true,
+        "is_win": false,
+        "mu_after": 1188.3481242507264,
+        "new_streak": -1,
+        "sigma_after": 89.38222402856549
+      },
+      "duos_zero_floor_trigger_caps_on_p7": {
+        "cr_after": 1148.952537527804,
+        "cr_delta": -31.047462472196003,
+        "eligible": true,
+        "is_win": false,
+        "mu_after": 1167.0268619137692,
+        "new_streak": -1,
+        "sigma_after": 89.358108128655
+      }
+    },
+    "voided": false
+  },
+  "trios_all_ineligible_voided": {
+    "players": {
+      "trios_all_ineligible_voided_p0": {
+        "cr_after": 650.0,
+        "cr_delta": 0.0,
+        "eligible": false,
+        "is_win": true,
+        "mu_after": 1000.0,
+        "new_streak": 0,
+        "sigma_after": 200.0
+      },
+      "trios_all_ineligible_voided_p1": {
+        "cr_after": 650.0,
+        "cr_delta": 0.0,
+        "eligible": false,
+        "is_win": true,
+        "mu_after": 1000.0,
+        "new_streak": 0,
+        "sigma_after": 200.0
+      },
+      "trios_all_ineligible_voided_p2": {
+        "cr_after": 650.0,
+        "cr_delta": 0.0,
+        "eligible": false,
+        "is_win": true,
+        "mu_after": 1000.0,
+        "new_streak": 0,
+        "sigma_after": 200.0
+      },
+      "trios_all_ineligible_voided_p3": {
+        "cr_after": 650.0,
+        "cr_delta": 0.0,
+        "eligible": false,
+        "is_win": false,
+        "mu_after": 1000.0,
+        "new_streak": 0,
+        "sigma_after": 200.0
+      },
+      "trios_all_ineligible_voided_p4": {
+        "cr_after": 650.0,
+        "cr_delta": 0.0,
+        "eligible": false,
+        "is_win": false,
+        "mu_after": 1000.0,
+        "new_streak": 0,
+        "sigma_after": 200.0
+      },
+      "trios_all_ineligible_voided_p5": {
+        "cr_after": 650.0,
+        "cr_delta": 0.0,
+        "eligible": false,
+        "is_win": false,
+        "mu_after": 1000.0,
+        "new_streak": 0,
+        "sigma_after": 200.0
+      }
+    },
+    "voided": true
+  },
+  "trios_boosting_flagged_caps_off": {
+    "players": {
+      "trios_boosting_flagged_caps_off_p0": {
+        "cr_after": 717.6996531518284,
+        "cr_delta": 67.69965315182844,
+        "eligible": true,
+        "is_win": true,
+        "mu_after": 1065.6843933516018,
+        "new_streak": 1,
+        "sigma_after": 199.3282467332578
+      },
+      "trios_boosting_flagged_caps_off_p1": {
+        "cr_after": 687.5408685004397,
+        "cr_delta": 37.54086850043973,
+        "eligible": true,
+        "is_win": true,
+        "mu_after": 1034.26721402309,
+        "new_streak": 1,
+        "sigma_after": 198.90878184088342
+      },
+      "trios_boosting_flagged_caps_off_p2": {
+        "cr_after": 666.6240355785181,
+        "cr_delta": 16.624035578518146,
+        "eligible": true,
+        "is_win": true,
+        "mu_after": 1013.0589480341405,
+        "new_streak": 1,
+        "sigma_after": 198.81163748520746
+      },
+      "trios_boosting_flagged_caps_off_p3": {
+        "cr_after": 653.4577619597982,
+        "cr_delta": 3.4577619597981766,
+        "eligible": true,
+        "is_win": false,
+        "mu_after": 1000.8516705239657,
+        "new_streak": -1,
+        "sigma_after": 199.1313028547225
+      },
+      "trios_boosting_flagged_caps_off_p4": {
+        "cr_after": 617.5363235570727,
+        "cr_delta": -32.463676442927294,
+        "eligible": true,
+        "is_win": false,
+        "mu_after": 967.5363235570727,
+        "new_streak": -1,
+        "sigma_after": 200.0
+      },
+      "trios_boosting_flagged_caps_off_p5": {
+        "cr_after": 584.1524706629058,
+        "cr_delta": -65.84752933709422,
+        "eligible": true,
+        "is_win": false,
+        "mu_after": 920.0,
+        "new_streak": -1,
+        "sigma_after": 195.28250977903141
+      }
+    },
+    "voided": false
+  },
+  "trios_boosting_flagged_caps_on": {
+    "players": {
+      "trios_boosting_flagged_caps_on_p0": {
+        "cr_after": 689.9635940325431,
+        "cr_delta": 39.96359403254314,
+        "eligible": true,
+        "is_win": true,
+        "mu_after": 1037.9483342323165,
+        "new_streak": 1,
+        "sigma_after": 199.3282467332578
+      },
+      "trios_boosting_flagged_caps_on_p1": {
+        "cr_after": 683.9690549276617,
+        "cr_delta": 33.96905492766166,
+        "eligible": true,
+        "is_win": true,
+        "mu_after": 1030.6954004503118,
+        "new_streak": 1,
+        "sigma_after": 198.90878184088342
+      },
+      "trios_boosting_flagged_caps_on_p2": {
+        "cr_after": 666.6240355785181,
+        "cr_delta": 16.624035578518146,
+        "eligible": true,
+        "is_win": true,
+        "mu_after": 1013.0589480341405,
+        "new_streak": 1,
+        "sigma_after": 198.81163748520746
+      },
+      "trios_boosting_flagged_caps_on_p3": {
+        "cr_after": 653.4577619597982,
+        "cr_delta": 3.4577619597981766,
+        "eligible": true,
+        "is_win": false,
+        "mu_after": 1000.8516705239657,
+        "new_streak": -1,
+        "sigma_after": 199.1313028547225
+      },
+      "trios_boosting_flagged_caps_on_p4": {
+        "cr_after": 617.5363235570727,
+        "cr_delta": -32.463676442927294,
+        "eligible": true,
+        "is_win": false,
+        "mu_after": 967.5363235570727,
+        "new_streak": -1,
+        "sigma_after": 200.0
+      },
+      "trios_boosting_flagged_caps_on_p5": {
+        "cr_after": 584.1524706629058,
+        "cr_delta": -65.84752933709422,
+        "eligible": true,
+        "is_win": false,
+        "mu_after": 920.0,
+        "new_streak": -1,
+        "sigma_after": 195.28250977903141
+      }
+    },
+    "voided": false
+  },
+  "trios_dispersion_trigger_caps_off": {
+    "players": {
+      "trios_dispersion_trigger_caps_off_p0": {
+        "cr_after": 2899.9687189528004,
+        "cr_delta": -80.03128104719963,
+        "eligible": true,
+        "is_win": false,
+        "mu_after": 2920.0,
+        "new_streak": -1,
+        "sigma_after": 90.0104270157332
+      },
+      "trios_dispersion_trigger_caps_off_p1": {
+        "cr_after": 106.49233372829775,
+        "cr_delta": 26.49233372829775,
+        "eligible": true,
+        "is_win": true,
+        "mu_after": 126.52941662234679,
+        "new_streak": 1,
+        "sigma_after": 90.01236096468301
+      },
+      "trios_dispersion_trigger_caps_off_p2": {
+        "cr_after": 104.24083235810554,
+        "cr_delta": 24.240832358105536,
+        "eligible": true,
+        "is_win": true,
+        "mu_after": 124.27750068690646,
+        "new_streak": 1,
+        "sigma_after": 90.01222277626698
+      },
+      "trios_dispersion_trigger_caps_off_p3": {
+        "cr_after": 102.88903948712999,
+        "cr_delta": 22.889039487129992,
+        "eligible": true,
+        "is_win": true,
+        "mu_after": 122.92529318756162,
+        "new_streak": 1,
+        "sigma_after": 90.01208456681054
+      },
+      "trios_dispersion_trigger_caps_off_p4": {
+        "cr_after": 102.88599619617906,
+        "cr_delta": 22.885996196179065,
+        "eligible": true,
+        "is_win": false,
+        "mu_after": 122.92183520510099,
+        "new_streak": -1,
+        "sigma_after": 90.0119463363073
+      },
+      "trios_dispersion_trigger_caps_off_p5": {
+        "cr_after": 104.23109225290648,
+        "cr_delta": 24.23109225290648,
+        "eligible": true,
+        "is_win": false,
+        "mu_after": 124.26651650715918,
+        "new_streak": -1,
+        "sigma_after": 90.0118080847509
+      }
+    },
+    "voided": false
+  },
+  "trios_dispersion_trigger_caps_on": {
+    "players": {
+      "trios_dispersion_trigger_caps_on_p0": {
+        "cr_after": 2912.0,
+        "cr_delta": -68.0,
+        "eligible": true,
+        "is_win": false,
+        "mu_after": 2932.0312810471996,
+        "new_streak": -1,
+        "sigma_after": 90.0104270157332
+      },
+      "trios_dispersion_trigger_caps_on_p1": {
+        "cr_after": 106.49233372829775,
+        "cr_delta": 26.49233372829775,
+        "eligible": true,
+        "is_win": true,
+        "mu_after": 126.52941662234679,
+        "new_streak": 1,
+        "sigma_after": 90.01236096468301
+      },
+      "trios_dispersion_trigger_caps_on_p2": {
+        "cr_after": 104.24083235810554,
+        "cr_delta": 24.240832358105536,
+        "eligible": true,
+        "is_win": true,
+        "mu_after": 124.27750068690646,
+        "new_streak": 1,
+        "sigma_after": 90.01222277626698
+      },
+      "trios_dispersion_trigger_caps_on_p3": {
+        "cr_after": 102.88903948712999,
+        "cr_delta": 22.889039487129992,
+        "eligible": true,
+        "is_win": true,
+        "mu_after": 122.92529318756162,
+        "new_streak": 1,
+        "sigma_after": 90.01208456681054
+      },
+      "trios_dispersion_trigger_caps_on_p4": {
+        "cr_after": 102.88599619617906,
+        "cr_delta": 22.885996196179065,
+        "eligible": true,
+        "is_win": false,
+        "mu_after": 122.92183520510099,
+        "new_streak": -1,
+        "sigma_after": 90.0119463363073
+      },
+      "trios_dispersion_trigger_caps_on_p5": {
+        "cr_after": 104.23109225290648,
+        "cr_delta": 24.23109225290648,
+        "eligible": true,
+        "is_win": false,
+        "mu_after": 124.26651650715918,
+        "new_streak": -1,
+        "sigma_after": 90.0118080847509
+      }
+    },
+    "voided": false
+  },
+  "trios_extreme_soft_cap_caps_on": {
+    "players": {
+      "trios_extreme_soft_cap_caps_on_p0": {
+        "cr_after": 5115.0,
+        "cr_delta": 15.0,
+        "eligible": true,
+        "is_win": true,
+        "mu_after": 5015.0674793255275,
+        "new_streak": 1,
+        "sigma_after": 50.02249310850907
+      },
+      "trios_extreme_soft_cap_caps_on_p1": {
+        "cr_after": 1000.3882943495564,
+        "cr_delta": 20.388294349556418,
+        "eligible": true,
+        "is_win": true,
+        "mu_after": 1019.9488388274494,
+        "new_streak": 1,
+        "sigma_after": 89.85351482596433
+      },
+      "trios_extreme_soft_cap_caps_on_p2": {
+        "cr_after": 993.952310756122,
+        "cr_delta": 13.95231075612196,
+        "eligible": true,
+        "is_win": true,
+        "mu_after": 1012.9528634095932,
+        "new_streak": 1,
+        "sigma_after": 89.66685088449042
+      },
+      "trios_extreme_soft_cap_caps_on_p3": {
+        "cr_after": 986.7672426243337,
+        "cr_delta": 6.767242624333676,
+        "eligible": true,
+        "is_win": false,
+        "mu_after": 1005.1025879507812,
+        "new_streak": -1,
+        "sigma_after": 89.44511510881584
+      },
+      "trios_extreme_soft_cap_caps_on_p4": {
+        "cr_after": 975.3496452080864,
+        "cr_delta": -4.650354791913628,
+        "eligible": true,
+        "is_win": false,
+        "mu_after": 992.9346556309492,
+        "new_streak": -1,
+        "sigma_after": 89.19500347428762
+      },
+      "trios_extreme_soft_cap_caps_on_p5": {
+        "cr_after": 947.4503730042254,
+        "cr_delta": -32.54962699577459,
+        "eligible": true,
+        "is_win": false,
+        "mu_after": 965.0353834270883,
+        "new_streak": -1,
+        "sigma_after": 89.19500347428762
+      }
+    },
+    "voided": false
+  },
+  "trios_fresh_caps_off": {
+    "players": {
+      "trios_fresh_caps_off_p0": {
+        "cr_after": 717.6996531518284,
+        "cr_delta": 67.69965315182844,
+        "eligible": true,
+        "is_win": true,
+        "mu_after": 1065.6843933516018,
+        "new_streak": 1,
+        "sigma_after": 199.3282467332578
+      },
+      "trios_fresh_caps_off_p1": {
+        "cr_after": 700.0544913339195,
+        "cr_delta": 50.054491333919486,
+        "eligible": true,
+        "is_win": true,
+        "mu_after": 1045.6896186974532,
+        "new_streak": 1,
+        "sigma_after": 198.54504245451122
+      },
+      "trios_fresh_caps_off_p2": {
+        "cr_after": 683.2480711570363,
+        "cr_delta": 33.24807115703629,
+        "eligible": true,
+        "is_win": true,
+        "mu_after": 1026.117896068281,
+        "new_streak": 1,
+        "sigma_after": 197.6232749704149
+      },
+      "trios_fresh_caps_off_p3": {
+        "cr_after": 663.8310478391927,
+        "cr_delta": 13.831047839192706,
+        "eligible": true,
+        "is_win": false,
+        "mu_after": 1003.4066820958627,
+        "new_streak": -1,
+        "sigma_after": 196.52521141889
+      },
+      "trios_fresh_caps_off_p4": {
+        "cr_after": 631.6887942199785,
+        "cr_delta": -18.31120578002151,
+        "eligible": true,
+        "is_win": false,
+        "mu_after": 967.5363235570727,
+        "new_streak": -1,
+        "sigma_after": 195.28250977903141
+      },
+      "trios_fresh_caps_off_p5": {
+        "cr_after": 584.1524706629058,
+        "cr_delta": -65.84752933709422,
+        "eligible": true,
+        "is_win": false,
+        "mu_after": 920.0,
+        "new_streak": -1,
+        "sigma_after": 195.28250977903141
+      }
+    },
+    "voided": false
+  },
+  "trios_fresh_caps_on": {
+    "players": {
+      "trios_fresh_caps_on_p0": {
+        "cr_after": 689.9635940325431,
+        "cr_delta": 39.96359403254314,
+        "eligible": true,
+        "is_win": true,
+        "mu_after": 1037.9483342323165,
+        "new_streak": 1,
+        "sigma_after": 199.3282467332578
+      },
+      "trios_fresh_caps_on_p1": {
+        "cr_after": 683.9690549276617,
+        "cr_delta": 33.96905492766166,
+        "eligible": true,
+        "is_win": true,
+        "mu_after": 1029.6041822911952,
+        "new_streak": 1,
+        "sigma_after": 198.54504245451122
+      },
+      "trios_fresh_caps_on_p2": {
+        "cr_after": 675.976336121153,
+        "cr_delta": 25.976336121153054,
+        "eligible": true,
+        "is_win": true,
+        "mu_after": 1018.8461610323977,
+        "new_streak": 1,
+        "sigma_after": 197.6232749704149
+      },
+      "trios_fresh_caps_on_p3": {
+        "cr_after": 663.8310478391927,
+        "cr_delta": 13.831047839192706,
+        "eligible": true,
+        "is_win": false,
+        "mu_after": 1003.4066820958627,
+        "new_streak": -1,
+        "sigma_after": 196.52521141889
+      },
+      "trios_fresh_caps_on_p4": {
+        "cr_after": 631.6887942199785,
+        "cr_delta": -18.31120578002151,
+        "eligible": true,
+        "is_win": false,
+        "mu_after": 967.5363235570727,
+        "new_streak": -1,
+        "sigma_after": 195.28250977903141
+      },
+      "trios_fresh_caps_on_p5": {
+        "cr_after": 584.1524706629058,
+        "cr_delta": -65.84752933709422,
+        "eligible": true,
+        "is_win": false,
+        "mu_after": 920.0,
+        "new_streak": -1,
+        "sigma_after": 195.28250977903141
+      }
+    },
+    "voided": false
+  },
+  "trios_high_cr_scale_caps_on": {
+    "players": {
+      "trios_high_cr_scale_caps_on_p0": {
+        "cr_after": 1180.9157104834471,
+        "cr_delta": 30.91571048344713,
+        "eligible": true,
+        "is_win": true,
+        "mu_after": 1230.921977577213,
+        "new_streak": 1,
+        "sigma_after": 100.00208903125532
+      },
+      "trios_high_cr_scale_caps_on_p1": {
+        "cr_after": 1475.2710569867932,
+        "cr_delta": 25.271056986793155,
+        "eligible": true,
+        "is_win": true,
+        "mu_after": 1525.1750213040134,
+        "new_streak": 1,
+        "sigma_after": 99.9679881057401
+      },
+      "trios_high_cr_scale_caps_on_p2": {
+        "cr_after": 1766.0555199762512,
+        "cr_delta": 16.055519976251162,
+        "eligible": true,
+        "is_win": true,
+        "mu_after": 1815.6348579054725,
+        "new_streak": 1,
+        "sigma_after": 99.85977930974042
+      },
+      "trios_high_cr_scale_caps_on_p3": {
+        "cr_after": 2066.8635737558934,
+        "cr_delta": 16.863573755893412,
+        "eligible": true,
+        "is_win": false,
+        "mu_after": 2115.527449064843,
+        "new_streak": -1,
+        "sigma_after": 99.55462510298314
+      },
+      "trios_high_cr_scale_caps_on_p4": {
+        "cr_after": 2344.8164513587485,
+        "cr_delta": -5.183548641251491,
+        "eligible": true,
+        "is_win": false,
+        "mu_after": 2391.3588399446376,
+        "new_streak": -1,
+        "sigma_after": 98.84746286196297
+      },
+      "trios_high_cr_scale_caps_on_p5": {
+        "cr_after": 2582.0,
+        "cr_delta": -68.0,
+        "eligible": true,
+        "is_win": false,
+        "mu_after": 2627.7859115096267,
+        "new_streak": -1,
+        "sigma_after": 98.59530383654219
+      }
+    },
+    "voided": false
+  },
+  "trios_ineligible_mixed_caps_on": {
+    "players": {
+      "trios_ineligible_mixed_caps_on_p0": {
+        "cr_after": 689.9635940325431,
+        "cr_delta": 39.96359403254314,
+        "eligible": true,
+        "is_win": true,
+        "mu_after": 1037.9483342323165,
+        "new_streak": 1,
+        "sigma_after": 199.3282467332578
+      },
+      "trios_ineligible_mixed_caps_on_p1": {
+        "cr_after": 650.0,
+        "cr_delta": 0.0,
+        "eligible": false,
+        "is_win": true,
+        "mu_after": 1000.0,
+        "new_streak": 0,
+        "sigma_after": 200.0
+      },
+      "trios_ineligible_mixed_caps_on_p2": {
+        "cr_after": 675.976336121153,
+        "cr_delta": 25.976336121153054,
+        "eligible": true,
+        "is_win": true,
+        "mu_after": 1018.8461610323977,
+        "new_streak": 1,
+        "sigma_after": 197.6232749704149
+      },
+      "trios_ineligible_mixed_caps_on_p3": {
+        "cr_after": 663.8310478391927,
+        "cr_delta": 13.831047839192706,
+        "eligible": true,
+        "is_win": false,
+        "mu_after": 1003.4066820958627,
+        "new_streak": -1,
+        "sigma_after": 196.52521141889
+      },
+      "trios_ineligible_mixed_caps_on_p4": {
+        "cr_after": 650.0,
+        "cr_delta": 0.0,
+        "eligible": false,
+        "is_win": false,
+        "mu_after": 1000.0,
+        "new_streak": 0,
+        "sigma_after": 200.0
+      },
+      "trios_ineligible_mixed_caps_on_p5": {
+        "cr_after": 584.1524706629058,
+        "cr_delta": -65.84752933709422,
+        "eligible": true,
+        "is_win": false,
+        "mu_after": 920.0,
+        "new_streak": -1,
+        "sigma_after": 195.28250977903141
+      }
+    },
+    "voided": false
+  },
+  "trios_negative_streak_loss_caps_on": {
+    "players": {
+      "trios_negative_streak_loss_caps_on_p0": {
+        "cr_after": 1002.4560238566999,
+        "cr_delta": 22.456023856699858,
+        "eligible": true,
+        "is_win": true,
+        "mu_after": 1022.1111793540293,
+        "new_streak": 1,
+        "sigma_after": 89.88505183244314
+      },
+      "trios_negative_streak_loss_caps_on_p1": {
+        "cr_after": 996.1663619081462,
+        "cr_delta": 16.1663619081462,
+        "eligible": true,
+        "is_win": true,
+        "mu_after": 1015.3803864523621,
+        "new_streak": 1,
+        "sigma_after": 89.73800818140532
+      },
+      "trios_negative_streak_loss_caps_on_p2": {
+        "cr_after": 990.0958519628982,
+        "cr_delta": 10.095851962898223,
+        "eligible": true,
+        "is_win": true,
+        "mu_after": 1008.792004536365,
+        "new_streak": 1,
+        "sigma_after": 89.56538419115559
+      },
+      "trios_negative_streak_loss_caps_on_p3": {
+        "cr_after": 983.0657002686713,
+        "cr_delta": 3.0657002686713213,
+        "eligible": true,
+        "is_win": false,
+        "mu_after": 1001.1467832003955,
+        "new_streak": -5,
+        "sigma_after": 89.36036097724138
+      },
+      "trios_negative_streak_loss_caps_on_p4": {
+        "cr_after": 977.1484769261052,
+        "cr_delta": -2.851523073894782,
+        "eligible": true,
+        "is_win": false,
+        "mu_after": 994.5359153392924,
+        "new_streak": -5,
+        "sigma_after": 89.12914613772907
+      },
+      "trios_negative_streak_loss_caps_on_p5": {
+        "cr_after": 963.3758355488072,
+        "cr_delta": -16.62416445119277,
+        "eligible": true,
+        "is_win": false,
+        "mu_after": 980.7632739619944,
+        "new_streak": -5,
+        "sigma_after": 89.12914613772907
+      }
+    },
+    "voided": false
+  },
+  "trios_party_flagged_caps_on": {
+    "players": {
+      "trios_party_flagged_caps_on_p0": {
+        "cr_after": 689.9635940325431,
+        "cr_delta": 39.96359403254314,
+        "eligible": true,
+        "is_win": true,
+        "mu_after": 1037.9483342323165,
+        "new_streak": 1,
+        "sigma_after": 199.3282467332578
+      },
+      "trios_party_flagged_caps_on_p1": {
+        "cr_after": 683.9690549276617,
+        "cr_delta": 33.96905492766166,
+        "eligible": true,
+        "is_win": true,
+        "mu_after": 1029.6041822911952,
+        "new_streak": 1,
+        "sigma_after": 198.54504245451122
+      },
+      "trios_party_flagged_caps_on_p2": {
+        "cr_after": 667.5773335160677,
+        "cr_delta": 17.57733351606771,
+        "eligible": true,
+        "is_win": true,
+        "mu_after": 1010.4471584273124,
+        "new_streak": 1,
+        "sigma_after": 197.6232749704149
+      },
+      "trios_party_flagged_caps_on_p3": {
+        "cr_after": 660.42436574333,
+        "cr_delta": 10.424365743329986,
+        "eligible": true,
+        "is_win": false,
+        "mu_after": 1000.0,
+        "new_streak": -1,
+        "sigma_after": 196.52521141889
+      },
+      "trios_party_flagged_caps_on_p4": {
+        "cr_after": 631.6887942199785,
+        "cr_delta": -18.31120578002151,
+        "eligible": true,
+        "is_win": false,
+        "mu_after": 967.5363235570727,
+        "new_streak": -1,
+        "sigma_after": 195.28250977903141
+      },
+      "trios_party_flagged_caps_on_p5": {
+        "cr_after": 584.1524706629058,
+        "cr_delta": -65.84752933709422,
+        "eligible": true,
+        "is_win": false,
+        "mu_after": 920.0,
+        "new_streak": -1,
+        "sigma_after": 195.28250977903141
+      }
+    },
+    "voided": false
+  },
+  "trios_positive_streak_win_caps_off": {
+    "players": {
+      "trios_positive_streak_win_caps_off_p0": {
+        "cr_after": 1010.1949366306103,
+        "cr_delta": 30.1949366306103,
+        "eligible": true,
+        "is_win": true,
+        "mu_after": 1029.8500921279397,
+        "new_streak": 5,
+        "sigma_after": 89.88505183244314
+      },
+      "trios_positive_streak_win_caps_off_p1": {
+        "cr_after": 1001.549497166473,
+        "cr_delta": 21.549497166472975,
+        "eligible": true,
+        "is_win": true,
+        "mu_after": 1020.7635217106889,
+        "new_streak": 5,
+        "sigma_after": 89.73800818140532
+      },
+      "trios_positive_streak_win_caps_off_p2": {
+        "cr_after": 993.1730535506259,
+        "cr_delta": 13.173053550625923,
+        "eligible": true,
+        "is_win": true,
+        "mu_after": 1011.8692061240927,
+        "new_streak": 5,
+        "sigma_after": 89.56538419115559
+      },
+      "trios_positive_streak_win_caps_off_p3": {
+        "cr_after": 983.4670743888097,
+        "cr_delta": 3.467074388809692,
+        "eligible": true,
+        "is_win": false,
+        "mu_after": 1001.5481573205338,
+        "new_streak": -1,
+        "sigma_after": 89.36036097724138
+      },
+      "trios_positive_streak_win_caps_off_p4": {
+        "cr_after": 971.6843922653976,
+        "cr_delta": -8.315607734602395,
+        "eligible": true,
+        "is_win": false,
+        "mu_after": 989.0718306785848,
+        "new_streak": -1,
+        "sigma_after": 89.12914613772907
+      },
+      "trios_positive_streak_win_caps_off_p5": {
+        "cr_after": 944.1391095108016,
+        "cr_delta": -35.86089048919837,
+        "eligible": true,
+        "is_win": false,
+        "mu_after": 961.5265479239888,
+        "new_streak": -1,
+        "sigma_after": 89.12914613772907
+      }
+    },
+    "voided": false
+  },
+  "trios_provisional_mix_caps_on": {
+    "players": {
+      "trios_provisional_mix_caps_on_p0": {
+        "cr_after": 1002.4560238566999,
+        "cr_delta": 22.456023856699858,
+        "eligible": true,
+        "is_win": true,
+        "mu_after": 1022.1111793540293,
+        "new_streak": 1,
+        "sigma_after": 89.88505183244314
+      },
+      "trios_provisional_mix_caps_on_p1": {
+        "cr_after": 996.1663619081462,
+        "cr_delta": 16.1663619081462,
+        "eligible": true,
+        "is_win": true,
+        "mu_after": 1015.3803864523621,
+        "new_streak": 1,
+        "sigma_after": 89.73800818140532
+      },
+      "trios_provisional_mix_caps_on_p2": {
+        "cr_after": 990.0958519628982,
+        "cr_delta": 10.095851962898223,
+        "eligible": true,
+        "is_win": true,
+        "mu_after": 1008.792004536365,
+        "new_streak": 1,
+        "sigma_after": 89.56538419115559
+      },
+      "trios_provisional_mix_caps_on_p3": {
+        "cr_after": 983.0657002686713,
+        "cr_delta": 3.0657002686713213,
+        "eligible": true,
+        "is_win": false,
+        "mu_after": 1001.1467832003955,
+        "new_streak": -1,
+        "sigma_after": 89.36036097724138
+      },
+      "trios_provisional_mix_caps_on_p4": {
+        "cr_after": 971.6843922653976,
+        "cr_delta": -8.315607734602395,
+        "eligible": true,
+        "is_win": false,
+        "mu_after": 989.0718306785848,
+        "new_streak": -1,
+        "sigma_after": 89.12914613772907
+      },
+      "trios_provisional_mix_caps_on_p5": {
+        "cr_after": 944.1391095108016,
+        "cr_delta": -35.86089048919837,
+        "eligible": true,
+        "is_win": false,
+        "mu_after": 961.5265479239888,
+        "new_streak": -1,
+        "sigma_after": 89.12914613772907
+      }
+    },
+    "voided": false
+  },
+  "trios_skill_mismatch_caps_on": {
+    "players": {
+      "trios_skill_mismatch_caps_on_p0": {
+        "cr_after": 1825.0,
+        "cr_delta": 15.0,
+        "eligible": true,
+        "is_win": true,
+        "mu_after": 1814.7195642867102,
+        "new_streak": 1,
+        "sigma_after": 79.9065214289034
+      },
+      "trios_skill_mismatch_caps_on_p1": {
+        "cr_after": 898.9416128565308,
+        "cr_delta": 18.94161285653081,
+        "eligible": true,
+        "is_win": true,
+        "mu_after": 918.3981880542098,
+        "new_streak": 1,
+        "sigma_after": 89.81885839922633
+      },
+      "trios_skill_mismatch_caps_on_p2": {
+        "cr_after": 892.669975129109,
+        "cr_delta": 12.669975129109048,
+        "eligible": true,
+        "is_win": true,
+        "mu_after": 911.5967436293028,
+        "new_streak": 1,
+        "sigma_after": 89.64225616673124
+      },
+      "trios_skill_mismatch_caps_on_p3": {
+        "cr_after": 885.593485113932,
+        "cr_delta": 5.593485113932047,
+        "eligible": true,
+        "is_win": false,
+        "mu_after": 903.8909798075163,
+        "new_streak": -1,
+        "sigma_after": 89.43249823119471
+      },
+      "trios_skill_mismatch_caps_on_p4": {
+        "cr_after": 874.2935020998956,
+        "cr_delta": -5.706497900104409,
+        "eligible": true,
+        "is_win": false,
+        "mu_after": 891.881294902768,
+        "new_streak": -1,
+        "sigma_after": 89.1959309342908
+      },
+      "trios_skill_mismatch_caps_on_p5": {
+        "cr_after": 846.7982368826009,
+        "cr_delta": -33.20176311739908,
+        "eligible": true,
+        "is_win": false,
+        "mu_after": 864.3860296854733,
+        "new_streak": -1,
+        "sigma_after": 89.1959309342908
+      }
+    },
+    "voided": false
+  },
+  "trios_ties_in_placement_caps_on": {
+    "players": {
+      "trios_ties_in_placement_caps_on_p0": {
+        "cr_after": 689.9635940325431,
+        "cr_delta": 39.96359403254314,
+        "eligible": true,
+        "is_win": true,
+        "mu_after": 1037.9483342323165,
+        "new_streak": 1,
+        "sigma_after": 199.3282467332578
+      },
+      "trios_ties_in_placement_caps_on_p1": {
+        "cr_after": 683.9690549276617,
+        "cr_delta": 33.96905492766166,
+        "eligible": true,
+        "is_win": true,
+        "mu_after": 1029.6041822911952,
+        "new_streak": 1,
+        "sigma_after": 198.54504245451122
+      },
+      "trios_ties_in_placement_caps_on_p2": {
+        "cr_after": 655.0,
+        "cr_delta": 5.0,
+        "eligible": true,
+        "is_win": true,
+        "mu_after": 997.8698249112447,
+        "new_streak": 1,
+        "sigma_after": 197.6232749704149
+      },
+      "trios_ties_in_placement_caps_on_p3": {
+        "cr_after": 655.0,
+        "cr_delta": 5.0,
+        "eligible": true,
+        "is_win": true,
+        "mu_after": 997.8698249112447,
+        "new_streak": 1,
+        "sigma_after": 197.6232749704149
+      },
+      "trios_ties_in_placement_caps_on_p4": {
+        "cr_after": 652.4209259411149,
+        "cr_delta": 2.420925941114888,
+        "eligible": true,
+        "is_win": false,
+        "mu_after": 991.5834912925744,
+        "new_streak": -1,
+        "sigma_after": 196.38752178381984
+      },
+      "trios_ties_in_placement_caps_on_p5": {
+        "cr_after": 582.0,
+        "cr_delta": -68.0,
+        "eligible": true,
+        "is_win": false,
+        "mu_after": 921.1625653514595,
+        "new_streak": -1,
+        "sigma_after": 196.38752178381984
+      }
+    },
+    "voided": false
+  },
+  "trios_veteran_streaks_caps_off": {
+    "players": {
+      "trios_veteran_streaks_caps_off_p0": {
+        "cr_after": 1002.4560238566999,
+        "cr_delta": 22.456023856699858,
+        "eligible": true,
+        "is_win": true,
+        "mu_after": 1022.1111793540293,
+        "new_streak": 1,
+        "sigma_after": 89.88505183244314
+      },
+      "trios_veteran_streaks_caps_off_p1": {
+        "cr_after": 996.1663619081462,
+        "cr_delta": 16.1663619081462,
+        "eligible": true,
+        "is_win": true,
+        "mu_after": 1015.3803864523621,
+        "new_streak": 1,
+        "sigma_after": 89.73800818140532
+      },
+      "trios_veteran_streaks_caps_off_p2": {
+        "cr_after": 990.0958519628982,
+        "cr_delta": 10.095851962898223,
+        "eligible": true,
+        "is_win": true,
+        "mu_after": 1008.792004536365,
+        "new_streak": 1,
+        "sigma_after": 89.56538419115559
+      },
+      "trios_veteran_streaks_caps_off_p3": {
+        "cr_after": 983.1994916420507,
+        "cr_delta": 3.1994916420507025,
+        "eligible": true,
+        "is_win": false,
+        "mu_after": 1001.2805745737749,
+        "new_streak": -1,
+        "sigma_after": 89.36036097724138
+      },
+      "trios_veteran_streaks_caps_off_p4": {
+        "cr_after": 971.6843922653976,
+        "cr_delta": -8.315607734602395,
+        "eligible": true,
+        "is_win": false,
+        "mu_after": 989.0718306785848,
+        "new_streak": -1,
+        "sigma_after": 89.12914613772907
+      },
+      "trios_veteran_streaks_caps_off_p5": {
+        "cr_after": 944.1391095108016,
+        "cr_delta": -35.86089048919837,
+        "eligible": true,
+        "is_win": false,
+        "mu_after": 961.5265479239888,
+        "new_streak": -1,
+        "sigma_after": 89.12914613772907
+      }
+    },
+    "voided": false
+  },
+  "trios_veteran_streaks_caps_on": {
+    "players": {
+      "trios_veteran_streaks_caps_on_p0": {
+        "cr_after": 1002.4560238566999,
+        "cr_delta": 22.456023856699858,
+        "eligible": true,
+        "is_win": true,
+        "mu_after": 1022.1111793540293,
+        "new_streak": 1,
+        "sigma_after": 89.88505183244314
+      },
+      "trios_veteran_streaks_caps_on_p1": {
+        "cr_after": 996.1663619081462,
+        "cr_delta": 16.1663619081462,
+        "eligible": true,
+        "is_win": true,
+        "mu_after": 1015.3803864523621,
+        "new_streak": 1,
+        "sigma_after": 89.73800818140532
+      },
+      "trios_veteran_streaks_caps_on_p2": {
+        "cr_after": 990.0958519628982,
+        "cr_delta": 10.095851962898223,
+        "eligible": true,
+        "is_win": true,
+        "mu_after": 1008.792004536365,
+        "new_streak": 1,
+        "sigma_after": 89.56538419115559
+      },
+      "trios_veteran_streaks_caps_on_p3": {
+        "cr_after": 983.1994916420507,
+        "cr_delta": 3.1994916420507025,
+        "eligible": true,
+        "is_win": false,
+        "mu_after": 1001.2805745737749,
+        "new_streak": -1,
+        "sigma_after": 89.36036097724138
+      },
+      "trios_veteran_streaks_caps_on_p4": {
+        "cr_after": 971.6843922653976,
+        "cr_delta": -8.315607734602395,
+        "eligible": true,
+        "is_win": false,
+        "mu_after": 989.0718306785848,
+        "new_streak": -1,
+        "sigma_after": 89.12914613772907
+      },
+      "trios_veteran_streaks_caps_on_p5": {
+        "cr_after": 944.1391095108016,
+        "cr_delta": -35.86089048919837,
+        "eligible": true,
+        "is_win": false,
+        "mu_after": 961.5265479239888,
+        "new_streak": -1,
+        "sigma_after": 89.12914613772907
+      }
+    },
+    "voided": false
+  }
+}

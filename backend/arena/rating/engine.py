@@ -23,6 +23,7 @@ from . import modifiers as M
 from .params import validate_params
 from .types import (
     AppliedModifiers,
+    CapExplanation,
     MatchInput,
     ParticipantInput,
     PlayerRatingResult,
@@ -30,7 +31,7 @@ from .types import (
 )
 
 
-def _frozen(part: ParticipantInput, is_win: bool) -> PlayerRatingResult:
+def _frozen(part: ParticipantInput, is_win: bool, team_count: int) -> PlayerRatingResult:
     s = part.state
     return PlayerRatingResult(
         player_id=part.player_id,
@@ -55,6 +56,7 @@ def _frozen(part: ParticipantInput, is_win: bool) -> PlayerRatingResult:
             dispersion_clamped=False,
             final_delta_mu=0.0,
         ),
+        team_count=team_count,
     )
 
 
@@ -81,7 +83,7 @@ def rate(match: MatchInput) -> RatingResult:
             match_id=match.match_id,
             voided=True,
             players=[
-                _frozen(pt, t.placement <= team_count // 2)
+                _frozen(pt, t.placement <= team_count // 2, team_count)
                 for t, parts in zip(ordered_teams, ordered_parts)
                 for pt in parts
             ],
@@ -110,7 +112,7 @@ def rate(match: MatchInput) -> RatingResult:
             delta_mu_base = new_r.mu - s.mu
 
             if not pt.eligible_for_progression:
-                results.append(_frozen(pt, is_win))
+                results.append(_frozen(pt, is_win, team_count))
                 continue
 
             sign = 1.0 if delta_mu_base > 0 else (-1.0 if delta_mu_base < 0 else 0.0)
@@ -134,6 +136,17 @@ def rate(match: MatchInput) -> RatingResult:
 
             cr_after = M.to_cr(mu_after, sigma_after, p)
 
+            # Raio-X transparency (arena/rating/explain.py): the CR identity is
+            # cr = (mu - 3*sigma)*scale + offset, so cr_delta = Delta(mu)*scale -
+            # 3*Delta(sigma)*scale. The second term — "confidence" — is a real,
+            # additive PDL contribution that sits entirely outside the modifier
+            # chain (sigma shrinks almost every match, so this is usually positive).
+            # Captured here, in CR space, so mu/sigma themselves never need to leave
+            # the engine to explain a result (ToS: never expose mu/sigma via the API).
+            confidence_cr = -3.0 * (sigma_after - s.sigma) * p.scale_factor
+            pre_cap_cr_delta = cr_after - s.cr
+            cap_explanation: CapExplanation | None = None
+
             # CR-space (PDL) cap layer — option B-pure: clamp the displayed cr_delta to
             # the placement-relative bound, then back-solve mu_after so the CR identity
             # cr = (mu - 3*sigma)*scale + offset still holds exactly. No ledger, no new
@@ -144,20 +157,42 @@ def rate(match: MatchInput) -> RatingResult:
                 ovr = C.mismatch_override(
                     s.mu, lobby_mean, sigma=s.sigma, games=s.matches_played, cp=cp
                 )
-                scf = C.high_cr_scale(s.cr, cp)
-                comp_win = C.composite_win_mult(ovr, scf, 1.0, cp)  # party R3 OFF
-                capped_delta, clamped = C.apply_pdl_cap(
-                    cr_after - s.cr,
+                # NOTE: this used to be named `scf`, shadowing the soft-cap factor
+                # computed above and corrupting the persisted AppliedModifiers
+                # snapshot (every eligible player rendered a bogus "Proteção de
+                # topo" chip in the UI, since high_cr_scale is a sigmoid that is
+                # essentially never exactly 1.0). Keep it separately named.
+                hcs = C.high_cr_scale(s.cr, cp)
+                comp_win = C.composite_win_mult(ovr, hcs, 1.0, cp)  # party R3 OFF
+                # A flagged booster must not collect the minimum-gain floor.
+                gain_floor_mult = 1.0 - max(0.0, min(1.0, pt.boosting_penalty_factor))
+                cap_dec = C.decide_pdl_cap(
+                    pre_cap_cr_delta,
                     t.placement,
                     team_count,
                     composite_win=comp_win,
                     composite_loss=1.0,
                     cp=cp,
-                    # A flagged booster must not collect the minimum-gain floor.
-                    gain_floor_mult=1.0 - max(0.0, min(1.0, pt.boosting_penalty_factor)),
+                    gain_floor_mult=gain_floor_mult,
                 )
-                if clamped:
-                    cr_after = s.cr + capped_delta
+                cap_explanation = CapExplanation(
+                    active=True,
+                    bound=cap_dec.bound,
+                    raw_cr_delta=pre_cap_cr_delta,
+                    capped_cr_delta=cap_dec.value,
+                    lo=cap_dec.lo,
+                    hi=cap_dec.hi,
+                    min_gain=cap_dec.floor,
+                    mismatch_override=ovr,
+                    high_cr_scale=hcs,
+                    composite_win=comp_win,
+                    composite_loss=1.0,
+                    gain_floor_mult=gain_floor_mult,
+                    team_count=team_count,
+                    lobby_mean_mu=lobby_mean,
+                )
+                if cap_dec.changed:
+                    cr_after = s.cr + cap_dec.value
                     mu_after = (cr_after - p.base_offset) / p.scale_factor + 3.0 * sigma_after
 
             # PDL floor: a player's displayed CR can never drop below 0. The cap
@@ -191,6 +226,10 @@ def rate(match: MatchInput) -> RatingResult:
                         dispersion_clamped=clamped,
                         final_delta_mu=delta_final,
                     ),
+                    cap=cap_explanation,
+                    confidence_cr=confidence_cr,
+                    pre_cap_cr_delta=pre_cap_cr_delta,
+                    team_count=team_count,
                 )
             )
 

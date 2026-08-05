@@ -277,64 +277,25 @@ describe("buildProfileRatingSignal", () => {
     });
   });
 
-  it("reconstrói o impacto em PDL recebido da API legada", () => {
-    const modifiers = resolveProfileRatingModifiers(
-      [
-        { ...placementModifier, value: -1.2, pdlImpact: undefined },
-        { ...streakModifier, value: 35, pdlImpact: undefined },
-        {
-          kind: "protecao",
-          label: "Proteção de topo",
-          value: -39.9,
-          icon: "vertical_align_top",
-        },
-      ],
-      3,
-    );
-
-    expect(modifiers.map((modifier) => modifier.pdlImpact)).toEqual([3.7, 1.3, -2]);
-    expect(
-      modifiers.reduce((sum, modifier) => sum + (modifier.pdlImpact ?? 0), 0),
-    ).toBe(3);
+  it("retorna os modificadores inalterados quando todos têm pdlImpact (Raio-X v1.4)", () => {
+    const modifiers = [placementModifier, streakModifier, groupModifier];
+    expect(resolveProfileRatingModifiers(modifiers)).toEqual(modifiers);
   });
 
-  it("sintetiza a colocação-base quando a API legada não a envia", () => {
-    const modifiers = resolveProfileRatingModifiers(
-      [
-        {
-          kind: "sequencia",
-          label: "Sequência de vitórias",
-          value: 20,
-          icon: "local_fire_department",
-        },
-        {
-          kind: "protecao",
-          label: "Proteção de topo",
-          value: -50,
-          icon: "vertical_align_top",
-        },
-      ],
-      12,
-    );
-
-    expect(modifiers.map((modifier) => modifier.kind)).toEqual([
-      "colocacao",
-      "sequencia",
-      "protecao",
+  it("descarta — sem tentar adivinhar — um modificador sem pdlImpact finito", () => {
+    // O backend (arena/rating/explain.py, via map_modifiers) sempre envia um
+    // pdlImpact real hoje; este é só o filtro defensivo para o caso (não
+    // deveria acontecer) de um fator chegar sem ele — nunca mais reconstruído
+    // via inversão da cadeia multiplicativa (ver o histórico desta função).
+    const semImpacto = { ...placementModifier, pdlImpact: undefined };
+    expect(resolveProfileRatingModifiers([semImpacto, streakModifier])).toEqual([
+      streakModifier,
     ]);
-    expect(modifiers.map((modifier) => modifier.pdlImpact)).toEqual([20, 4, -12]);
   });
 
-  it("usa a colocação como único fator quando só existe o resultado legado", () => {
-    expect(resolveProfileRatingModifiers([], -12)).toEqual([
-      {
-        kind: "colocacao",
-        label: "Colocação",
-        value: 0,
-        pdlImpact: -12,
-        icon: "leaderboard",
-      },
-    ]);
+  it("retorna lista vazia quando nenhum modificador tem pdlImpact", () => {
+    const semImpacto = { ...placementModifier, pdlImpact: undefined };
+    expect(resolveProfileRatingModifiers([semImpacto])).toEqual([]);
   });
 });
 
@@ -352,6 +313,8 @@ describe("ProfileRatingSignals", () => {
         placement={1}
         premade
         crDelta={30}
+        matchId="m1"
+        riotId="Jogador#BR1"
       />,
     );
 
@@ -388,6 +351,8 @@ describe("ProfileRatingSignals", () => {
         placement={1}
         premade
         crDelta={30}
+        matchId="m1"
+        riotId="Jogador#BR1"
       />,
     );
 
@@ -407,6 +372,8 @@ describe("ProfileRatingSignals", () => {
         placement={1}
         premade={false}
         crDelta={30}
+        matchId="m1"
+        riotId="Jogador#BR1"
       />,
     );
 
@@ -425,6 +392,8 @@ describe("ProfileRatingSignals", () => {
         placement={1}
         premade={false}
         crDelta={30}
+        matchId="m1"
+        riotId="Jogador#BR1"
       />,
     );
 
@@ -459,6 +428,8 @@ describe("ProfileRatingSignals", () => {
         placement={1}
         premade={false}
         crDelta={30}
+        matchId="m1"
+        riotId="Jogador#BR1"
       />,
     );
 
@@ -490,6 +461,8 @@ describe("ProfileRatingSignals", () => {
         placement={1}
         premade={false}
         crDelta={30}
+        matchId="m1"
+        riotId="Jogador#BR1"
       />,
     );
 
@@ -511,6 +484,8 @@ describe("ProfileRatingSignals", () => {
         placement={1}
         premade={false}
         crDelta={30}
+        matchId="m1"
+        riotId="Jogador#BR1"
       />,
     );
 
@@ -523,8 +498,12 @@ describe("ProfileRatingSignals", () => {
     ).toContain("Sequência de derrotas: +6 PDL");
   });
 
-  it("mostra modificadores legados reconstruindo o impacto em PDL", () => {
-    render(
+  it("não renderiza nada quando o único modificador não tem pdlImpact (Raio-X v1.4)", () => {
+    // Antes da v1.4 este caso reconstruía o impacto a partir de `value`; hoje
+    // o backend sempre envia pdlImpact real, então um fator sem ele é
+    // descartado (resolveProfileRatingModifiers) em vez de ter seu PDL
+    // adivinhado — sem fatores restantes, o componente não renderiza nada.
+    const { container } = render(
       <ProfileRatingSignals
         modifiers={[
           {
@@ -537,10 +516,12 @@ describe("ProfileRatingSignals", () => {
         placement={1}
         premade={false}
         crDelta={30}
+        matchId="m1"
+        riotId="Jogador#BR1"
       />,
     );
 
-    expect(screen.getByRole("region", { name: "Fatores do PDL" })).toBeTruthy();
-    expect(screen.getByText("+30 PDL")).toBeTruthy();
+    expect(screen.queryByRole("region", { name: "Fatores do PDL" })).toBeNull();
+    expect(container.firstChild).toBeNull();
   });
 });

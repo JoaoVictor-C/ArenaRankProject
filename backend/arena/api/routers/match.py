@@ -19,7 +19,14 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from arena.api.routers import _common as c
-from arena.schemas import MatchAugmentEntry, MatchDetail, MatchLoadoutEntry, MatchPlayer, SubTeam
+from arena.schemas import (
+    MatchAugmentEntry,
+    MatchDetail,
+    MatchLoadoutEntry,
+    MatchPlayer,
+    PdlExplanation,
+    SubTeam,
+)
 from arena.services.build_ref_service import get_build_ref_service
 
 router = APIRouter(tags=["match"])
@@ -63,6 +70,16 @@ async def get_match(
         )
     ).all()
 
+    # The whole lobby is already in `rows` above — no extra query needed to feed
+    # map_modifiers' legacy-row (Tier B) reconstruction (unlike the paginated
+    # history endpoints, which batch this across many DIFFERENT matches; see
+    # arena/services/pdl_explain_service.py::lobby_context_from_rows).
+    from arena.services.pdl_explain_service import lobby_context_from_rows
+
+    lobby_ctx = lobby_context_from_rows(
+        (part.match_id, part.player_id, part.state_before) for part, _ in rows
+    )
+
     by_team: dict[int, list[tuple[Any, Any]]] = defaultdict(list)
     placement_by_team: dict[int, int] = {}
     for part, player in rows:
@@ -82,6 +99,9 @@ async def get_match(
         for part, player in team_rows:
             riot_id = c.compose_riot_id(player.summoner_name, player.tag_line)
             name, handle = c.split_riot_id(riot_id)
+            lobby_state, lobby_mean_mu = lobby_ctx.get(
+                (part.match_id, part.player_id), (None, None)
+            )
             players.append(
                 MatchPlayer(
                     riot_id=riot_id,
@@ -96,7 +116,17 @@ async def get_match(
                     cr_before=round(part.cr_before),
                     cr_after=round(part.cr_after),
                     cr_delta=round(part.cr_delta),
-                    modifiers=c.map_modifiers(part.modifiers or {}),
+                    modifiers=c.map_modifiers(
+                        part.modifiers or {},
+                        placement=part.placement,
+                        team_count=c.SUBTEAMS_BY_FORMAT.get(fmt, 8),
+                        cr_before=part.cr_before,
+                        cr_after=part.cr_after,
+                        cr_delta=part.cr_delta,
+                        eligible=part.eligible,
+                        state=lobby_state,
+                        lobby_mean_mu=lobby_mean_mu,
+                    ),
                     integrity=None,
                     items=_resolve_items(part.items, item_map),
                     augments=_resolve_augments(part.augments, augment_map),
@@ -130,6 +160,44 @@ async def get_match(
         processed_at=match.processed_at.isoformat() if match.processed_at else "",
         subteams=subteams,
     )
+
+
+@router.get(
+    "/match/{match_id}/pdl/{riot_id}",
+    response_model=PdlExplanation,
+    response_model_by_alias=True,
+    summary="Raio-X do resultado — cálculo completo do PDL de um jogador na partida",
+)
+async def get_match_pdl_explanation(
+    session: Annotated[AsyncSession, Depends(c.get_db)],
+    match_id: Annotated[str, Path(description="ID interno ou riotMatchId da partida")],
+    riot_id: Annotated[str, Path(description='Riot ID "Nome#TAG" (URL-encoded)')],
+) -> PdlExplanation:
+    """The "ver cálculo completo" drill-down (Raio-X do resultado, v1.4).
+
+    Deliberately its own route, fetched on demand — see
+    ``arena/services/pdl_explain_service.py``'s module docstring for why this
+    isn't folded into ``GET /match/{matchId}``'s payload.
+    """
+    from arena.services.pdl_explain_service import PdlExplainNotFound, get_pdl_explain_service
+
+    match = await _find_match(session, match_id)
+    if match is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Partida '{match_id}' não encontrada.",
+        )
+
+    service = get_pdl_explain_service()
+    try:
+        return await service.explain_participant(
+            session, match_id=str(match.id), riot_id=riot_id
+        )
+    except PdlExplainNotFound as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Jogador '{riot_id}' não participou da partida '{match_id}'.",
+        ) from exc
 
 
 def _resolve_items(

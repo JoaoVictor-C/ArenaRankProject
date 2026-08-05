@@ -23,6 +23,14 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from math import exp
+from typing import Literal
+
+#: Which rule (if any) determined the final adjusted delta in a :class:`CapDecision`.
+#: ``"none"`` — the raw delta was returned untouched. ``"gain_cap"``/``"loss_cap"`` —
+#: the win/loss bound clamped it. ``"min_gain"`` — the minimum-gain floor raised it
+#: past whatever the clamp step produced (always the LAST word: a floor that binds
+#: overrides a prior gain/loss-cap label, since it is applied after the clamp).
+CapBound = Literal["none", "gain_cap", "loss_cap", "min_gain"]
 
 
 def _clamp(x: float, lo: float, hi: float) -> float:
@@ -170,6 +178,61 @@ def min_gain(placement: int, team_count: int, cp: CapParams) -> float:
     return curve[placement - 1]
 
 
+@dataclass(frozen=True, slots=True)
+class CapDecision:
+    """The full outcome of a PDL-cap evaluation — for :func:`decide_pdl_cap`.
+
+    ``value``/``changed`` are exactly what :func:`apply_pdl_cap` has always returned
+    (the wire contract, still used by ``rate()``). The remaining fields are the facts
+    behind that number, kept for the Raio-X transparency explanation
+    (``arena/rating/explain.py``): the bounds actually evaluated, the effective floor,
+    and which rule produced the final value.
+    """
+
+    value: float
+    changed: bool
+    lo: float
+    hi: float
+    floor: float
+    bound: CapBound
+
+
+def decide_pdl_cap(
+    cr_delta_raw: float,
+    placement: int,
+    team_count: int,
+    *,
+    composite_win: float,
+    composite_loss: float,
+    cp: CapParams,
+    gain_floor_mult: float = 1.0,
+) -> CapDecision:
+    """Clamp a raw cr_delta to the placement-relative PDL bounds, then apply the
+    minimum-gain floor for good placements. This is the full decision; see
+    :func:`apply_pdl_cap` for the historical ``(value, changed)`` shape.
+
+    ``gain_floor_mult`` (0..1) scales the floor down; the engine passes
+    ``1 - boosting_penalty_factor`` so a flagged booster cannot be handed a free
+    floor by a rule meant to protect honest players.
+    """
+    lo, hi = cap_bounds(placement, team_count, composite_win, composite_loss, cp)
+    clamped = _clamp(cr_delta_raw, lo, hi)
+    bound: CapBound = (
+        "loss_cap" if clamped > cr_delta_raw else "gain_cap" if clamped < cr_delta_raw else "none"
+    )
+    floor = min_gain(placement, team_count, cp) * _clamp(gain_floor_mult, 0.0, 1.0)
+    value = clamped
+    if floor > 0.0:
+        # Never let the floor exceed this placement's own gain ceiling.
+        floored = max(clamped, min(floor, hi))
+        if floored != clamped:
+            bound = "min_gain"
+        value = floored
+    return CapDecision(
+        value=value, changed=(value != cr_delta_raw), lo=lo, hi=hi, floor=floor, bound=bound
+    )
+
+
 def apply_pdl_cap(
     cr_delta_raw: float,
     placement: int,
@@ -183,17 +246,17 @@ def apply_pdl_cap(
     """Clamp a raw cr_delta to the placement-relative PDL bounds, then apply the
     minimum-gain floor for good placements.
 
-    ``gain_floor_mult`` (0..1) scales the floor down; the engine passes
-    ``1 - boosting_penalty_factor`` so a flagged booster cannot be handed a free
-    floor by a rule meant to protect honest players.
-
-    Returns (adjusted_delta, changed) where `changed` is True iff the raw value was
-    moved by either the cap or the floor.
+    Thin wrapper over :func:`decide_pdl_cap` — kept for existing callers. Returns
+    (adjusted_delta, changed) where `changed` is True iff the raw value was moved by
+    either the cap or the floor.
     """
-    lo, hi = cap_bounds(placement, team_count, composite_win, composite_loss, cp)
-    capped = _clamp(cr_delta_raw, lo, hi)
-    floor = min_gain(placement, team_count, cp) * _clamp(gain_floor_mult, 0.0, 1.0)
-    if floor > 0.0:
-        # Never let the floor exceed this placement's own gain ceiling.
-        capped = max(capped, min(floor, hi))
-    return capped, (capped != cr_delta_raw)
+    d = decide_pdl_cap(
+        cr_delta_raw,
+        placement,
+        team_count,
+        composite_win=composite_win,
+        composite_loss=composite_loss,
+        cp=cp,
+        gain_floor_mult=gain_floor_mult,
+    )
+    return d.value, d.changed

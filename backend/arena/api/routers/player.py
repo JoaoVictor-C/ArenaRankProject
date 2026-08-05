@@ -178,6 +178,7 @@ async def get_player_matches(
                 mp.c.cr_delta,
                 mp.c.is_premade,
                 mp.c.modifiers,
+                mp.c.eligible,
                 mt.c.queue_id,
                 mt.c.mode,
                 mt.c.duration_seconds,
@@ -190,11 +191,37 @@ async def get_player_matches(
         )
     ).all()
 
+    # Legacy-row (Tier B) lobby reconstruction for map_modifiers, batched across
+    # the WHOLE page in one query — only for rows that actually need it (fresh,
+    # explainVersion>=1 rows are self-contained; see lobby_context_from_rows'
+    # docstring). Shrinks to zero queries once the backlog is rerated.
+    from arena.services.pdl_explain_service import lobby_context_from_rows
+
+    legacy_match_ids = {
+        row.match_id
+        for row in rows
+        if int((row.modifiers or {}).get("explainVersion") or 0) < 1
+    }
+    lobby_ctx: dict[tuple[Any, Any], tuple[Any, float]] = {}
+    if legacy_match_ids:
+        lobby_rows = (
+            await session.execute(
+                select(mp.c.match_id, mp.c.player_id, mp.c.state_before).where(
+                    mp.c.match_id.in_(legacy_match_ids)
+                )
+            )
+        ).all()
+        lobby_ctx = lobby_context_from_rows(
+            (r.match_id, r.player_id, r.state_before) for r in lobby_rows
+        )
+
     matches: list[PlayerMatchRich] = []
     for row in rows:
         fmt = c.FORMAT_BY_QUEUE.get(row.queue_id) or (
             "2v2" if row.mode == m.RatingMode.DUOS else "3v3"
         )
+        team_count = c.SUBTEAMS_BY_FORMAT.get(fmt, 8)
+        lobby_state, lobby_mean_mu = lobby_ctx.get((row.match_id, player.id), (None, None))
         matches.append(
             PlayerMatchRich(
                 match_id=str(row.match_id),
@@ -204,11 +231,21 @@ async def get_player_matches(
                 champion_icon_url=c.champion_icon_url(row.champion_id),
                 place=int(row.placement),
                 cr_delta=round(row.cr_delta),
-                modifiers=c.map_modifiers(row.modifiers or {}),
+                modifiers=c.map_modifiers(
+                    row.modifiers or {},
+                    placement=row.placement,
+                    team_count=team_count,
+                    cr_before=row.cr_before,
+                    cr_after=row.cr_after,
+                    cr_delta=row.cr_delta,
+                    eligible=row.eligible,
+                    state=lobby_state,
+                    lobby_mean_mu=lobby_mean_mu,
+                ),
                 cr_before=round(row.cr_before),
                 cr_after=round(row.cr_after),
                 format=fmt,
-                team_count=c.SUBTEAMS_BY_FORMAT.get(fmt, 8),
+                team_count=team_count,
                 duration_sec=int(row.duration_seconds or 0),
                 premade=bool(row.is_premade),
             )
@@ -284,6 +321,49 @@ async def get_player(
     )
 
     form = [FormDot(place=p.placement) for p in parts[:6]]
+
+    # team_count per match, for map_modifiers (the cap layer's bounds depend on
+    # it). This query has no Match join at all otherwise -- one bulk lookup
+    # (bounded to <=20 rows, the page size above) rather than per-row N+1.
+    match_ids = {p.match_id for p in parts}
+    team_count_by_match: dict[Any, int] = {}
+    if match_ids:
+        match_fmt_rows = (
+            await session.execute(
+                select(m.Match.id, m.Match.queue_id, m.Match.mode).where(
+                    m.Match.id.in_(match_ids)
+                )
+            )
+        ).all()
+        for r in match_fmt_rows:
+            fmt_r = c.FORMAT_BY_QUEUE.get(r.queue_id) or (
+                "2v2" if r.mode == m.RatingMode.DUOS else "3v3"
+            )
+            team_count_by_match[r.id] = c.SUBTEAMS_BY_FORMAT.get(fmt_r, 8)
+
+    # Same legacy-row (Tier B) lobby reconstruction as get_player_matches, batched
+    # across these <=20 recent participations in one query — see
+    # lobby_context_from_rows' docstring.
+    from arena.services.pdl_explain_service import lobby_context_from_rows
+
+    legacy_match_ids_p = {
+        p.match_id for p in parts if int((p.modifiers or {}).get("explainVersion") or 0) < 1
+    }
+    lobby_ctx_p: dict[tuple[Any, Any], tuple[Any, float]] = {}
+    if legacy_match_ids_p:
+        lobby_rows_p = (
+            await session.execute(
+                select(
+                    m.MatchParticipant.match_id,
+                    m.MatchParticipant.player_id,
+                    m.MatchParticipant.state_before,
+                ).where(m.MatchParticipant.match_id.in_(legacy_match_ids_p))
+            )
+        ).all()
+        lobby_ctx_p = lobby_context_from_rows(
+            (r.match_id, r.player_id, r.state_before) for r in lobby_rows_p
+        )
+
     # Real champion names + icon URLs from ddragon (warmed map; sync-fast). The
     # gradient ``champion`` avatar stays as a fallback when an icon is unresolved.
     matches = [
@@ -295,7 +375,17 @@ async def get_player(
             champion_icon_url=c.champion_icon_url(p.champion_id),
             place=p.placement,
             cr_delta=round(p.cr_delta),
-            modifiers=c.map_modifiers(p.modifiers or {}),
+            modifiers=c.map_modifiers(
+                p.modifiers or {},
+                placement=p.placement,
+                team_count=team_count_by_match.get(p.match_id, 6),
+                cr_before=p.cr_before,
+                cr_after=p.cr_after,
+                cr_delta=p.cr_delta,
+                eligible=p.eligible,
+                state=lobby_ctx_p.get((p.match_id, p.player_id), (None, None))[0],
+                lobby_mean_mu=lobby_ctx_p.get((p.match_id, p.player_id), (None, None))[1],
+            ),
         )
         for p in parts
     ]

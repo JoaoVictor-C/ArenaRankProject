@@ -1,0 +1,260 @@
+/* Raio-X do resultado — "ver cálculo completo". Mesmo vocabulário creme/preto
+   do carrossel (profileRatingSignals.css) — redefinido aqui porque este
+   componente vive fora de `.rating-signals`. */
+.pdl-ledger {
+  --rs-cream: #fffce1;
+  --rs-black: #0e100f;
+  --rs-green: #0ae448;
+  --rs-pink: #fec5fb;
+  --rs-blue: #bef3fe;
+  display: grid;
+  gap: 14px;
+  margin-top: 14px;
+  padding: 16px;
+  border: 1px solid #3a3d3b;
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--rs-black) 92%, white 8%);
+  font-family: "Mori", sans-serif;
+}
+
+.pdl-ledger-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0;
+  color: #c9cdca;
+  font: 500 12px/1.45 "Mori", sans-serif;
+}
+.pdl-ledger-note .mi {
+  flex: none;
+  margin-top: 1px;
+  font-size: 16px;
+  color: var(--rs-blue);
+}
+.pdl-ledger-note.is-warning .mi {
+  color: var(--rs-pink);
+}
+
+.pdl-ledger-rows {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pdl-ledger-row {
+  display: grid;
+  grid-template-columns: 28px 1fr auto;
+  align-items: start;
+  gap: 10px;
+  padding: 8px 6px;
+  border-radius: 10px;
+}
+.pdl-ledger-row + .pdl-ledger-row {
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.pdl-ledger-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.06);
+}
+.pdl-ledger-icon .mi {
+  font-size: 16px;
+  color: var(--rs-cream);
+}
+
+.pdl-ledger-text {
+  display: grid;
+  gap: 2px;
+  color: var(--rs-cream);
+}
+.pdl-ledger-text b {
+  font: 650 13px/1.3 "Mori", sans-serif;
+}
+.pdl-ledger-text small {
+  color: #a8aeaa;
+  font: 500 11.5px/1.4 "Mori", sans-serif;
+}
+
+.pdl-ledger-value {
+  color: var(--rs-cream);
+  font: 750 14px/1.3 "Mori", sans-serif;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.pdl-ledger-row.is-positive .pdl-ledger-value {
+  color: var(--rs-green);
+}
+.pdl-ledger-row.is-negative .pdl-ledger-value {
+  color: var(--rs-pink);
+}
+.pdl-ledger-row.is-inexact {
+  opacity: 0.92;
+}
+.pdl-ledger-row.is-inexact .pdl-ledger-icon {
+  background: rgba(190, 243, 254, 0.14);
+}
+
+.pdl-ledger-total {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 10px;
+  border-top: 1px solid #4c504e;
+}
+.pdl-ledger-total span {
+  color: #a8aeaa;
+  font: 650 12px/1.2 "Mori", sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.pdl-ledger-total strong {
+  color: var(--rs-cream);
+  font: 800 18px/1 "Mori", sans-serif;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Direct positive/negative tone — used outside .pdl-ledger-row (lobby/curve
+   rows below), where the color needs to land on the value itself, not a
+   descendant of a row that already carries the tone class. */
+.pdl-ledger-value.is-positive,
+.pdl-ledger-pct.is-positive,
+.pdl-ledger-curve-bounds .is-positive {
+  color: var(--rs-green);
+}
+.pdl-ledger-value.is-negative,
+.pdl-ledger-pct.is-negative,
+.pdl-ledger-curve-bounds .is-negative {
+  color: var(--rs-pink);
+}
+
+.pdl-ledger-section {
+  display: grid;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid #4c504e;
+}
+.pdl-ledger-section-title {
+  margin: 0;
+  color: var(--rs-cream);
+  font: 700 12px/1.3 "Mori", sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.pdl-ledger-section-hint {
+  margin: -4px 0 2px;
+  color: #a8aeaa;
+  font: 500 11.5px/1.4 "Mori", sans-serif;
+}
+
+/* Fatores do teto/piso (mismatch/CR alto/composto) — same row shape as the
+   main ledger, plus a signed percentage instead of a PDL amount. */
+.pdl-ledger-factors {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.pdl-ledger-factor {
+  display: grid;
+  grid-template-columns: 28px 1fr auto;
+  align-items: start;
+  gap: 10px;
+  padding: 6px;
+}
+.pdl-ledger-pct {
+  font: 700 13px/1.3 "Mori", sans-serif;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* Curva de colocação — compact reference table, one row per placement. */
+.pdl-ledger-curve {
+  display: grid;
+  gap: 1px;
+  border-radius: 10px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.04);
+}
+.pdl-ledger-curve-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 6px 10px;
+  background: transparent;
+}
+.pdl-ledger-curve-row.is-you {
+  background: rgba(190, 243, 254, 0.1);
+  border-radius: 8px;
+}
+.pdl-ledger-curve-place {
+  color: var(--rs-cream);
+  font: 650 12px/1.3 "Mori", sans-serif;
+  min-width: 24px;
+}
+.pdl-ledger-curve-row.is-you .pdl-ledger-curve-place {
+  color: var(--rs-blue);
+}
+.pdl-ledger-curve-bounds {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font: 650 12px/1.3 "Mori", sans-serif;
+  font-variant-numeric: tabular-nums;
+}
+.pdl-ledger-curve-bounds .is-floor {
+  color: #a8aeaa;
+  font-weight: 500;
+  margin-right: 2px;
+}
+.pdl-ledger-curve-sep {
+  color: #5a5e5c;
+}
+
+/* Resultado de todas as equipes — the same-match cross-team comparison. */
+.pdl-ledger-lobby {
+  display: grid;
+  gap: 1px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-radius: 10px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.04);
+}
+.pdl-ledger-lobby-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 10px;
+}
+.pdl-ledger-lobby-row.is-you {
+  background: rgba(190, 243, 254, 0.1);
+  border-radius: 8px;
+}
+.pdl-ledger-lobby-place {
+  color: #a8aeaa;
+  font: 650 12px/1.3 "Mori", sans-serif;
+  min-width: 22px;
+}
+.pdl-ledger-lobby-row.is-you .pdl-ledger-lobby-place {
+  color: var(--rs-blue);
+}
+.pdl-ledger-lobby-name {
+  flex: 1;
+  color: var(--rs-cream);
+  font: 600 12.5px/1.3 "Mori", sans-serif;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pdl-ledger-lobby-row.is-you .pdl-ledger-lobby-name {
+  font-weight: 750;
+}

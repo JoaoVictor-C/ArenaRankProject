@@ -85,9 +85,19 @@ class Modifier(ArenaModel):
 
     ``value`` may be positive or negative. This is the UI-safe mapping of the
     engine's AppliedModifiers — never carries mu/sigma.
+
+    ``pdl_impact`` (Raio-X do resultado, v1.4) is the modifier's REAL additive
+    PDL contribution — sourced from ``arena/rating/explain.py``'s reconciling
+    ledger, not reverse-engineered client-side. ``None`` only in the (now
+    unreachable outside tests) case a caller builds a ``Modifier`` without going
+    through ``map_modifiers``. When every modifier on a match carries a finite
+    ``pdl_impact``, the frontend's old multiplicative-inversion fallback
+    (``profileRatingSignalModel.ts::resolveProfileRatingModifiers``) never
+    engages — see that module's docstring.
     """
 
     kind: str
     label: str
     value: float
     icon: str
+    pdl_impact: float | None = None

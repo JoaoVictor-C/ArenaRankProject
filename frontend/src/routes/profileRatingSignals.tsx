@@ -9,8 +9,10 @@ import {
 import type { gsap as GsapType } from "gsap";
 
 import { Mi } from "../components";
+import { api, ApiError } from "../lib/api";
 import { loadAmbientMotion, prefersReducedMotion } from "../lib/motion";
-import type { Modifier } from "../lib/types";
+import type { Modifier, PdlExplanation } from "../lib/types";
+import { PdlLedger } from "./PdlLedger";
 import {
   getRatingSignalMotionPlan,
   getRatingSignalTrack,
@@ -29,6 +31,9 @@ import "./profileRatingSignals.css";
 
 interface ProfileRatingSignalsProps extends SignalContext {
   modifiers: Modifier[];
+  /** Necessários só para o "ver cálculo completo" (busca sob demanda). */
+  matchId: string;
+  riotId: string;
 }
 
 type Gsap = typeof GsapType;
@@ -75,10 +80,12 @@ export function ProfileRatingSignals({
   placement,
   premade,
   crDelta,
+  matchId,
+  riotId,
 }: ProfileRatingSignalsProps) {
   const cards = useMemo(
     () =>
-      resolveProfileRatingModifiers(modifiers, crDelta)
+      resolveProfileRatingModifiers(modifiers)
         .map((modifier) =>
           buildProfileRatingSignal(modifier, { placement, premade, crDelta }),
         )
@@ -232,6 +239,37 @@ export function ProfileRatingSignals({
     if (root && gsap) setCanonicalSlotPoses(gsap, root);
   }, [activeStep, track]);
 
+  // "ver cálculo completo" — busca sob demanda (o carrossel acima já mostra um
+  // resumo leve e correto; o ledger completo só é buscado se o jogador pedir).
+  const [ledgerOpen, setLedgerOpen] = useState(false);
+  const [ledgerLoading, setLedgerLoading] = useState(false);
+  const [ledgerError, setLedgerError] = useState<string | null>(null);
+  const [ledger, setLedger] = useState<PdlExplanation | null>(null);
+
+  const loadLedger = useCallback(() => {
+    setLedgerLoading(true);
+    setLedgerError(null);
+    api
+      .matchPdl(matchId, riotId)
+      .then((data) => setLedger(data))
+      .catch((err: unknown) => {
+        setLedgerError(err instanceof ApiError ? err.message : "Falha ao carregar.");
+      })
+      .finally(() => setLedgerLoading(false));
+  }, [matchId, riotId]);
+
+  const toggleLedger = useCallback(() => {
+    const next = !ledgerOpen;
+    setLedgerOpen(next);
+    if (next && !ledger && !ledgerLoading) loadLedger();
+  }, [ledger, ledgerLoading, ledgerOpen, loadLedger]);
+
+  useEffect(() => {
+    setLedgerOpen(false);
+    setLedger(null);
+    setLedgerError(null);
+  }, [matchId, riotId]);
+
   if (cards.length === 0) return null;
 
   return (
@@ -345,6 +383,42 @@ export function ProfileRatingSignals({
       <span className="rating-signals-live" aria-live="polite" aria-atomic="true">
         {liveMessage}
       </span>
+
+      <button
+        type="button"
+        className="rating-signals-disclosure"
+        aria-expanded={ledgerOpen}
+        onClick={toggleLedger}
+      >
+        <Mi name={ledgerOpen ? "expand_less" : "expand_more"} />
+        {ledgerOpen ? "Ocultar cálculo completo" : "Ver cálculo completo"}
+      </button>
+
+      {ledgerOpen && (
+        <div className="rating-signals-ledger-wrap">
+          {ledgerLoading && (
+            <div className="rating-signals-ledger-state">
+              <span className="state-spinner" aria-hidden="true" />
+              <b>Calculando o Raio-X…</b>
+            </div>
+          )}
+          {ledgerError && !ledgerLoading && (
+            <div className="rating-signals-ledger-state is-error">
+              <Mi name="sync_problem" />
+              <div>
+                <b>O cálculo completo não carregou.</b>
+                <span>{ledgerError}</span>
+              </div>
+              <button className="btn ghost" type="button" onClick={loadLedger}>
+                Tentar novamente
+              </button>
+            </div>
+          )}
+          {ledger && !ledgerLoading && !ledgerError && (
+            <PdlLedger explanation={ledger} />
+          )}
+        </div>
+      )}
     </section>
   );
 }

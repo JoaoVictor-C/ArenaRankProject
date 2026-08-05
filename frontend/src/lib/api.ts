@@ -30,6 +30,7 @@ import type {
   RecordsResponse,
   PlayerMatchesResponse,
   DonationResult,
+  PdlExplanation,
 } from "./types";
 
 const BASE = (import.meta.env.VITE_API_URL ?? "").replace(/\/$/, "");
@@ -154,6 +155,14 @@ export const api = {
 
   match(matchId: string): Promise<MatchDetail> {
     return get<MatchDetail>(`/match/${encodeURIComponent(matchId)}`);
+  },
+
+  /** Raio-X do resultado — cálculo completo do PDL ("ver cálculo completo"),
+   *  buscado sob demanda (não vem junto do detalhe/histórico). */
+  matchPdl(matchId: string, riotId: string): Promise<PdlExplanation> {
+    return get<PdlExplanation>(
+      `/match/${encodeURIComponent(matchId)}/pdl/${encodeURIComponent(riotId)}`,
+    );
   },
 
   champions(opts: {

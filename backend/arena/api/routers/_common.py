@@ -9,8 +9,10 @@ central jobs of this module:
   chart, derived from sigma but never exposing sigma.
 * ``tier_from_rank`` — display tier (top1/top10/.../none) from the global rank.
 * ``is_provisional`` — provisional flag from the placement-match window.
-* ``map_modifiers`` — ``AppliedModifiers`` (engine snapshot, persisted as JSONB)
-  → ``[{kind,label,value,icon}]`` in PT-BR (colocação/sequência/proteção/penalidade).
+* ``map_modifiers`` — persisted ``modifiers`` JSONB → ``[{kind,label,value,icon,
+  pdlImpact}]`` in PT-BR (colocação/sequência/proteção/penalidade/confiança/teto-
+  piso). ``pdlImpact`` is real, sourced from ``arena.rating.explain.explain()``
+  (Raio-X do resultado, v1.4) — never a client-side reverse-engineered guess.
 * avatar / champion gradient placeholders (ToS: no real champion art).
 * DB dependency + season resolution (integer contract season → ``seasons`` row).
 
@@ -31,6 +33,7 @@ if TYPE_CHECKING:  # avoid importing the DB/redis/rating stack at module import 
     from sqlalchemy.ext.asyncio import AsyncSession
 
     from arena.rating import AppliedModifiers
+    from arena.rating.explain import ExplainState
 
 # Queue ids per contract: 3v3 = 1750, 2v2 = 1700.
 QUEUE_BY_FORMAT: dict[str, int] = {"3v3": 1750, "2v2": 1700}
@@ -116,113 +119,258 @@ def _pct(mult: float) -> float:
     return round((mult - 1.0) * 100.0, 1)
 
 
-def map_modifiers(applied: "AppliedModifiers | dict[str, Any]") -> list[Modifier]:
-    """Map an ``AppliedModifiers`` snapshot to the contract's modifier breakdown.
+# PT-BR machine kinds + labels for the cap layer, keyed by the engine's English
+# CapBound literal (kept internal to arena/rating/) — matches CapRule in
+# arena/schemas/explain.py. Shared by the exact chip (fresh/derivado rows, where
+# the cap's own PDL contribution is known) and the lumped "ajuste" chip (parcial
+# rows, where we at least know WHICH rule bound even though its exact share of
+# the total isn't recoverable — see map_modifiers' display_adjust branch below).
+_CAP_CHIP: dict[str, tuple[str, str, str]] = {
+    "gain_cap": ("teto_ganho", "Teto de ganho da colocação", "vertical_align_top"),
+    "loss_cap": ("teto_perda", "Limite de perda", "vertical_align_bottom"),
+    "min_gain": ("piso_ganho", "Piso de ganho da colocação", "expand_less"),
+}
 
-    Accepts either the dataclass (fresh from the engine) or its JSONB dict form
-    (as persisted on ``match_participants.modifiers``). Only renders the modifiers
-    that actually fired (≠ neutral), in a stable, UI-meaningful order:
-    colocação → sequência → proteção (soft-cap) → penalidade (boosting/dispersão).
-    Never carries mu/sigma.
+
+def map_modifiers(
+    applied: "AppliedModifiers | dict[str, Any]",
+    *,
+    placement: int,
+    team_count: int,
+    cr_before: float,
+    cr_after: float,
+    cr_delta: float,
+    eligible: bool = True,
+    state: "ExplainState | None" = None,
+    lobby_mean_mu: float | None = None,
+) -> list[Modifier]:
+    """Map a persisted modifiers snapshot to the contract's PDL breakdown.
+
+    Raio-X do resultado (v1.4): every emitted ``Modifier`` now carries a REAL
+    ``pdl_impact`` sourced from :func:`arena.rating.explain.explain`'s reconciling
+    ledger — never a client-side reverse-engineered guess (see
+    ``frontend/src/routes/profileRatingSignalModel.ts``'s docstring for the bug
+    this fixes). Kinds/labels/trigger conditions match the pre-v1.4 taxonomy for
+    backward compatibility with the existing carousel UI (accepts either the
+    dataclass, fresh from the engine, or its JSONB dict form as persisted on
+    ``match_participants.modifiers``); the exhaustive, granular per-step
+    breakdown lives behind the "ver cálculo completo" drill-down
+    (``GET /match/{matchId}/pdl/{riotId}``,
+    ``arena/services/pdl_explain_service.py``). Never carries mu/sigma.
+
+    ``state``/``lobby_mean_mu`` are the OPTIONAL legacy-row (Tier B) lobby
+    reconstruction — see :func:`arena.services.pdl_explain_service.
+    lobby_context_from_rows` for the bulk (one-query-per-page) way callers get
+    these without N+1. Omitting them (the default) degrades every legacy row to
+    the honest but opaque "ajuste de exibição" lump; supplying them lets
+    ``explain()`` prove, in the common case, that the cap didn't bind and
+    attribute the remainder precisely (e.g. "Consolidação da sua estimativa")
+    instead — this is what makes the compact card match the drill-down.
     """
-    a = _as_applied(applied)
+    from arena.rating import DEFAULT_PARAMS
+    from arena.rating.explain import explain
+    from arena.services.pdl_explain_service import explain_input_from_jsonb
+
+    d = applied if isinstance(applied, dict) else _applied_to_dict(applied)
+    inp = explain_input_from_jsonb(
+        d,
+        placement=placement,
+        team_count=team_count,
+        cr_before=cr_before,
+        cr_after=cr_after,
+        cr_delta=cr_delta,
+        eligible=eligible,
+        params=DEFAULT_PARAMS,
+        state=state,
+        lobby_mean_mu=lobby_mean_mu,
+    )
+    if not eligible:
+        return []
+    exp = explain(inp)
+    by_kind = {e.kind: e.pdl for e in exp.entries}
     out: list[Modifier] = []
 
-    # Colocação — placement weight × provisional amplification combined.
-    placement_mult = a.placement_weight * a.placement_amp
-    if abs(placement_mult - 1.0) > 1e-9:
-        amp_note = " (provisória)" if a.placement_amp != 1.0 else ""
+    # Colocação — base PL result + placement weight + provisional amplification,
+    # bundled into one chip (matches the existing "Você ganhou N PDL por terminar
+    # em Xº" copy, which has always treated colocação as inclusive of the base).
+    placement_mult = inp.placement_weight * inp.placement_amp
+    if abs(placement_mult - 1.0) > 1e-9 or abs(by_kind.get("base", 0.0)) > 1e-9:
+        amp_note = " (provisória)" if inp.placement_amp != 1.0 else ""
         out.append(
             Modifier(
                 kind="colocacao",
                 label=f"Colocação{amp_note}",
                 value=_pct(placement_mult),
                 icon="leaderboard",
+                pdl_impact=(
+                    by_kind.get("base", 0.0)
+                    + by_kind.get("placement", 0.0)
+                    + by_kind.get("provisional", 0.0)
+                ),
             )
         )
 
     # Sequência — win-streak bonus / loss-streak dampener.
-    if abs(a.streak_mult - 1.0) > 1e-9:
-        streak_up = a.streak_mult > 1.0
+    if abs(inp.streak_mult - 1.0) > 1e-9:
+        streak_up = inp.streak_mult > 1.0
         out.append(
             Modifier(
                 kind="sequencia",
                 label="Sequência de vitórias" if streak_up else "Amortecedor de derrotas",
-                value=_pct(a.streak_mult),
+                value=_pct(inp.streak_mult),
                 icon="local_fire_department" if streak_up else "shield_moon",
+                pdl_impact=by_kind.get("streak", 0.0),
             )
         )
 
-    # Proteção — soft-cap diminishing returns near the top (always ≤ 1.0).
-    if a.soft_cap_factor < 1.0 - 1e-9:
+    # Proteção — soft-cap diminishing returns near the top. Recomputed fresh by
+    # explain() (immune to the historical soft_cap_factor pollution bug); in
+    # practice this essentially never fires — soft_cap_threshold=5000 sits above
+    # reachable production CR.
+    soft_cap_pdl = by_kind.get("soft_cap", 0.0)
+    if abs(soft_cap_pdl) > 1e-6:
         out.append(
             Modifier(
                 kind="protecao",
                 label="Proteção de topo",
-                value=_pct(a.soft_cap_factor),
+                value=0.0,
                 icon="vertical_align_top",
+                pdl_impact=soft_cap_pdl,
             )
         )
 
-    # Penalidade — boosting penalty (integrity) and/or dispersion clamp.
-    if a.boosting_factor < 1.0 - 1e-9:
+    # Penalidade — boosting penalty (integrity).
+    if inp.boosting_factor < 1.0 - 1e-9:
         out.append(
             Modifier(
                 kind="penalidade",
                 label="Penalidade de boosting",
-                value=_pct(a.boosting_factor),
+                value=_pct(inp.boosting_factor),
                 icon="gpp_bad",
+                pdl_impact=by_kind.get("boosting", 0.0),
             )
         )
-    # Grupo — premade dampener (solo wins are worth more); always ≤ 1.0.
-    if a.party_factor < 1.0 - 1e-9:
+    # Grupo — premade dampener (solo wins are worth more).
+    if inp.party_factor < 1.0 - 1e-9:
         out.append(
             Modifier(
                 kind="grupo",
                 label="Penalidade de grupo",
-                value=_pct(a.party_factor),
+                value=_pct(inp.party_factor),
                 icon="group",
+                pdl_impact=by_kind.get("party", 0.0),
             )
         )
-    if a.dispersion_clamped:
+    # Dispersão — the mu-space dispersion cap (previously conflated with the
+    # PDL cap/floor by a bug; now correctly ONLY this). value carries the real
+    # PDL amount (there is no natural "percentage" for a clamp event).
+    dispersion_pdl = by_kind.get("dispersion", 0.0)
+    if abs(dispersion_pdl) > 1e-6:
         out.append(
             Modifier(
                 kind="penalidade",
                 label="Variação limitada",
-                value=0.0,
+                value=round(dispersion_pdl, 1),
                 icon="speed",
+                pdl_impact=dispersion_pdl,
+            )
+        )
+
+    # Confiança — new (v1.4): the -3*Delta(sigma) term, a real additive PDL
+    # contribution that sat entirely outside the old modifier chain and every
+    # prior card. Usually positive (sigma converges most matches).
+    confidence_pdl = by_kind.get("confidence", 0.0)
+    if abs(confidence_pdl) > 0.05:
+        out.append(
+            Modifier(
+                kind="confianca",
+                label="Consolidação da sua estimativa",
+                value=0.0,
+                icon="insights",
+                pdl_impact=confidence_pdl,
+            )
+        )
+
+    # Teto/piso — new (v1.4): only when the cap layer actually moved the
+    # result AND we have full fidelity for the split (a legacy row where the
+    # cap bound is intentionally left out here — that nuance belongs in the
+    # drill-down, not a compact chip that can't explain itself).
+    if exp.cap.bound != "none" and "cap" in by_kind and exp.fidelity != "parcial":
+        cap_pdl = by_kind["cap"]
+        kind, label, icon = _CAP_CHIP.get(
+            exp.cap.bound, ("teto_ganho", "Ajuste do teto/piso de colocação", "vertical_align_top")
+        )
+        out.append(
+            Modifier(
+                kind=kind,
+                label=label,
+                value=0.0,
+                icon=icon,
+                pdl_impact=cap_pdl,
+            )
+        )
+
+    # Ajuste de exibição / piso zero — legacy rows (`explain()`'s "lump" or
+    # "residual_gap" branches) fold whatever can't be split (confiança + teto/piso
+    # combined, or a genuine zero-floor event) into ONE of these two kinds instead
+    # of a per-factor chip. Without this branch the chips above stop short of
+    # `cr_delta` for essentially every pre-v1.4 match (confiança alone is nearly
+    # always nonzero), which is exactly the "doesn't add up" bug this feature
+    # exists to fix — so this compact card mirrors the drill-down ledger's own
+    # "display_adjust"/"zero_floor" entry rather than silently dropping it.
+    #
+    # When the caller supplied a lobby context (state/lobby_mean_mu) that let
+    # explain() land on a SPECIFIC bound even though it couldn't split the exact
+    # PDL share (see explain()'s "it landed exactly on a bound" lump branch),
+    # exp.cap.bound still names which rule that was — label the chip with that
+    # mechanism instead of the content-free "Ajuste de exibição" (the whole
+    # complaint this refinement addresses: a legacy row dominated by, say, the
+    # gain floor showed a chip that told the player nothing about why).
+    adjust_pdl = by_kind.get("display_adjust", 0.0)
+    if abs(adjust_pdl) > 1e-6:
+        if exp.cap.bound in _CAP_CHIP:
+            _, cap_label, cap_icon = _CAP_CHIP[exp.cap.bound]
+            label, icon = f"{cap_label} (parcial)", cap_icon
+        else:
+            label, icon = "Ajuste de exibição", "help"
+        out.append(
+            Modifier(
+                kind="ajuste",
+                label=label,
+                value=0.0,
+                icon=icon,
+                pdl_impact=adjust_pdl,
+            )
+        )
+    zero_floor_pdl = by_kind.get("zero_floor", 0.0)
+    if abs(zero_floor_pdl) > 1e-6:
+        out.append(
+            Modifier(
+                kind="piso_zero",
+                label="PDL mínimo (0)",
+                value=0.0,
+                icon="block",
+                pdl_impact=zero_floor_pdl,
             )
         )
 
     return out
 
 
-def _as_applied(applied: "AppliedModifiers | dict[str, Any]") -> "AppliedModifiers":
-    from arena.rating import AppliedModifiers
-
-    if isinstance(applied, AppliedModifiers):
-        return applied
-
-    # JSONB dict — tolerate camelCase or snake_case keys, default neutral.
-    def g(*keys: str, default: float = 1.0) -> float:
-        for k in keys:
-            if k in applied:
-                return float(applied[k])
-        return default
-
-    return AppliedModifiers(
-        pl_base_delta_mu=g("pl_base_delta_mu", "plBaseDeltaMu", default=0.0),
-        placement_weight=g("placement_weight", "placementWeight"),
-        placement_amp=g("placement_amp", "placementAmp"),
-        streak_mult=g("streak_mult", "streakMult"),
-        soft_cap_factor=g("soft_cap_factor", "softCapFactor"),
-        boosting_factor=g("boosting_factor", "boostingFactor"),
-        party_factor=g("party_factor", "partyFactor"),
-        dispersion_clamped=bool(
-            applied.get("dispersion_clamped", applied.get("dispersionClamped", False))
-        ),
-        final_delta_mu=g("final_delta_mu", "finalDeltaMu", default=0.0),
-    )
+def _applied_to_dict(a: "AppliedModifiers") -> dict[str, Any]:
+    """Minimal JSONB-shaped dict from a bare (fresh, un-persisted)
+    ``AppliedModifiers`` — used only by :func:`map_modifiers`'s dataclass input
+    path. Deliberately omits ``softCapFactor``/``dispersionClamped``: ``explain()``
+    never reads them (see its module docstring)."""
+    return {
+        "plBaseDeltaMu": a.pl_base_delta_mu,
+        "placementWeight": a.placement_weight,
+        "placementAmp": a.placement_amp,
+        "streakMult": a.streak_mult,
+        "boostingFactor": a.boosting_factor,
+        "partyFactor": a.party_factor,
+        "finalDeltaMu": a.final_delta_mu,
+    }
 
 
 # ---------------------------------------------------------------------------

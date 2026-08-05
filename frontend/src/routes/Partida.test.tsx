@@ -43,7 +43,18 @@ function player(
     crAfter: 2000 + crDelta,
     crDelta,
     premade: false,
-    modifiers: [],
+    // Raio-X do resultado (v1.4): o backend sempre envia pdlImpact real
+    // (arena/rating/explain.py, via map_modifiers) — este fixture reflete
+    // isso em vez de depender da reconstrução no cliente (removida).
+    modifiers: [
+      {
+        kind: "colocacao",
+        label: "Colocação",
+        value: 0,
+        pdlImpact: crDelta,
+        icon: "leaderboard",
+      },
+    ],
   };
 }
 

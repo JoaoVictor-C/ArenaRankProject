@@ -7,6 +7,12 @@ type SignalKind =
   | "boosting"
   | "grupo"
   | "penalidade"
+  | "confianca"
+  | "teto_ganho"
+  | "teto_perda"
+  | "piso_ganho"
+  | "ajuste"
+  | "piso_zero"
   | "outro";
 
 export interface SignalContext {
@@ -37,6 +43,20 @@ const KIND_ALIASES: Record<string, SignalKind> = {
   grupo: "grupo",
   penalty: "penalidade",
   penalidade: "penalidade",
+  // Raio-X do resultado (v1.4) — novos fatores, todos com pdlImpact real vindo
+  // do backend (arena/rating/explain.py). Ver buildProfileRatingSignal.
+  confidence: "confianca",
+  confianca: "confianca",
+  teto_ganho: "teto_ganho",
+  gain_cap: "teto_ganho",
+  teto_perda: "teto_perda",
+  loss_cap: "teto_perda",
+  piso_ganho: "piso_ganho",
+  min_gain: "piso_ganho",
+  ajuste: "ajuste",
+  display_adjust: "ajuste",
+  piso_zero: "piso_zero",
+  zero_floor: "piso_zero",
 };
 
 function displayImpact(value: number): number {
@@ -130,79 +150,55 @@ function integrityDescription(
   return `O limite de variação ajustou seu resultado em ${formatPdlImpact(impact)}.`;
 }
 
-export function resolveProfileRatingModifiers(
-  modifiers: Modifier[],
-  crDelta: number,
-): Modifier[] {
-  const placementIndex = modifiers.findIndex(
-    (modifier) =>
-      KIND_ALIASES[modifier.kind.toLocaleLowerCase()] === "colocacao",
-  );
-  const allImpactsPresent = modifiers.every((modifier) =>
-    Number.isFinite(modifier.pdlImpact),
-  );
-
-  if (placementIndex >= 0 && allImpactsPresent) {
-    return modifiers;
+function confidenceDescription(impact: number): string {
+  const amount = Math.abs(displayImpact(impact));
+  if (impact > 0) {
+    return `A margem de incerteza sobre o seu nível diminuiu, o que acrescentou ${amount} PDL ao resultado.`;
   }
-
-  if (!Number.isFinite(crDelta)) return modifiers;
-
-  const syntheticPlacement = (impact: number): Modifier => ({
-    kind: "colocacao",
-    label: "Colocação",
-    value: 0,
-    pdlImpact: impact,
-    icon: "leaderboard",
-  });
-
-  if (placementIndex < 0 && allImpactsPresent) {
-    if (modifiers.length === 0 && crDelta === 0) return [];
-
-    const knownImpact = modifiers.reduce(
-      (sum, modifier) => sum + (modifier.pdlImpact ?? 0),
-      0,
-    );
-    const baseImpact = Math.round((crDelta - knownImpact) * 10) / 10;
-    return [syntheticPlacement(baseImpact), ...modifiers];
+  if (impact < 0) {
+    return `A margem de incerteza sobre o seu nível aumentou, o que reduziu ${amount} PDL do resultado.`;
   }
+  return "A margem de incerteza sobre o seu nível não mudou este resultado.";
+}
 
-  const multipliers = modifiers.map((modifier) => 1 + modifier.value / 100);
-  const combinedMultiplier = multipliers.reduce(
-    (product, multiplier) => product * multiplier,
-    1,
-  );
-  if (
-    !Number.isFinite(combinedMultiplier) ||
-    Math.abs(combinedMultiplier) < Number.EPSILON
-  ) {
-    return modifiers;
+function adjustDescription(impact: number): string {
+  const amount = Math.abs(displayImpact(impact));
+  const verb = impact >= 0 ? "acrescentou" : "reduziu";
+  return `Esta partida foi registrada antes do detalhamento completo do Raio-X — a consolidação da sua estimativa e o teto/piso de colocação, quando aplicável, aparecem juntos aqui e ${verb} ${amount} PDL ao resultado.`;
+}
+
+function zeroFloorDescription(impact: number): string {
+  const amount = Math.abs(displayImpact(impact));
+  return `Seu PDL não pode ficar negativo — isso poupou ${amount} PDL desta queda.`;
+}
+
+function capDescription(kind: SignalKind, impact: number): string {
+  const amount = Math.abs(displayImpact(impact));
+  if (kind === "teto_ganho") {
+    return `Seu ganho bruto foi maior, mas o teto de PDL desta colocação limitou o resultado (redução de ${amount} PDL).`;
   }
-
-  let currentDelta = crDelta / combinedMultiplier;
-  const resolved: Modifier[] = [];
-  if (placementIndex < 0) {
-    resolved.push(
-      syntheticPlacement(Math.round(currentDelta * 10) / 10),
-    );
+  if (kind === "teto_perda") {
+    return `Sua perda bruta foi maior, mas o teto de PDL desta colocação limitou o resultado (você poupou ${amount} PDL).`;
   }
+  // piso_ganho
+  return `Esta colocação garante um PDL mínimo — você recebeu ${amount} PDL a mais para atingir o piso.`;
+}
 
-  modifiers.forEach((modifier, index) => {
-    const nextDelta = currentDelta * multipliers[index];
-    const isPlacement = index === placementIndex;
-    const derivedImpact = Math.round(
-      (isPlacement ? nextDelta : nextDelta - currentDelta) * 10,
-    ) / 10;
-    currentDelta = nextDelta;
-
-    resolved.push(
-      Number.isFinite(modifier.pdlImpact)
-        ? modifier
-        : { ...modifier, pdlImpact: derivedImpact },
-    );
-  });
-
-  return resolved;
+/**
+ * Raio-X do resultado (v1.4): `pdlImpact` agora chega REAL do backend
+ * (`arena/rating/explain.py`'s reconciling ledger, via `map_modifiers` —
+ * `arena/api/routers/_common.py`), nunca mais reconstruído aqui. Esta função
+ * costumava inverter a cadeia multiplicativa de `value` para ADIVINHAR um
+ * `pdlImpact` por fator — mas essa conta ignorava o termo de "confiança"
+ * (`-3·Δσ`, sempre presente na identidade de CR) e qualquer efeito do teto/piso
+ * de PDL, então ficava sistematicamente errada sempre que um desses dois
+ * mecanismos entrava em jogo. Mantida como uma função (em vez de inline no
+ * componente) só por estabilidade de import; hoje é um filtro defensivo —
+ * um fator sem `pdlImpact` finito nunca deveria chegar aqui, mas se chegar,
+ * é melhor omiti-lo do que fabricar um número.
+ */
+export function resolveProfileRatingModifiers(modifiers: Modifier[]): Modifier[] {
+  return modifiers.filter((modifier) => Number.isFinite(modifier.pdlImpact));
 }
 
 export function buildProfileRatingSignal(
@@ -272,6 +268,55 @@ export function buildProfileRatingSignal(
       impact,
       formattedImpact: formatPdlImpact(impact),
       description: integrityDescription(kind, impact, context),
+    };
+  }
+
+  if (kind === "confianca") {
+    return {
+      kind,
+      title: "Consolidação da sua estimativa",
+      icon: modifier.icon,
+      impact,
+      formattedImpact: formatPdlImpact(impact),
+      description: confidenceDescription(impact),
+    };
+  }
+
+  if (kind === "teto_ganho" || kind === "teto_perda" || kind === "piso_ganho") {
+    return {
+      kind,
+      title: modifier.label,
+      icon: modifier.icon,
+      impact,
+      formattedImpact: formatPdlImpact(impact),
+      description: capDescription(kind, impact),
+    };
+  }
+
+  if (kind === "ajuste") {
+    // The label is backend-picked (arena/api/routers/_common.py) and names the
+    // specific mechanism (e.g. "Piso de ganho da colocação (parcial)") whenever
+    // explain() could identify WHICH cap rule bound, even though it couldn't
+    // split its exact PDL share from the confiança term — only falls back to
+    // the generic "Ajuste de exibição" when neither is knowable.
+    return {
+      kind,
+      title: modifier.label,
+      icon: modifier.icon,
+      impact,
+      formattedImpact: formatPdlImpact(impact),
+      description: adjustDescription(impact),
+    };
+  }
+
+  if (kind === "piso_zero") {
+    return {
+      kind,
+      title: "PDL mínimo (0)",
+      icon: modifier.icon,
+      impact,
+      formattedImpact: formatPdlImpact(impact),
+      description: zeroFloorDescription(impact),
     };
   }
 
