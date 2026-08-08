@@ -240,7 +240,17 @@ class Settings(BaseSettings):
     priority_sweep_batch_size: int = Field(
         default=200, description="Priority seeds processed per priority sweep tick.")
     sweep_matches_per_player: int = Field(
-        default=10, description="Riot match ids fetched per player per sweep tick.")
+        default=100,
+        description="Riot match ids fetched per player per sweep tick (per live queue; "
+        "100 is Riot's own hard cap on `count` for the match-v5 ids endpoint — this is "
+        "the maximum window size, not a tunable beyond that). Shared by sweep_tick, "
+        "priority_sweep_tick, AND recent_activity_sweep_tick — this is a single HTTP "
+        "call regardless of count, so raising it costs NO extra Riot rate-limit budget, "
+        "only a slightly bigger response to dedup against. It bounds how many matches a "
+        "player can play between two sweep visits before the oldest ones in that burst "
+        "fall out of Riot's newest-first window and are permanently missed; 10 (the "
+        "original default) covered only ~3-4h of continuous play, an easy miss for a long "
+        "session on a non-priority player (see the 2026-08 discovery-gap investigation).")
     sweep_fetch_concurrency: int = Field(
         default=32,
         description="Concurrent Riot id-list calls inside one sweep tick (local "
