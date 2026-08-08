@@ -17,6 +17,7 @@ from scripts.audit_missing_matches import (
     _since_epoch,
     diff_page,
     split_missing,
+    unique_match_ids,
 )
 
 
@@ -107,6 +108,42 @@ def test_split_with_nothing_known_leaves_everything_never_ingested():
 
     assert gap.never_ingested == ["m1"]
     assert gap.participant_gap == []
+
+
+# ---------------------------------------------------------------------------
+# unique_match_ids — the real-number-not-gap-report-count fix (2026-08).
+# A shared Arena lobby has 16-18 real participants; if several are already
+# tracked, one still-undiscovered match shows up in EACH of their own
+# never_ingested lists, inflating a naive sum-of-lengths total.
+# ---------------------------------------------------------------------------
+
+
+def test_unique_match_ids_collapses_a_shared_lobby_to_one():
+    # 3 tracked players, all missing the SAME match (a real lobby of theirs).
+    gaps = [
+        PlayerGap(puuid="pu-a", player_id="a", name="A", never_ingested=["shared", "onlyA"]),
+        PlayerGap(puuid="pu-b", player_id="b", name="B", never_ingested=["shared"]),
+        PlayerGap(puuid="pu-c", player_id="c", name="C", never_ingested=["shared"]),
+    ]
+
+    assert sum(len(g.never_ingested) for g in gaps) == 4  # the old, inflated number
+    assert unique_match_ids(gaps, "never_ingested") == {"shared", "onlyA"}  # the real one
+
+
+def test_unique_match_ids_is_independent_per_attribute():
+    gaps = [
+        PlayerGap(puuid="pu-a", player_id="a", name="A", never_ingested=["n1"], participant_gap=["p1"]),
+        PlayerGap(puuid="pu-b", player_id="b", name="B", never_ingested=["n1"], participant_gap=["p1", "p2"]),
+    ]
+
+    assert unique_match_ids(gaps, "never_ingested") == {"n1"}
+    assert unique_match_ids(gaps, "participant_gap") == {"p1", "p2"}
+
+
+def test_unique_match_ids_empty_for_no_gaps():
+    gaps = [PlayerGap(puuid="pu-a", player_id="a", name="A")]
+
+    assert unique_match_ids(gaps, "never_ingested") == set()
 
 
 # ---------------------------------------------------------------------------

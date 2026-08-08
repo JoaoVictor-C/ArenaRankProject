@@ -365,6 +365,21 @@ async def _enqueue_missing(redis: Any, gaps: list[PlayerGap]) -> int:
     return await _push_claimed(redis, Q.STANDARD_QUEUE, eligible)
 
 
+def unique_match_ids(gaps: list[PlayerGap], attr: str) -> set[str]:
+    """Union a per-player gap attribute (``never_ingested``/``participant_gap``)
+    across the WHOLE audited population into a single set of riot_match_ids.
+
+    Every count in this module before this function existed was a sum of
+    PER-PLAYER list lengths -- and an Arena lobby has 16-18 real participants,
+    so one still-undiscovered match gets one entry in EVERY already-tracked
+    co-participant's own gap list. Summing those lengths answers "how many
+    (player, missing-match) pairs exist", not "how many matches are missing" --
+    inflated by however many tracked players happen to share a lobby (observed
+    live, 2026-08: ~3x for a 16,284-gap-report / 5,328-actual-insert run). This
+    is the real number: dedup by match id, not by (player, match id) pair."""
+    return {rid for g in gaps for rid in getattr(g, attr)}
+
+
 def _print_report(gaps: list[PlayerGap], args: argparse.Namespace, budget: _Budget) -> None:
     audited = len(gaps)
     with_gap = [g for g in gaps if g.missing > 0]
@@ -377,16 +392,23 @@ def _print_report(gaps: list[PlayerGap], args: argparse.Namespace, budget: _Budg
     total_partgap = sum(len(g.participant_gap) for g in gaps)
     riot_total = sum(g.riot_total for g in gaps)
     computed = sum(g.computed for g in gaps)
+    unique_never = unique_match_ids(gaps, "never_ingested")
+    unique_partgap = unique_match_ids(gaps, "participant_gap")
 
     print()
     print("=" * 78)
     print(f"players audited        {audited}")
     print(f"  with any gap         {len(with_gap)}")
     print(f"  listed (>= {args.min_missing} missing) {len(listed)}")
-    print(f"riot matches seen      {riot_total}")
-    print(f"  computed             {computed}")
-    print(f"  never ingested       {total_never}")
+    print(f"riot matches seen      {riot_total}  (gap-reports below are NOT deduped by match --")
+    print(f"  computed             {computed}    one lobby with N tracked co-participants missing")
+    print(f"  never ingested       {total_never}    the same match counts N times; see 'unique' below)")
     print(f"  participant gap      {total_partgap}")
+    print(f"unique matches missing {len(unique_never)}  (never_ingested, deduped by riot_match_id --")
+    print(f"unique participant gap {len(unique_partgap)}  this is the real number of matches to fix)")
+    if unique_never:
+        avg_mult = total_never / len(unique_never)
+        print(f"avg tracked co-participants per missing match: {avg_mult:.2f}")
     if riot_total:
         print(f"coverage               {100.0 * computed / riot_total:.2f}%")
     print(f"riot id-list calls     {budget.used}{' (BUDGET HIT)' if budget.exhausted else ''}")
@@ -451,8 +473,10 @@ async def run(args: argparse.Namespace) -> None:
 
             done = len(gaps)
             missing_so_far = sum(g.missing for g in gaps)
+            unique_so_far = len(unique_match_ids(gaps, "never_ingested"))
             print(
-                f"  ...{done} players | {missing_so_far} missing | "
+                f"  ...{done} players | {missing_so_far} gap-reports "
+                f"({unique_so_far} unique matches) | "
                 f"{budget.used} riot calls | {time.monotonic() - started:.0f}s"
             )
             if budget.exhausted:
@@ -469,6 +493,9 @@ async def run(args: argparse.Namespace) -> None:
             "since": since,
             "playersAudited": len(gaps),
             "riotCalls": budget.used,
+            "gapReports": sum(g.missing for g in gaps),
+            "uniqueMatchesNeverIngested": len(unique_match_ids(gaps, "never_ingested")),
+            "uniqueMatchesParticipantGap": len(unique_match_ids(gaps, "participant_gap")),
             "players": [
                 {**asdict(g), "missing": g.missing}
                 for g in sorted(gaps, key=lambda g: g.missing, reverse=True)
