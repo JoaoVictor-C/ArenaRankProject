@@ -38,8 +38,14 @@ def test_sweep_worker_cron_jobs():
     assert SweepWorker.functions == []
 
 
-def test_priority_sweep_worker_has_one_cron():
-    assert len(PrioritySweepWorker.cron_jobs) == 1
+def test_priority_sweep_worker_cron_jobs():
+    """priority_sweep + recent_activity_sweep ticks, both hosted on this pool —
+    the latter closes the coverage gap for non-priority (low-CR/casual) players,
+    see Settings.recent_activity_enabled's docstring."""
+    assert len(PrioritySweepWorker.cron_jobs) == 2
+    names = {job.name for job in PrioritySweepWorker.cron_jobs}
+    assert names == {"cron:priority_sweep_tick", "cron:recent_activity_sweep_tick"}
+    assert PrioritySweepWorker.functions == []
 
 
 def test_consumer_workers_have_distinct_queues():

@@ -31,7 +31,13 @@ from arena.workers.deps import redis_settings
 from arena.workers.ingestion import poll_riot
 from arena.workers.processor import MAX_TRIES, process_match
 from arena.workers.scheduler import CRON_JOBS
-from arena.workers.sweep import priority_sweep_tick, reconcile_tick, rearm_tick, sweep_tick
+from arena.workers.sweep import (
+    priority_sweep_tick,
+    reconcile_tick,
+    rearm_tick,
+    recent_activity_sweep_tick,
+    sweep_tick,
+)
 
 _log = get_logger("arena.workers.main")
 
@@ -199,7 +205,14 @@ class SweepWorker:
 
 
 class PrioritySweepWorker:
-    """Sweep over Top-1000 + admin-selected players → the priority arq queue."""
+    """Sweep over Top-1000 + admin-selected players → the priority arq queue.
+
+    Also hosts the recent-activity sweep tick: a CR-independent "played a
+    match in the last few hours" re-check that closes the coverage gap
+    rearm_tick's short leash + the standard sweep's (very slow, full-pool)
+    rotation leave for non-priority players — see
+    ``Settings.recent_activity_enabled``'s docstring.
+    """
 
     queue_name = "arena:cron:priority_sweep"
     functions: list[Any] = []
@@ -208,7 +221,12 @@ class PrioritySweepWorker:
             priority_sweep_tick,
             minute=set(range(0, 60, settings.priority_sweep_interval_minutes)),
             run_at_startup=True,
-        )
+        ),
+        cron(
+            recent_activity_sweep_tick,
+            minute=set(range(0, 60, settings.recent_activity_sweep_interval_minutes)),
+            run_at_startup=True,
+        ),
     ]
     redis_settings = redis_settings()
     on_startup = staticmethod(_on_startup)

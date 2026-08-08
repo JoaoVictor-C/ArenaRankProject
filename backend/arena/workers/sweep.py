@@ -44,6 +44,7 @@ _WORKER_SWEEP = "sweep"
 _WORKER_PRIORITY_SWEEP = "priority_sweep"
 _WORKER_REARM = "rearm"
 _WORKER_RECONCILE = "reconcile"
+_WORKER_RECENT_ACTIVITY = "recent_activity"
 
 
 # ---------------------------------------------------------------------------
@@ -357,6 +358,75 @@ async def _top_n_puuids(limit: int) -> list[str]:
         return [p for (p,) in rows.all() if p]
 
 
+async def _recently_active_puuids(window_seconds: int, limit: int) -> list[str]:
+    """Puuids whose ``player_seasons`` row was updated (i.e. a match was just
+    processed for them) within the last *window_seconds* — a CR-independent
+    "still probably playing today" signal. Newest-first, so a budget cap
+    (*limit*) drops the least-fresh rows first, not an arbitrary puuid-order
+    slice. Falls back to ``[]`` when the DB layer is not yet importable (same
+    convention as the other puuid-source helpers in this module)."""
+    try:
+        from datetime import UTC, datetime, timedelta
+
+        from sqlalchemy import select
+
+        from arena.db.models import Player, PlayerSeason
+        from arena.db.session import get_sessionmaker
+    except Exception:  # noqa: BLE001
+        return []
+    cutoff = datetime.now(UTC) - timedelta(seconds=window_seconds)
+    factory = get_sessionmaker()
+    async with factory() as session:
+        stmt = (
+            select(Player.puuid)
+            .join(PlayerSeason, PlayerSeason.player_id == Player.id)
+            .where(PlayerSeason.updated_at >= cutoff)
+            .order_by(PlayerSeason.updated_at.desc())
+            .limit(limit)
+        )
+        rows = await session.execute(stmt)
+        return [p for (p,) in rows.all() if p]
+
+
+async def recent_activity_sweep_tick(ctx: dict[str, Any]) -> dict[str, Any]:
+    """Re-check players who finished a match recently, regardless of CR.
+
+    See ``Settings.recent_activity_enabled``'s docstring for why this tick
+    exists: the standard sweep's full-pool rotation is too slow to catch a
+    non-priority player's session once ``rearm_tick``'s short leash drops them,
+    and that combination was silently losing real matches for exactly the
+    population most likely to be un-ranked or low-CR (the ones NOT in the
+    Top-N priority pool). Discovered ids go to the priority queue — same
+    reasoning as ``rearm_tick``: this is live-session content.
+    """
+    redis = ctx["redis"]
+    try:
+        if not settings.recent_activity_enabled:
+            return {"status": "disabled"}
+        if not await _check_enabled(redis, _WORKER_RECENT_ACTIVITY):
+            return {"status": "paused"}
+        ttl = max(settings.recent_activity_sweep_interval_minutes * 60 - 5, 10)
+        if not await _acquire_tick_lock(redis, _WORKER_RECENT_ACTIVITY, ttl):
+            return {"status": "skip_locked"}
+
+        puuids = await _recently_active_puuids(
+            settings.recent_activity_window_seconds, settings.recent_activity_limit
+        )
+        discovered, enqueued = await _fetch_and_enqueue(redis, puuids, Q.PRIORITY_QUEUE)
+
+        result: dict[str, Any] = {
+            "status": "ok",
+            "puuids": len(puuids),
+            "discovered": discovered,
+            "enqueued": enqueued,
+        }
+        _log.info("recent_activity_sweep.tick", **result)
+        return result
+    except Exception as exc:  # noqa: BLE001 — must never raise out of a cron tick
+        _log.warning("recent_activity_sweep.tick.error", error=str(exc), exc_info=True)
+        return {"status": "error", "error": str(exc)}
+
+
 async def _priority_seeds(redis: Any) -> list[str]:
     """Top-1000 (Redis cache ∪ DB top-N by CR) plus admin-selected players,
     deduped with a stable order. TOP_PLAYERS_SET is read as a SET (smembers),
@@ -648,4 +718,10 @@ async def reconcile_tick(ctx: dict[str, Any]) -> dict[str, Any]:
         return {"status": "error", "error": str(exc)}
 
 
-__all__ = ["sweep_tick", "priority_sweep_tick", "rearm_tick", "reconcile_tick"]
+__all__ = [
+    "sweep_tick",
+    "priority_sweep_tick",
+    "rearm_tick",
+    "reconcile_tick",
+    "recent_activity_sweep_tick",
+]

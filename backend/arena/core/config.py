@@ -263,6 +263,38 @@ class Settings(BaseSettings):
         "(matches.processed idempotency makes repeats cheap no-ops). Keep False in "
         "normal operation — every tick re-enqueues the same recent ids while True.")
 
+    # --- Recent-activity sweep ----------------------------------------------
+    # Root cause of a real gap (2026-08): the standard sweep's full-pool rotation
+    # (sweep_batch_size tracked players per tick) can take DAYS to cycle back to
+    # any one non-priority player once the tracked pool grows into the hundreds
+    # of thousands — a low-CR/casual player who isn't in the Top-N never gets a
+    # timely re-check. rearm_tick covers a player for ~26min after their last
+    # processed match, but drops them the moment they pause longer than that
+    # mid-session, permanently losing the rest of that session's matches until
+    # the slow standard rotation eventually reaches them. This tick closes that
+    # gap with a THIRD, CR-independent signal: "played a match recently" — cheap
+    # (one indexed query on player_seasons.updated_at) and self-bounding (only
+    # players who are actually active show up), so it stays fast without diluting
+    # the Top-N priority sweep's own rotation.
+    recent_activity_enabled: bool = Field(
+        default=True,
+        description="Sweep players who finished a match recently (any CR), "
+        "independent of the Top-N priority pool. Closes the coverage gap for "
+        "casual/non-priority players who pause longer than rearm_delays allows.")
+    recent_activity_sweep_interval_minutes: int = Field(
+        default=5, description="Recent-activity sweep tick interval (minutes). Must divide 60.")
+    recent_activity_window_seconds: int = Field(
+        default=3 * 3600,
+        description="How recently a player_seasons row must have been updated "
+        "to qualify — long enough to cover a realistic mid-session pause (queue "
+        "wait, a snack break) that would otherwise outlast rearm's own ~26min "
+        "leash, short enough that the pool stays small (only players plausibly "
+        "still playing today, not the whole tracked history).")
+    recent_activity_limit: int = Field(
+        default=500,
+        description="Max puuids fetched per tick — bounds Riot budget even if "
+        "the recently-active population spikes (e.g. a tournament night).")
+
     # --- New-player history backfill ---------------------------------------
     # A player row is born as a side effect of a lobby-mate's match; nothing in
     # the online path used to look at the history they already had (the sweep
@@ -510,6 +542,7 @@ class Settings(BaseSettings):
         "sweep_interval_minutes",
         "priority_sweep_interval_minutes",
         "backfill_interval_minutes",
+        "recent_activity_sweep_interval_minutes",
     )
     @classmethod
     def _interval_divides_60(cls, v: int) -> int:
